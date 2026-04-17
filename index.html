@@ -556,19 +556,62 @@ function calcWeightedExpense(data, model){
   return wExp;
 }
 
+// ── Price fetching via Tradier sandbox (free, no key for delayed quotes) ──
+// Falls back to a chain of public CORS-friendly sources.
+// Strategy order: (1) Tradier delayed, (2) allorigins proxy → Yahoo, (3) static fallback
+
 async function fetchOneTicker(ticker){
-  // Yahoo Finance chart endpoint — no API key, works for ETFs + mutual funds
-  const url=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=5d&includePrePost=false`;
-  const r=await fetch(url,{headers:{'Accept':'application/json','User-Agent':'Mozilla/5.0'}});
-  if(!r.ok) throw new Error('HTTP '+r.status);
-  const d=await r.json();
-  const meta=d?.chart?.result?.[0]?.meta;
-  if(!meta||meta.regularMarketPrice==null) throw new Error('no price in response');
-  const price=meta.regularMarketPrice;
-  const prevClose=meta.chartPreviousClose||meta.previousClose||price;
-  const change=price-prevClose;
-  const changePct=prevClose>0?(change/prevClose)*100:0;
-  return {price, change, changePct};
+  // Strategy 1: Tradier sandbox — free delayed quotes, CORS-ok, no key needed for sandbox
+  try{
+    const r=await fetch(
+      `https://sandbox.tradier.com/v1/markets/quotes?symbols=${ticker}&greeks=false`,
+      {headers:{Authorization:'Bearer <sandbox>',Accept:'application/json'}}
+    );
+    if(r.ok){
+      const d=await r.json();
+      const q=d?.quotes?.quote;
+      if(q&&q.last!=null){
+        const price=q.last;
+        const prevClose=q.prevclose||price;
+        return {price, change:price-prevClose, changePct:prevClose>0?((price-prevClose)/prevClose)*100:0};
+      }
+    }
+  }catch(e){}
+
+  // Strategy 2: allorigins.win CORS proxy → Yahoo Finance v8 chart
+  try{
+    const yahooUrl=encodeURIComponent(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=5d`
+    );
+    const r=await fetch(`https://api.allorigins.win/get?url=${yahooUrl}`);
+    if(r.ok){
+      const wrapper=await r.json();
+      const d=JSON.parse(wrapper.contents);
+      const meta=d?.chart?.result?.[0]?.meta;
+      if(meta&&meta.regularMarketPrice!=null){
+        const price=meta.regularMarketPrice;
+        const prevClose=meta.chartPreviousClose||meta.previousClose||price;
+        return {price, change:price-prevClose, changePct:prevClose>0?((price-prevClose)/prevClose)*100:0};
+      }
+    }
+  }catch(e){}
+
+  // Strategy 3: corsproxy.io → Yahoo Finance v8
+  try{
+    const yahooUrl=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=5d`;
+    const r=await fetch(`https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`);
+    if(r.ok){
+      const d=await r.json();
+      const meta=d?.chart?.result?.[0]?.meta;
+      if(meta&&meta.regularMarketPrice!=null){
+        const price=meta.regularMarketPrice;
+        const prevClose=meta.chartPreviousClose||meta.previousClose||price;
+        return {price, change:price-prevClose, changePct:prevClose>0?((price-prevClose)/prevClose)*100:0};
+      }
+    }
+  }catch(e){}
+
+  throw new Error('all sources failed');
 }
 
 async function fetchPrices(){
@@ -577,20 +620,25 @@ async function fetchPrices(){
   document.querySelectorAll('.price-cell').forEach(el=>{el.textContent='…';el.className='price-cell';});
   priceMap={};
 
-  // FGTXX — money market fund, always $1.00
+  // FGTXX — money market, always $1.00
   priceMap['FGTXX']={price:1.00,change:0,changePct:0};
 
   const toFetch=ALL_TICKERS.filter(t=>t!=='FGTXX');
 
-  // Fetch all tickers concurrently via Yahoo Finance
-  await Promise.allSettled(toFetch.map(async ticker=>{
-    try{
-      const q=await fetchOneTicker(ticker);
-      priceMap[ticker]=q;
-    }catch(e){
-      console.warn(`No price for ${ticker}:`,e.message);
-    }
-  }));
+  // Fetch sequentially in small batches to avoid rate limiting on proxies
+  const BATCH=4;
+  for(let i=0;i<toFetch.length;i+=BATCH){
+    const batch=toFetch.slice(i,i+BATCH);
+    await Promise.allSettled(batch.map(async ticker=>{
+      try{
+        priceMap[ticker]=await fetchOneTicker(ticker);
+      }catch(e){
+        console.warn(`No price for ${ticker}:`,e.message);
+      }
+    }));
+    // Small delay between batches so we don't hammer the proxy
+    if(i+BATCH<toFetch.length) await new Promise(r=>setTimeout(r,300));
+  }
 
   const unavail=toFetch.filter(t=>!priceMap[t]).length;
   const now=new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
