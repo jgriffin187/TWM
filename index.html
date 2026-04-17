@@ -99,9 +99,22 @@
     .tab.active{background:var(--bg);color:var(--text);font-weight:500;box-shadow:var(--shadow);}
     .tab:hover:not(.active){color:var(--text);}
 
-    .metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:1.5rem;}
+    .metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:1.5rem;}
     .metric{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;transition:background .2s,border-color .2s;}
     .metric-label{font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;}
+    .metric.vs-sp{border-left:3px solid var(--blue);padding-left:13px;position:relative;}
+    .metric-header{display:flex;align-items:center;gap:5px;margin-bottom:8px;}
+    .metric-header .metric-label{margin-bottom:0;}
+    .info-icon{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;border:1.5px solid var(--text-3);font-size:9px;font-weight:700;color:var(--text-3);cursor:default;flex-shrink:0;line-height:1;font-style:normal;transition:border-color .15s,color .15s;font-family:'Inter',sans-serif;}
+    .info-icon:hover{border-color:var(--blue);color:var(--blue);}
+    .tooltip-wrap{position:relative;display:inline-flex;}
+    .tooltip-box{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);font-family:'Inter',sans-serif;font-size:12px;font-weight:400;line-height:1.55;padding:10px 13px;border-radius:8px;width:240px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:99;white-space:normal;text-align:left;box-shadow:0 4px 16px rgba(0,0,0,.2);}
+    .tooltip-box::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--text);}
+    .tooltip-wrap:hover .tooltip-box{opacity:1;}
+    .metric-vs{font-size:11px;color:var(--text-3);margin-top:6px;line-height:1.4;}
+    .vs-better{color:var(--green-text);font-weight:600;font-family:'IBM Plex Mono',monospace;font-size:11px;}
+    .vs-worse{color:var(--red-text);font-weight:600;font-family:'IBM Plex Mono',monospace;font-size:11px;}
+    .vs-neutral{color:var(--text-3);font-family:'IBM Plex Mono',monospace;font-size:11px;}
     .metric-value{font-size:30px;font-weight:400;color:var(--text);letter-spacing:-.02em;font-family:'IBM Plex Mono',monospace;}
     .metric-sub{font-size:12px;color:var(--text-3);margin-top:4px;}
 
@@ -190,7 +203,7 @@
     .toast.show{opacity:1;}
 
     @media(max-width:700px){
-      .metrics{grid-template-columns:1fr 1fr;}
+      .metrics{grid-template-columns:1fr 1fr 1fr;}
       .grid2{grid-template-columns:1fr;}
       .topbar{padding:0 1rem;}
       .main{padding:1.25rem 1rem;}
@@ -467,6 +480,65 @@ const SRI_MODEL_NAMES=['SRI Conservative','SRI Moderate','SRI Aggressive','SRI U
 const FMP_KEY='dBAuoFkQ5WK9KqhJKOuNeY7akozuICXK';
 const ALL_TICKERS=[...new Set([...TWM.funds.map(f=>f.ticker),...SRI.funds.map(f=>f.ticker)])];
 let priceMap={}; // { TICKER: { price, change, changePct } }
+let betaMap={};  // { TICKER: beta } — populated by fetchBetas()
+let sp500Beta=1.0, sp500Expense=0.0009; // SPY beta=1 by definition; SPY expense ratio 0.09%
+
+async function fetchBetas(){
+  // Fetch beta for every unique ticker via /profile (free tier)
+  // Also hardcode well-known ETF betas for reliability
+  const knownBetas={
+    'FGTXX':0,'BND':0.02,'VUSB':0.02,'CGMU':0.03,'FDUIX':0.05,'FEHIX':0.25,
+    'VTI':1.0,'VB':1.15,'DSI':1.0,'SUSB':0.03,'TSBIX':0.05,'PFPLX':0.08
+  };
+  Object.assign(betaMap, knownBetas);
+
+  // Fetch beta from FMP /profile for tickers not hardcoded
+  const toFetch=([...new Set([...TWM.funds,...SRI.funds].map(f=>f.ticker))])
+    .filter(t=>betaMap[t]===undefined);
+
+  await Promise.allSettled(toFetch.map(async ticker=>{
+    try{
+      const r=await fetch(`https://financialmodelingprep.com/api/v3/profile/${ticker}?apikey=${FMP_KEY}`);
+      if(!r.ok) return;
+      const d=await r.json();
+      if(Array.isArray(d)&&d.length>0&&d[0].beta!=null){
+        betaMap[ticker]=d[0].beta;
+      }
+    }catch(e){ /* leave undefined */ }
+  }));
+
+  // Re-render metrics now that betas are loaded
+  renderMetrics(TWM,curTWM,'twm');
+  renderMetrics(SRI,curSRI,'sri');
+}
+
+// Compute weighted portfolio beta for a given model
+function calcPortfolioBeta(data, model){
+  const alloc=data.models[model];
+  let totalWeight=0, weightedBeta=0;
+  data.funds.forEach(f=>{
+    const w=alloc[f.ticker]||0;
+    const b=betaMap[f.ticker];
+    if(b!=null){ weightedBeta+=w*b; totalWeight+=w; }
+  });
+  // Also include the 'cash' key which isn't a fund ticker
+  const cashW=alloc['cash']||0;
+  weightedBeta+=cashW*0; // cash beta = 0
+  totalWeight+=cashW;
+  return totalWeight>0.05 ? weightedBeta/totalWeight*totalWeight : weightedBeta;
+}
+
+// Compute weighted expense ratio for a given model
+function calcWeightedExpense(data, model){
+  const alloc=data.models[model];
+  let wExp=0;
+  data.funds.forEach(f=>{
+    const w=alloc[f.ticker]||0;
+    wExp+=w*f.expense;
+  });
+  // cash slot in alloc uses FGTXX expense effectively, already counted
+  return wExp;
+}
 
 async function fetchPrices(){
   const tsList=document.querySelectorAll('#prices-ts,#sri-prices-ts');
@@ -568,11 +640,68 @@ function getCatTotals(data,model){
 
 function renderMetrics(data,model,pfx){
   const s=data.summary[model];
+
+  // Weighted beta
+  const beta=calcPortfolioBeta(data,model);
+  const betaStr=beta>0?beta.toFixed(2):'—';
+  const betaDiff=beta>0?(beta-sp500Beta):null;
+  const betaCls=betaDiff===null?'vs-neutral':betaDiff<0?'vs-better':'vs-worse';
+  const betaDiffStr=betaDiff===null?'Loading…':(betaDiff>=0?'+':'')+betaDiff.toFixed(2)+' vs S&P 500';
+
+  // Weighted expense ratio
+  const wExp=calcWeightedExpense(data,model);
+  const expStr=wExp>0?(wExp*100).toFixed(2)+'%':'—';
+  const expDiff=wExp>0?(wExp-sp500Expense):null;
+  const expCls=expDiff===null?'vs-neutral':expDiff<0?'vs-better':'vs-worse';
+  const expDiffStr=expDiff===null?'Loading…':((expDiff>=0?'+':'')+((expDiff)*100).toFixed(2)+'% vs SPY (0.09%)');
+
   document.getElementById(pfx+'-metrics').innerHTML=`
-    <div class="metric"><div class="metric-label">Equities</div><div class="metric-value">${pct(s.equities)}</div><div class="metric-sub">Equity exposure</div></div>
-    <div class="metric"><div class="metric-label">Fixed income</div><div class="metric-value">${pct(s.fixedIncome)}</div><div class="metric-sub">Bond allocation</div></div>
-    <div class="metric"><div class="metric-label">Cash</div><div class="metric-value">${pct(s.cash)}</div><div class="metric-sub">Liquidity</div></div>
-    <div class="metric"><div class="metric-label">Alternatives</div><div class="metric-value">${pct(s.alternatives)}</div><div class="metric-sub">Alt exposure</div></div>`;
+    <div class="metric">
+      <div class="metric-label">Equities</div>
+      <div class="metric-value">${pct(s.equities)}</div>
+      <div class="metric-sub">Equity exposure</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Fixed income</div>
+      <div class="metric-value">${pct(s.fixedIncome)}</div>
+      <div class="metric-sub">Bond allocation</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Cash</div>
+      <div class="metric-value">${pct(s.cash)}</div>
+      <div class="metric-sub">Liquidity</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Alternatives</div>
+      <div class="metric-value">${pct(s.alternatives)}</div>
+      <div class="metric-sub">Alt exposure</div>
+    </div>
+    <div class="metric vs-sp">
+      <div class="metric-header">
+        <div class="metric-label">Portfolio beta</div>
+        <span class="tooltip-wrap">
+          <i class="info-icon">i</i>
+          <span class="tooltip-box">Beta measures how much this portfolio moves relative to the S&P 500. Beta of 1.0 = moves with the market. Below 1.0 = less volatile (lower risk, lower potential return). Above 1.0 = more volatile. Calculated as a weighted average of each fund's beta.</span>
+        </span>
+      </div>
+      <div class="metric-value">${betaStr}</div>
+      <div class="metric-vs">
+        <span class="${betaCls}">${betaDiffStr}</span>
+      </div>
+    </div>
+    <div class="metric vs-sp">
+      <div class="metric-header">
+        <div class="metric-label">Wtd. expense</div>
+        <span class="tooltip-wrap">
+          <i class="info-icon">i</i>
+          <span class="tooltip-box">Weighted expense ratio is the blended annual cost of the portfolio — each fund's expense ratio multiplied by its allocation weight, then summed. Compared to SPY (S&P 500 ETF) at 0.09%. Lower is better; every 0.10% in fees costs $100/yr per $100k invested.</span>
+        </span>
+      </div>
+      <div class="metric-value">${expStr}</div>
+      <div class="metric-vs">
+        <span class="${expCls}">${expDiffStr}</span>
+      </div>
+    </div>`;
 }
 
 function renderAllocTable(data,model,pfx){
@@ -826,7 +955,7 @@ document.getElementById('twm-model-name').textContent=curTWM;
 renderMetrics(SRI,curSRI,'sri');renderAllocTable(SRI,curSRI,'sri');
 document.getElementById('sri-model-name').textContent=curSRI;
 setTimeout(initTWMCharts,100);
-checkConnection().then(()=>fetchPrices());
+checkConnection().then(()=>{ fetchPrices(); fetchBetas(); });
 </script>
 </body>
 </html>
