@@ -124,6 +124,14 @@
     .fund-name{color:var(--text-2);font-size:12px;text-align:left;}
     .expense-cell{font-family:'DM Mono',monospace;font-size:11px;color:var(--text-3);}
 
+    .price-cell{font-family:'DM Mono',monospace;font-size:12px;color:var(--text);min-width:64px;display:inline-block;text-align:right;}
+    .price-up{color:var(--green-text);}
+    .price-dn{color:var(--red-text);}
+    .price-na{color:var(--text-3);}
+    .prices-bar{display:flex;align-items:center;gap:10px;padding:6px 0 12px;font-size:12px;color:var(--text-3);}
+    .refresh-prices{font-size:12px;color:var(--blue);cursor:pointer;border:none;background:none;padding:3px 8px;border-radius:6px;font-family:'DM Sans',sans-serif;font-weight:500;}
+    .refresh-prices:hover{background:var(--blue-bg);}
+    .price-ts{font-family:'DM Mono',monospace;font-size:11px;}
     .editable{cursor:text;padding:3px 7px;border-radius:5px;min-width:58px;display:inline-block;text-align:right;font-family:'DM Mono',monospace;font-size:12px;transition:background .1s;}
     .editable:hover{background:var(--surface2);outline:1px solid var(--border-mid);}
     .editable:focus{background:var(--surface2);outline:2px solid var(--blue);outline-offset:0;}
@@ -257,7 +265,11 @@
       </div>
     </div>
     <div class="card" style="margin-bottom:14px;">
-      <div class="card-title">Fund allocations — <span id="twm-model-name">IRA Moderate</span> <span style="font-size:10px;font-weight:400;color:var(--text-3);text-transform:none;letter-spacing:0;">(click any value to edit)</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
+        <div class="card-title" style="margin-bottom:0;">Fund allocations — <span id="twm-model-name">IRA Moderate</span> <span style="font-size:10px;font-weight:400;color:var(--text-3);text-transform:none;letter-spacing:0;">(click any value to edit)</span></div>
+        <button class="refresh-prices" onclick="fetchPrices()">↻ Refresh prices</button>
+      </div>
+      <div class="prices-bar" id="twm-prices-bar"><span class="price-ts" id="prices-ts">Prices not loaded</span></div>
       <table class="alloc-table" id="twm-alloc-table"></table>
       <div class="sum-display sum-ok" id="twm-sum-display">100.00%</div>
     </div>
@@ -292,7 +304,11 @@
       </div>
     </div>
     <div class="card" style="margin-bottom:14px;">
-      <div class="card-title">Fund allocations — <span id="sri-model-name">SRI Moderate</span> <span style="font-size:10px;font-weight:400;color:var(--text-3);text-transform:none;letter-spacing:0;">(click any value to edit)</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
+        <div class="card-title" style="margin-bottom:0;">Fund allocations — <span id="sri-model-name">SRI Moderate</span> <span style="font-size:10px;font-weight:400;color:var(--text-3);text-transform:none;letter-spacing:0;">(click any value to edit)</span></div>
+        <button class="refresh-prices" onclick="fetchPrices()">↻ Refresh prices</button>
+      </div>
+      <div class="prices-bar" id="sri-prices-bar"><span class="price-ts" id="sri-prices-ts">Prices not loaded</span></div>
       <table class="alloc-table" id="sri-alloc-table"></table>
       <div class="sum-display sum-ok" id="sri-sum-display">100.00%</div>
     </div>
@@ -447,6 +463,54 @@ const num=v=>(v*100).toFixed(1);
 const TWM_MODEL_NAMES=['IRA Conservative','IRA Moderate','IRA Aggressive','IRA Ultra Aggressive','Taxable Conservative','Taxable Moderate','Taxable Aggressive'];
 const SRI_MODEL_NAMES=['SRI Conservative','SRI Moderate','SRI Aggressive','SRI Ultra Aggressive'];
 
+// FMP price data — keyed by ticker, populated by fetchPrices()
+const FMP_KEY='dBAuoFkQ5WK9KqhJKOuNeY7akozuICXK';
+const ALL_TICKERS=[...new Set([...TWM.funds.map(f=>f.ticker),...SRI.funds.map(f=>f.ticker)])];
+let priceMap={}; // { TICKER: { price, change, changePct } }
+
+async function fetchPrices(){
+  const tsList=document.querySelectorAll('#prices-ts,#sri-prices-ts');
+  tsList.forEach(el=>el.textContent='Fetching prices…');
+  // Mark all price cells as loading
+  document.querySelectorAll('.price-cell').forEach(el=>{el.textContent='…';el.className='price-cell';});
+  try{
+    const symbols=ALL_TICKERS.join(',');
+    const url=`https://financialmodelingprep.com/api/v3/quote/${symbols}?apikey=${FMP_KEY}`;
+    const res=await fetch(url);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    if(!Array.isArray(data)||data.length===0) throw new Error('No data returned');
+    priceMap={};
+    data.forEach(q=>{
+      priceMap[q.symbol]={
+        price: q.price,
+        change: q.change,
+        changePct: q.changesPercentage,
+        name: q.name
+      };
+    });
+    const now=new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+    tsList.forEach(el=>el.textContent='As of '+now);
+    // Re-render whichever tables are currently shown
+    renderAllocTable(TWM,curTWM,'twm');
+    renderAllocTable(SRI,curSRI,'sri');
+  }catch(e){
+    tsList.forEach(el=>el.textContent='Price fetch failed: '+e.message);
+    console.error('FMP error:',e);
+  }
+}
+
+function priceCell(ticker){
+  const q=priceMap[ticker];
+  if(!q) return '<span class="price-cell price-na">—</span>';
+  const price='$'+q.price.toFixed(2);
+  const chg=q.changePct;
+  const sign=chg>=0?'+':'';
+  const cls=chg>=0?'price-up':'price-dn';
+  const arrow=chg>=0?'▲':'▼';
+  return `<span class="price-cell ${cls}">${price} <span style="font-size:10px;">${arrow}${sign}${chg.toFixed(2)}%</span></span>`;
+}
+
 function switchTab(tab){
   ['twm','sri','history'].forEach(t=>document.getElementById('tab-'+t).style.display=t===tab?'':'none');
   document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['twm','sri','history'][i]===tab));
@@ -473,7 +537,7 @@ function renderMetrics(data,model,pfx){
 function renderAllocTable(data,model,pfx){
   const alloc=data.models[model],cats={};
   data.funds.forEach(f=>{if(!cats[f.category])cats[f.category]=[];cats[f.category].push(f);});
-  let html=`<thead><tr><th>Ticker</th><th style="text-align:left;">Fund name</th><th>Expense</th><th>Allocation</th><th style="width:90px;"></th></tr></thead><tbody>`;
+  let html=`<thead><tr><th>Ticker</th><th style="text-align:left;">Fund name</th><th>Expense</th><th>Last price</th><th>Allocation</th><th style="width:90px;"></th></tr></thead><tbody>`;
   Object.keys(cats).forEach(cat=>{
     const funds=cats[cat],catTotal=funds.reduce((a,f)=>a+(alloc[f.ticker]||0),0);
     funds.forEach(f=>{
@@ -482,12 +546,13 @@ function renderAllocTable(data,model,pfx){
         <td class="ticker-cell">${f.ticker}</td>
         <td class="fund-name">${f.name}</td>
         <td class="expense-cell">${pct(f.expense)}</td>
+        <td>${priceCell(f.ticker)}</td>
         <td><span class="editable" contenteditable="true" data-prefix="${pfx}" data-model="${model}" data-ticker="${f.ticker}"
           onblur="onEditBlur(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">${num(v)}%</span></td>
         <td><div class="bar-bg"><div class="bar-fill" style="width:${bw}%;background:${CAT_COLORS[cat]||'#888'};"></div></div></td>
       </tr>`;
     });
-    html+=`<tr class="subtotal"><td colspan="3" style="text-align:right;">${cat} subtotal</td><td class="mono">${pct(catTotal)}</td><td></td></tr>`;
+    html+=`<tr class="subtotal"><td colspan="4" style="text-align:right;">${cat} subtotal</td><td class="mono">${pct(catTotal)}</td><td></td></tr>`;
   });
   document.getElementById(pfx+'-alloc-table').innerHTML=html+'</tbody>';
   updateSum(data,model,pfx);
@@ -694,7 +759,7 @@ document.getElementById('twm-model-name').textContent=curTWM;
 renderMetrics(SRI,curSRI,'sri');renderAllocTable(SRI,curSRI,'sri');
 document.getElementById('sri-model-name').textContent=curSRI;
 setTimeout(initTWMCharts,100);
-checkConnection();
+checkConnection().then(()=>fetchPrices());
 </script>
 </body>
 </html>
