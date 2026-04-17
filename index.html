@@ -545,67 +545,78 @@ async function fetchPrices(){
   tsList.forEach(el=>el.textContent='Fetching prices…');
   document.querySelectorAll('.price-cell').forEach(el=>{el.textContent='…';el.className='price-cell';});
   priceMap={};
+
+  // Always hardcode FGTXX (money market, perpetually $1.00)
+  priceMap['FGTXX']={price:1.00,change:0,changePct:0};
+
+  // All other unique tickers across both models
+  const toFetch=ALL_TICKERS.filter(t=>t!=='FGTXX');
+  const symbols=toFetch.join(',');
+
+  // Strategy 1 — /stable/quote (batch, works on free tier for ETFs + some mutual funds)
   let fetched=0, failed=0;
-
-  // FMP free tier: fetch tickers individually using /quote-short (1 call per ticker)
-  // Falls back to /profile for mutual funds not covered by quote-short
-  await Promise.allSettled(ALL_TICKERS.map(async ticker=>{
-    // Skip FGTXX — money market, always ~$1.00, not listed on FMP
-    if(ticker==='FGTXX'){
-      priceMap['FGTXX']={price:1.00,change:0,changePct:0};
-      fetched++;
-      return;
-    }
-    try{
-      // Try /quote-short first — lightweight, free-tier supported
-      const r=await fetch(`https://financialmodelingprep.com/api/v3/quote-short/${ticker}?apikey=${FMP_KEY}`);
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      const d=await r.json();
-      if(Array.isArray(d)&&d.length>0&&d[0].price){
-        // quote-short only gives price & volume — fetch change separately via /quote/{ticker}
-        // but to stay free-tier safe, compute change from previous close via /historical-price-full
-        priceMap[ticker]={price:d[0].price,change:null,changePct:null};
-        fetched++;
-      } else {
-        throw new Error('empty');
-      }
-    }catch(e){
-      // Try /profile as fallback for mutual funds
-      try{
-        const r2=await fetch(`https://financialmodelingprep.com/api/v3/profile/${ticker}?apikey=${FMP_KEY}`);
-        if(!r2.ok) throw new Error('HTTP '+r2.status);
-        const d2=await r2.json();
-        if(Array.isArray(d2)&&d2.length>0&&d2[0].price){
-          priceMap[ticker]={price:d2[0].price,change:null,changePct:null};
-          fetched++;
-        } else {
-          throw new Error('no price in profile');
-        }
-      }catch(e2){
-        failed++;
-        console.warn('No price for',ticker,e2.message);
-      }
-    }
-  }));
-
-  // Now fetch full quote for each ticker we got a price for, to get day change
-  // Batch these as individual /quote calls — still free tier
-  await Promise.allSettled(Object.keys(priceMap).filter(t=>t!=='FGTXX'&&priceMap[t].changePct===null).map(async ticker=>{
-    try{
-      const r=await fetch(`https://financialmodelingprep.com/api/v3/quote/${ticker}?apikey=${FMP_KEY}`);
-      if(!r.ok) return;
+  try{
+    const r=await fetch(`https://financialmodelingprep.com/stable/quote?symbol=${symbols}&apikey=${FMP_KEY}`);
+    if(r.ok){
       const d=await r.json();
       if(Array.isArray(d)&&d.length>0){
-        priceMap[ticker].change=d[0].change||0;
-        priceMap[ticker].changePct=d[0].changesPercentage||0;
-        priceMap[ticker].price=d[0].price||priceMap[ticker].price;
+        d.forEach(q=>{
+          if(q.symbol&&q.price!=null){
+            priceMap[q.symbol]={price:q.price,change:q.change||0,changePct:q.changesPercentage||0};
+            fetched++;
+          }
+        });
       }
-    }catch(e){ /* leave changePct null */ }
-  }));
+    }
+    console.log('stable/quote returned',fetched,'of',toFetch.length,'tickers');
+  }catch(e){
+    console.warn('stable/quote failed:',e.message);
+  }
+
+  // Strategy 2 — /stable/profile for any tickers still missing (mutual funds)
+  const stillMissing=toFetch.filter(t=>!priceMap[t]);
+  if(stillMissing.length>0){
+    await Promise.allSettled(stillMissing.map(async ticker=>{
+      try{
+        const r=await fetch(`https://financialmodelingprep.com/stable/profile?symbol=${ticker}&apikey=${FMP_KEY}`);
+        if(!r.ok) throw new Error('HTTP '+r.status);
+        const d=await r.json();
+        // /stable/profile returns object or array depending on version
+        const item=Array.isArray(d)?d[0]:d;
+        if(item&&item.price!=null){
+          priceMap[ticker]={price:item.price,change:null,changePct:null};
+          fetched++;
+        } else {
+          throw new Error('no price');
+        }
+      }catch(e){
+        // Strategy 3 — v3/profile as last resort
+        try{
+          const r2=await fetch(`https://financialmodelingprep.com/api/v3/profile/${ticker}?apikey=${FMP_KEY}`);
+          if(!r2.ok) throw new Error('HTTP '+r2.status);
+          const d2=await r2.json();
+          const item2=Array.isArray(d2)?d2[0]:d2;
+          if(item2&&item2.price!=null){
+            priceMap[ticker]={price:item2.price,change:null,changePct:null};
+            fetched++;
+          } else {
+            failed++;
+            console.warn('No price for',ticker);
+          }
+        }catch(e2){
+          failed++;
+          console.warn('All strategies failed for',ticker,e2.message);
+        }
+      }
+    }));
+  }
 
   const now=new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
-  const note=failed>0?` (${failed} ticker${failed>1?'s':''} unavailable)`:'';
+  const total=toFetch.length;
+  const unavail=toFetch.filter(t=>!priceMap[t]).length;
+  const note=unavail>0?` (${unavail} of ${total} unavailable)`:'';
   tsList.forEach(el=>el.textContent='As of '+now+note);
+  console.log('Price fetch complete — priceMap:',JSON.stringify(priceMap,null,2));
   renderAllocTable(TWM,curTWM,'twm');
   renderAllocTable(SRI,curSRI,'sri');
 }
