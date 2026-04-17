@@ -58,7 +58,7 @@
     }
 
     *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;line-height:1.6;transition:background .2s,color .2s;}
+    body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:16px;line-height:1.6;transition:background .2s,color .2s;}
 
     .topbar{background:var(--topbar-bg);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:50;transition:background .2s,border-color .2s;}
     .topbar-left{display:flex;align-items:center;gap:14px;}
@@ -102,35 +102,27 @@
     .metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:1.5rem;}
     .metric{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;transition:background .2s,border-color .2s;}
     .metric-label{font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;}
-    .metric-value{font-size:28px;font-weight:400;color:var(--text);letter-spacing:-.02em;font-family:'IBM Plex Mono',monospace;}
+    .metric-value{font-size:30px;font-weight:400;color:var(--text);letter-spacing:-.02em;font-family:'IBM Plex Mono',monospace;}
     .metric-sub{font-size:12px;color:var(--text-3);margin-top:4px;}
 
     .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.5rem;transition:background .2s,border-color .2s;}
-    .card-title{font-size:11px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;}
+    .card-title{font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;}
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
 
     .model-selector{display:flex;align-items:center;gap:10px;margin-bottom:1.5rem;}
     .model-selector label{font-size:14px;color:var(--text-2);font-weight:500;}
     .model-selector select{font-size:14px;padding:8px 32px 8px 12px;border:1px solid var(--border-mid);border-radius:10px;background:var(--surface);color:var(--text);cursor:pointer;font-family:'Inter',sans-serif;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B6A65' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;transition:background .2s,border-color .2s,color .2s;}
 
-    .alloc-table{width:100%;border-collapse:collapse;font-size:14px;table-layout:fixed;}
-    .alloc-table colgroup col:nth-child(1){width:80px;}
-    .alloc-table colgroup col:nth-child(2){width:auto;}
-    .alloc-table colgroup col:nth-child(3){width:90px;}
-    .alloc-table colgroup col:nth-child(4){width:120px;}
-    .alloc-table colgroup col:nth-child(5){width:100px;}
-    .alloc-table colgroup col:nth-child(6){width:100px;}
-    .alloc-table th{font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;text-align:right;padding:9px 12px;border-bottom:1px solid var(--border);}
-    .alloc-table th:first-child{text-align:left;}
-    .alloc-table th:nth-child(2){text-align:left;}
-    .alloc-table td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text);text-align:right;vertical-align:middle;transition:color .2s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-    .alloc-table td:first-child{text-align:left;}
-    .alloc-table td:nth-child(2){text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .alloc-table{width:100%;border-collapse:collapse;font-size:14px;}
+    .alloc-table th{font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;text-align:right;padding:10px 14px;border-bottom:2px solid var(--border-mid);}
+    .alloc-table td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text);text-align:right;vertical-align:middle;transition:color .2s;}
+    .alloc-table tr:hover td{background:var(--surface2);}
+    .alloc-table tr.subtotal:hover td{background:var(--surface2);}
     .alloc-table tr:last-child td{border-bottom:none;}
     .alloc-table tr.subtotal td{background:var(--surface2);font-weight:600;font-size:13px;color:var(--text-2);transition:background .2s;}
-    .ticker-cell{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;}
-    .fund-name{color:var(--text-2);font-size:14px;text-align:left;}
-    .expense-cell{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text-3);}
+    .ticker-cell{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;text-align:left;white-space:nowrap;width:80px;}
+    .fund-name{color:var(--text);font-size:14px;text-align:left;font-weight:400;}
+    .expense-cell{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text-3);white-space:nowrap;}
 
     .price-cell{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--text);display:inline-block;text-align:right;}
     .price-up{color:var(--green-text);}
@@ -278,7 +270,7 @@
         <button class="refresh-prices" onclick="fetchPrices()">↻ Refresh prices</button>
       </div>
       <div class="prices-bar" id="twm-prices-bar"><span class="price-ts" id="prices-ts">Prices not loaded</span></div>
-      <table class="alloc-table" id="twm-alloc-table"><colgroup><col><col><col><col><col><col></colgroup></table>
+      <table class="alloc-table" id="twm-alloc-table"></table>
       <div class="sum-display sum-ok" id="twm-sum-display">100.00%</div>
     </div>
   </div>
@@ -317,7 +309,7 @@
         <button class="refresh-prices" onclick="fetchPrices()">↻ Refresh prices</button>
       </div>
       <div class="prices-bar" id="sri-prices-bar"><span class="price-ts" id="sri-prices-ts">Prices not loaded</span></div>
-      <table class="alloc-table" id="sri-alloc-table"><colgroup><col><col><col><col><col><col></colgroup></table>
+      <table class="alloc-table" id="sri-alloc-table"></table>
       <div class="sum-display sum-ok" id="sri-sum-display">100.00%</div>
     </div>
   </div>
@@ -557,7 +549,7 @@ function priceCell(ticker){
   const sign=chg>=0?'+':'';
   const cls=chg>=0?'price-up':'price-dn';
   const arrow=chg>=0?'▲':'▼';
-  return `<span class="price-cell ${cls}">${price} <span style="font-size:10px;">${arrow}${sign}${Number(chg).toFixed(2)}%</span></span>`;
+  return `<span class="price-cell ${cls}">${price} <span style="font-size:11px;opacity:0.85;">${arrow}${sign}${Number(chg).toFixed(2)}%</span></span>`;
 }
 
 function switchTab(tab){
@@ -586,22 +578,48 @@ function renderMetrics(data,model,pfx){
 function renderAllocTable(data,model,pfx){
   const alloc=data.models[model],cats={};
   data.funds.forEach(f=>{if(!cats[f.category])cats[f.category]=[];cats[f.category].push(f);});
-  let html=`<thead><tr><th>Ticker</th><th style="text-align:left;">Fund name</th><th>Expense</th><th>Last price</th><th>Allocation</th><th style="width:90px;"></th></tr></thead><tbody>`;
+  // Inline styles on every th/td so nothing can be overridden by cascade
+  const thL='style="text-align:left;padding:10px 14px;"';
+  const thR='style="text-align:right;padding:10px 14px;"';
+  let html=`<thead><tr>
+    <th ${thL}>Ticker</th>
+    <th ${thL}>Fund name</th>
+    <th ${thR}>Expense</th>
+    <th ${thR}>Last price</th>
+    <th ${thR}>Allocation</th>
+    <th style="width:100px;padding:10px 14px;"></th>
+  </tr></thead><tbody>`;
   Object.keys(cats).forEach(cat=>{
     const funds=cats[cat],catTotal=funds.reduce((a,f)=>a+(alloc[f.ticker]||0),0);
     funds.forEach(f=>{
       const v=alloc[f.ticker]||0,bw=Math.min(100,(v/0.30)*100).toFixed(1);
       html+=`<tr>
-        <td class="ticker-cell">${f.ticker}</td>
-        <td class="fund-name">${f.name}</td>
-        <td class="expense-cell">${pct(f.expense)}</td>
-        <td>${priceCell(f.ticker)}</td>
-        <td><span class="editable" contenteditable="true" data-prefix="${pfx}" data-model="${model}" data-ticker="${f.ticker}"
-          onblur="onEditBlur(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">${num(v)}%</span></td>
-        <td><div class="bar-bg"><div class="bar-fill" style="width:${bw}%;background:${CAT_COLORS[cat]||'#888'};"></div></div></td>
+        <td style="text-align:left;padding:10px 14px;white-space:nowrap;">
+          <span class="ticker-cell">${f.ticker}</span>
+        </td>
+        <td style="text-align:left;padding:10px 14px;color:var(--text);font-size:14px;">
+          ${f.name}
+        </td>
+        <td style="text-align:right;padding:10px 14px;">
+          <span class="expense-cell">${pct(f.expense)}</span>
+        </td>
+        <td style="text-align:right;padding:10px 14px;white-space:nowrap;">
+          ${priceCell(f.ticker)}
+        </td>
+        <td style="text-align:right;padding:10px 14px;white-space:nowrap;">
+          <span class="editable" contenteditable="true" data-prefix="${pfx}" data-model="${model}" data-ticker="${f.ticker}"
+            onblur="onEditBlur(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">${num(v)}%</span>
+        </td>
+        <td style="padding:10px 14px;width:100px;">
+          <div class="bar-bg"><div class="bar-fill" style="width:${bw}%;background:${CAT_COLORS[cat]||'#888'};"></div></div>
+        </td>
       </tr>`;
     });
-    html+=`<tr class="subtotal"><td colspan="4" style="text-align:right;">${cat} subtotal</td><td class="mono">${pct(catTotal)}</td><td></td></tr>`;
+    html+=`<tr class="subtotal">
+      <td colspan="4" style="text-align:right;padding:10px 14px;font-size:13px;font-weight:600;color:var(--text-2);">${cat} subtotal</td>
+      <td style="text-align:right;padding:10px 14px;" class="mono">${pct(catTotal)}</td>
+      <td style="padding:10px 14px;"></td>
+    </tr>`;
   });
   document.getElementById(pfx+'-alloc-table').innerHTML=html+'</tbody>';
   updateSum(data,model,pfx);
