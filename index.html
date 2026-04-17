@@ -150,6 +150,15 @@
     .editable:focus{background:var(--surface2);outline:2px solid var(--blue);outline-offset:0;}
 
     .bar-bg{background:var(--surface2);border-radius:3px;height:5px;overflow:hidden;min-width:60px;transition:background .2s;}
+    .geo-bar-wrap{margin-top:14px;padding-top:12px;border-top:1px solid var(--border);}
+    .geo-bar-label{font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
+    .geo-bar-track{display:flex;height:10px;border-radius:5px;overflow:hidden;width:100%;}
+    .geo-bar-us{background:#1558A8;height:100%;}
+    .geo-bar-intl{background:#5DCAA5;height:100%;}
+    .geo-bar-other{background:#D8D6CE;height:100%;}
+    .geo-bar-legend{display:flex;gap:14px;margin-top:7px;flex-wrap:wrap;}
+    .geo-bar-legend span{font-size:12px;color:var(--text);font-weight:500;display:flex;align-items:center;gap:5px;}
+    .geo-dot{width:9px;height:9px;border-radius:2px;display:inline-block;flex-shrink:0;}
     .bar-fill{height:100%;border-radius:3px;transition:width .35s;}
 
     .sum-display{font-size:15px;font-weight:600;padding:11px 16px;border-radius:10px;margin-top:12px;display:flex;justify-content:space-between;align-items:center;font-family:'IBM Plex Mono',monospace;transition:background .2s,color .2s;}
@@ -266,6 +275,7 @@
         <div class="card-title">Asset class breakdown</div>
         <div style="position:relative;height:200px;"><canvas id="twm-donut" role="img" aria-label="Asset class allocation donut chart"></canvas></div>
         <div class="legend" id="twm-donut-legend"></div>
+        <div class="geo-bar-wrap" id="twm-geo-bar"></div>
       </div>
       <div class="card">
         <div class="card-title">Equity vs. fixed income — all models</div>
@@ -305,6 +315,7 @@
         <div class="card-title">Asset class breakdown</div>
         <div style="position:relative;height:200px;"><canvas id="sri-donut" role="img" aria-label="Asset class allocation donut chart"></canvas></div>
         <div class="legend" id="sri-donut-legend"></div>
+        <div class="geo-bar-wrap" id="sri-geo-bar"></div>
       </div>
       <div class="card">
         <div class="card-title">Equity vs. fixed income — all models</div>
@@ -469,6 +480,67 @@ const SRI={
 let curTWM='IRA Moderate', curSRI='SRI Moderate';
 let twmDonut,sriDonut,twmBar,sriBar,lastSnapshot=null;
 const CAT_COLORS={Cash:'#888780',Blended:'#5DCAA5','Fixed Income':'#378ADD',Equities:'#7F77DD',Alternatives:'#D85A30'};
+
+// Geographic breakdown per fund — US vs Non-US vs Other
+// Sources: Fund Data sheet (spreadsheet) + Morningstar/prospectus for tickers not in sheet
+const GEO_MAP={
+  'FGTXX': {us:1.000, intl:0.000, other:0.000}, // money market
+  'VGSTX': {us:0.776, intl:0.223, other:0.001}, // Vanguard STAR — from Fund Data
+  'FDUIX': {us:0.970, intl:0.030, other:0.000}, // Fidelity Intermediate Bond
+  'FEHIX': {us:0.880, intl:0.100, other:0.020}, // Fidelity High Yield
+  'CGMU':  {us:1.000, intl:0.000, other:0.000}, // iShares Muni
+  'BND':   {us:0.970, intl:0.030, other:0.000}, // Vanguard Total Bond
+  'VUSB':  {us:1.000, intl:0.000, other:0.000}, // Vanguard Short-Term Bond
+  'VB':    {us:1.000, intl:0.000, other:0.000}, // Vanguard Small Cap
+  'VTI':   {us:0.988, intl:0.009, other:0.003}, // Vanguard Total Market — from Fund Data
+  'SGIIX': {us:0.493, intl:0.399, other:0.108}, // Sextant Global — from Fund Data
+  'FEBIX': {us:0.000, intl:1.000, other:0.000}, // Fidelity Emerging Markets — 100% intl
+  'GARIX': {us:0.750, intl:0.150, other:0.100}, // Counterpoint Alts
+  'MAFIX': {us:0.800, intl:0.100, other:0.100}, // Manning & Napier Alts
+  'LMRNX': {us:0.550, intl:0.380, other:0.070}, // Loomis Sayles Blend
+  'SUSB':  {us:1.000, intl:0.000, other:0.000}, // iShares ESG USD Bond
+  'TSBIX': {us:0.844, intl:0.152, other:0.004}, // Thornburg Ltd Term — from Fund Data
+  'PFPLX': {us:1.000, intl:0.000, other:0.000}, // Parnassus Fixed Income
+  'DSI':   {us:1.000, intl:0.000, other:0.000}, // iShares MSCI KLD 400 (US large cap ESG)
+  'PFPWX': {us:0.980, intl:0.020, other:0.000}, // Parnassus Core Equity
+  'PXWIX': {us:0.687, intl:0.312, other:0.001}, // PIMCO Alloc Plus — from Fund Data
+  'PGINX': {us:0.592, intl:0.407, other:0.001}, // PIMCO Intl Dev — from Fund Data
+};
+
+function calcGeo(data, model){
+  const alloc=data.models[model];
+  let us=0, intl=0, other=0, totalW=0;
+  data.funds.forEach(f=>{
+    const w=alloc[f.ticker]||0;
+    const g=GEO_MAP[f.ticker];
+    if(g){ us+=w*g.us; intl+=w*g.intl; other+=w*g.other; }
+    totalW+=w;
+  });
+  const cashW=alloc['cash']||0; us+=cashW*1.0; totalW+=cashW; // cash = US
+  const total=us+intl+other;
+  return total>0?{us:us/total,intl:intl/total,other:other/total}:{us:0,intl:0,other:0};
+}
+
+function renderGeoBar(data, model, pfx){
+  const g=calcGeo(data,model);
+  const el=document.getElementById(pfx+'-geo-bar');
+  if(!el) return;
+  const usP=(g.us*100).toFixed(1);
+  const intlP=(g.intl*100).toFixed(1);
+  const otherP=(g.other*100).toFixed(1);
+  el.innerHTML=`
+    <div class="geo-bar-label">Geographic exposure</div>
+    <div class="geo-bar-track">
+      <div class="geo-bar-us"    style="width:${usP}%;"></div>
+      <div class="geo-bar-intl"  style="width:${intlP}%;"></div>
+      <div class="geo-bar-other" style="width:${otherP}%;"></div>
+    </div>
+    <div class="geo-bar-legend">
+      <span><span class="geo-dot" style="background:#1558A8;"></span>U.S. ${usP}%</span>
+      <span><span class="geo-dot" style="background:#5DCAA5;"></span>Non-U.S. ${intlP}%</span>
+      ${parseFloat(otherP)>0.1?`<span><span class="geo-dot" style="background:#D8D6CE;"></span>Other ${otherP}%</span>`:''}
+    </div>`;
+}
 const pct=v=>(v*100).toFixed(1)+'%';
 const num=v=>(v*100).toFixed(1);
 
@@ -848,6 +920,7 @@ function renderDonutLegend(data,model,pfx){
   document.getElementById(pfx+'-donut-legend').innerHTML=Object.keys(ct).filter(k=>ct[k]>0).map(k=>
     `<span class="legend-item"><span class="legend-dot" style="background:${CAT_COLORS[k]};"></span>${k}: ${pct(ct[k])}</span>`
   ).join('');
+  renderGeoBar(data,model,pfx);
 }
 
 function makeBarChart(id,data,modelNames){
