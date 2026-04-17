@@ -476,38 +476,54 @@ const num=v=>(v*100).toFixed(1);
 const TWM_MODEL_NAMES=['IRA Conservative','IRA Moderate','IRA Aggressive','IRA Ultra Aggressive','Taxable Conservative','Taxable Moderate','Taxable Aggressive'];
 const SRI_MODEL_NAMES=['SRI Conservative','SRI Moderate','SRI Aggressive','SRI Ultra Aggressive'];
 
-// FMP price data — keyed by ticker, populated by fetchPrices()
-const FMP_KEY='dBAuoFkQ5WK9KqhJKOuNeY7akozuICXK';
+// Price + beta data
 const ALL_TICKERS=[...new Set([...TWM.funds.map(f=>f.ticker),...SRI.funds.map(f=>f.ticker)])];
 let priceMap={}; // { TICKER: { price, change, changePct } }
-let betaMap={};  // { TICKER: beta } — populated by fetchBetas()
-let sp500Beta=1.0, sp500Expense=0.0009; // SPY beta=1 by definition; SPY expense ratio 0.09%
+let betaMap={};  // { TICKER: beta }
+let sp500Beta=1.0, sp500Expense=0.0009; // S&P 500 baseline: beta=1, SPY ER=0.09%
+
+// Hardcoded betas for well-known funds — stable, no API needed
+const KNOWN_BETAS={
+  'FGTXX':0,    // money market
+  'BND':0.02,   // total bond market
+  'VUSB':0.02,  // short-term bond
+  'CGMU':0.03,  // muni bond
+  'SUSB':0.03,  // ESG short bond
+  'FDUIX':0.05, // intermediate bond
+  'TSBIX':0.05, // limited term muni
+  'PFPLX':0.08, // Parnassus fixed income
+  'FEHIX':0.25, // high yield bond
+  'LMRNX':0.55, // Loomis Sayles blend
+  'VGSTX':0.60, // Vanguard STAR (blended)
+  'VTI':1.00,   // total US market
+  'DSI':1.00,   // ESG large cap
+  'VB':1.15,    // small cap
+  'SGIIX':0.85, // Sextant Global Growth
+  'FEBIX':0.90, // Fidelity Emerging
+  'PFPWX':0.90, // Parnassus Core Equity
+  'PXWIX':0.75, // PIMCO Alloc Plus
+  'PGINX':0.85, // PIMCO Intl Dev
+  'GARIX':0.40, // Counterpoint Alts
+  'MAFIX':0.35, // Manning Napier Alts
+};
 
 async function fetchBetas(){
-  // Fetch beta for every unique ticker via /profile (free tier)
-  // Also hardcode well-known ETF betas for reliability
-  const knownBetas={
-    'FGTXX':0,'BND':0.02,'VUSB':0.02,'CGMU':0.03,'FDUIX':0.05,'FEHIX':0.25,
-    'VTI':1.0,'VB':1.15,'DSI':1.0,'SUSB':0.03,'TSBIX':0.05,'PFPLX':0.08
-  };
-  Object.assign(betaMap, knownBetas);
+  // Use hardcoded betas — comprehensive and reliable, no API rate limits
+  Object.assign(betaMap, KNOWN_BETAS);
 
-  // Fetch beta from FMP /profile for tickers not hardcoded
-  const toFetch=([...new Set([...TWM.funds,...SRI.funds].map(f=>f.ticker))])
-    .filter(t=>betaMap[t]===undefined);
-
+  // For any tickers not in the hardcoded list, try Yahoo Finance
+  const toFetch=ALL_TICKERS.filter(t=>betaMap[t]===undefined);
   await Promise.allSettled(toFetch.map(async ticker=>{
     try{
-      const r=await fetch(`https://financialmodelingprep.com/api/v3/profile/${ticker}?apikey=${FMP_KEY}`);
+      const url=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`;
+      const r=await fetch(url,{headers:{'Accept':'application/json'}});
       if(!r.ok) return;
       const d=await r.json();
-      if(Array.isArray(d)&&d.length>0&&d[0].beta!=null){
-        betaMap[ticker]=d[0].beta;
-      }
+      const b=d?.quoteSummary?.result?.[0]?.defaultKeyStatistics?.beta?.raw;
+      if(b!=null) betaMap[ticker]=b;
     }catch(e){ /* leave undefined */ }
   }));
 
-  // Re-render metrics now that betas are loaded
   renderMetrics(TWM,curTWM,'twm');
   renderMetrics(SRI,curSRI,'sri');
 }
@@ -540,83 +556,46 @@ function calcWeightedExpense(data, model){
   return wExp;
 }
 
+async function fetchOneTicker(ticker){
+  // Yahoo Finance chart endpoint — no API key, works for ETFs + mutual funds
+  const url=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=5d&includePrePost=false`;
+  const r=await fetch(url,{headers:{'Accept':'application/json','User-Agent':'Mozilla/5.0'}});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  const d=await r.json();
+  const meta=d?.chart?.result?.[0]?.meta;
+  if(!meta||meta.regularMarketPrice==null) throw new Error('no price in response');
+  const price=meta.regularMarketPrice;
+  const prevClose=meta.chartPreviousClose||meta.previousClose||price;
+  const change=price-prevClose;
+  const changePct=prevClose>0?(change/prevClose)*100:0;
+  return {price, change, changePct};
+}
+
 async function fetchPrices(){
   const tsList=document.querySelectorAll('#prices-ts,#sri-prices-ts');
   tsList.forEach(el=>el.textContent='Fetching prices…');
   document.querySelectorAll('.price-cell').forEach(el=>{el.textContent='…';el.className='price-cell';});
   priceMap={};
 
-  // Always hardcode FGTXX (money market, perpetually $1.00)
+  // FGTXX — money market fund, always $1.00
   priceMap['FGTXX']={price:1.00,change:0,changePct:0};
 
-  // All other unique tickers across both models
   const toFetch=ALL_TICKERS.filter(t=>t!=='FGTXX');
-  const symbols=toFetch.join(',');
 
-  // Strategy 1 — /stable/quote (batch, works on free tier for ETFs + some mutual funds)
-  let fetched=0, failed=0;
-  try{
-    const r=await fetch(`https://financialmodelingprep.com/stable/quote?symbol=${symbols}&apikey=${FMP_KEY}`);
-    if(r.ok){
-      const d=await r.json();
-      if(Array.isArray(d)&&d.length>0){
-        d.forEach(q=>{
-          if(q.symbol&&q.price!=null){
-            priceMap[q.symbol]={price:q.price,change:q.change||0,changePct:q.changesPercentage||0};
-            fetched++;
-          }
-        });
-      }
+  // Fetch all tickers concurrently via Yahoo Finance
+  await Promise.allSettled(toFetch.map(async ticker=>{
+    try{
+      const q=await fetchOneTicker(ticker);
+      priceMap[ticker]=q;
+    }catch(e){
+      console.warn(`No price for ${ticker}:`,e.message);
     }
-    console.log('stable/quote returned',fetched,'of',toFetch.length,'tickers');
-  }catch(e){
-    console.warn('stable/quote failed:',e.message);
-  }
+  }));
 
-  // Strategy 2 — /stable/profile for any tickers still missing (mutual funds)
-  const stillMissing=toFetch.filter(t=>!priceMap[t]);
-  if(stillMissing.length>0){
-    await Promise.allSettled(stillMissing.map(async ticker=>{
-      try{
-        const r=await fetch(`https://financialmodelingprep.com/stable/profile?symbol=${ticker}&apikey=${FMP_KEY}`);
-        if(!r.ok) throw new Error('HTTP '+r.status);
-        const d=await r.json();
-        // /stable/profile returns object or array depending on version
-        const item=Array.isArray(d)?d[0]:d;
-        if(item&&item.price!=null){
-          priceMap[ticker]={price:item.price,change:null,changePct:null};
-          fetched++;
-        } else {
-          throw new Error('no price');
-        }
-      }catch(e){
-        // Strategy 3 — v3/profile as last resort
-        try{
-          const r2=await fetch(`https://financialmodelingprep.com/api/v3/profile/${ticker}?apikey=${FMP_KEY}`);
-          if(!r2.ok) throw new Error('HTTP '+r2.status);
-          const d2=await r2.json();
-          const item2=Array.isArray(d2)?d2[0]:d2;
-          if(item2&&item2.price!=null){
-            priceMap[ticker]={price:item2.price,change:null,changePct:null};
-            fetched++;
-          } else {
-            failed++;
-            console.warn('No price for',ticker);
-          }
-        }catch(e2){
-          failed++;
-          console.warn('All strategies failed for',ticker,e2.message);
-        }
-      }
-    }));
-  }
-
-  const now=new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
-  const total=toFetch.length;
   const unavail=toFetch.filter(t=>!priceMap[t]).length;
-  const note=unavail>0?` (${unavail} of ${total} unavailable)`:'';
+  const now=new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+  const note=unavail>0?` (${unavail} of ${toFetch.length} unavailable)`:'';
   tsList.forEach(el=>el.textContent='As of '+now+note);
-  console.log('Price fetch complete — priceMap:',JSON.stringify(priceMap,null,2));
   renderAllocTable(TWM,curTWM,'twm');
   renderAllocTable(SRI,curSRI,'sri');
 }
