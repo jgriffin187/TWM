@@ -560,58 +560,56 @@ function calcWeightedExpense(data, model){
 // Falls back to a chain of public CORS-friendly sources.
 // Strategy order: (1) Tradier delayed, (2) allorigins proxy → Yahoo, (3) static fallback
 
-async function fetchOneTicker(ticker){
-  // Strategy 1: Tradier sandbox — free delayed quotes, CORS-ok, no key needed for sandbox
-  try{
-    const r=await fetch(
-      `https://sandbox.tradier.com/v1/markets/quotes?symbols=${ticker}&greeks=false`,
-      {headers:{Authorization:'Bearer <sandbox>',Accept:'application/json'}}
-    );
-    if(r.ok){
-      const d=await r.json();
-      const q=d?.quotes?.quote;
-      if(q&&q.last!=null){
-        const price=q.last;
-        const prevClose=q.prevclose||price;
-        return {price, change:price-prevClose, changePct:prevClose>0?((price-prevClose)/prevClose)*100:0};
-      }
-    }
-  }catch(e){}
+// Parse Yahoo chart response into {price, change, changePct}
+function parseYahooChart(d){
+  const meta=d?.chart?.result?.[0]?.meta;
+  if(!meta||meta.regularMarketPrice==null) return null;
+  const price=meta.regularMarketPrice;
+  const prevClose=meta.chartPreviousClose||meta.previousClose||price;
+  const change=price-prevClose;
+  const changePct=prevClose>0?(change/prevClose)*100:0;
+  return {price,change,changePct};
+}
 
-  // Strategy 2: allorigins.win CORS proxy → Yahoo Finance v8 chart
+async function fetchOneTicker(ticker){
+  // The Yahoo Finance URL we want — we never fetch this directly (CORS blocked).
+  // Every strategy below fetches only a proxy URL; the proxy fetches Yahoo server-side.
+  const YAHOO=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=5d`;
+
+  // Strategy 1: allorigins.win — dedicated CORS proxy, returns {contents: "<json string>"}
   try{
-    const yahooUrl=encodeURIComponent(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=5d`
-    );
-    const r=await fetch(`https://api.allorigins.win/get?url=${yahooUrl}`);
+    const proxyUrl=`https://api.allorigins.win/get?url=${encodeURIComponent(YAHOO)}`;
+    const r=await fetch(proxyUrl);  // only the proxy URL is fetched — no direct Yahoo request
     if(r.ok){
       const wrapper=await r.json();
-      const d=JSON.parse(wrapper.contents);
-      const meta=d?.chart?.result?.[0]?.meta;
-      if(meta&&meta.regularMarketPrice!=null){
-        const price=meta.regularMarketPrice;
-        const prevClose=meta.chartPreviousClose||meta.previousClose||price;
-        return {price, change:price-prevClose, changePct:prevClose>0?((price-prevClose)/prevClose)*100:0};
+      if(wrapper.contents){
+        const q=parseYahooChart(JSON.parse(wrapper.contents));
+        if(q) return q;
       }
     }
-  }catch(e){}
+  }catch(e){ console.warn(ticker,'allorigins failed:',e.message); }
 
-  // Strategy 3: corsproxy.io → Yahoo Finance v8
+  // Strategy 2: corsproxy.io — alternative CORS proxy, returns raw JSON
   try{
-    const yahooUrl=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=5d`;
-    const r=await fetch(`https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`);
+    const proxyUrl=`https://corsproxy.io/?url=${encodeURIComponent(YAHOO)}`;
+    const r=await fetch(proxyUrl);  // only the proxy URL is fetched — no direct Yahoo request
     if(r.ok){
-      const d=await r.json();
-      const meta=d?.chart?.result?.[0]?.meta;
-      if(meta&&meta.regularMarketPrice!=null){
-        const price=meta.regularMarketPrice;
-        const prevClose=meta.chartPreviousClose||meta.previousClose||price;
-        return {price, change:price-prevClose, changePct:prevClose>0?((price-prevClose)/prevClose)*100:0};
-      }
+      const q=parseYahooChart(await r.json());
+      if(q) return q;
     }
-  }catch(e){}
+  }catch(e){ console.warn(ticker,'corsproxy failed:',e.message); }
 
-  throw new Error('all sources failed');
+  // Strategy 3: thingproxy.freeboard.io — another public CORS proxy
+  try{
+    const proxyUrl=`https://thingproxy.freeboard.io/fetch/${YAHOO}`;
+    const r=await fetch(proxyUrl);  // only the proxy URL is fetched — no direct Yahoo request
+    if(r.ok){
+      const q=parseYahooChart(await r.json());
+      if(q) return q;
+    }
+  }catch(e){ console.warn(ticker,'thingproxy failed:',e.message); }
+
+  throw new Error('all proxy strategies failed');
 }
 
 async function fetchPrices(){
