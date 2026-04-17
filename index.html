@@ -560,7 +560,7 @@ function calcWeightedExpense(data, model){
 // Falls back to a chain of public CORS-friendly sources.
 // Strategy order: (1) Tradier delayed, (2) allorigins proxy → Yahoo, (3) static fallback
 
-// Parse Yahoo chart response into {price, change, changePct}
+// Parse Yahoo Finance chart API response
 function parseYahooChart(d){
   const meta=d?.chart?.result?.[0]?.meta;
   if(!meta||meta.regularMarketPrice==null) return null;
@@ -572,44 +572,46 @@ function parseYahooChart(d){
 }
 
 async function fetchOneTicker(ticker){
-  // The Yahoo Finance URL we want — we never fetch this directly (CORS blocked).
-  // Every strategy below fetches only a proxy URL; the proxy fetches Yahoo server-side.
+  // Target URL — NEVER fetched directly due to CORS. Always via a proxy below.
   const YAHOO=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=5d`;
 
-  // Strategy 1: allorigins.win — dedicated CORS proxy, returns {contents: "<json string>"}
+  // Proxy 1: codetabs.com — reliable, specifically built for this use case
   try{
-    const proxyUrl=`https://api.allorigins.win/get?url=${encodeURIComponent(YAHOO)}`;
-    const r=await fetch(proxyUrl);  // only the proxy URL is fetched — no direct Yahoo request
+    const r=await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(YAHOO)}`);
     if(r.ok){
-      const wrapper=await r.json();
-      if(wrapper.contents){
-        const q=parseYahooChart(JSON.parse(wrapper.contents));
-        if(q) return q;
+      const text=await r.text();
+      if(text&&text.trim().startsWith('{')){
+        const q=parseYahooChart(JSON.parse(text));
+        if(q){console.log(ticker,'✓ codetabs');return q;}
       }
     }
-  }catch(e){ console.warn(ticker,'allorigins failed:',e.message); }
+  }catch(e){console.warn(ticker,'codetabs:',e.message);}
 
-  // Strategy 2: corsproxy.io — alternative CORS proxy, returns raw JSON
+  // Proxy 2: corsproxy.io
   try{
-    const proxyUrl=`https://corsproxy.io/?url=${encodeURIComponent(YAHOO)}`;
-    const r=await fetch(proxyUrl);  // only the proxy URL is fetched — no direct Yahoo request
+    const r=await fetch(`https://corsproxy.io/?url=${encodeURIComponent(YAHOO)}`);
     if(r.ok){
-      const q=parseYahooChart(await r.json());
-      if(q) return q;
+      const text=await r.text();
+      if(text&&text.trim().startsWith('{')){
+        const q=parseYahooChart(JSON.parse(text));
+        if(q){console.log(ticker,'✓ corsproxy');return q;}
+      }
     }
-  }catch(e){ console.warn(ticker,'corsproxy failed:',e.message); }
+  }catch(e){console.warn(ticker,'corsproxy:',e.message);}
 
-  // Strategy 3: thingproxy.freeboard.io — another public CORS proxy
+  // Proxy 3: allorigins.win — wraps response in {contents:"..."}
   try{
-    const proxyUrl=`https://thingproxy.freeboard.io/fetch/${YAHOO}`;
-    const r=await fetch(proxyUrl);  // only the proxy URL is fetched — no direct Yahoo request
+    const r=await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(YAHOO)}`);
     if(r.ok){
-      const q=parseYahooChart(await r.json());
-      if(q) return q;
+      const wrapper=await r.json();
+      if(wrapper?.contents){
+        const q=parseYahooChart(JSON.parse(wrapper.contents));
+        if(q){console.log(ticker,'✓ allorigins');return q;}
+      }
     }
-  }catch(e){ console.warn(ticker,'thingproxy failed:',e.message); }
+  }catch(e){console.warn(ticker,'allorigins:',e.message);}
 
-  throw new Error('all proxy strategies failed');
+  throw new Error('all proxies failed');
 }
 
 async function fetchPrices(){
@@ -870,8 +872,20 @@ function makeBarChart(id,data,modelNames){
   });
 }
 
-function initTWMCharts(){twmDonut=makeDonut('twm-donut',TWM,curTWM);renderDonutLegend(TWM,curTWM,'twm');twmBar=makeBarChart('twm-bar',TWM,TWM_MODEL_NAMES);}
-function initSRICharts(){sriDonut=makeDonut('sri-donut',SRI,curSRI);renderDonutLegend(SRI,curSRI,'sri');sriBar=makeBarChart('sri-bar',SRI,SRI_MODEL_NAMES);}
+function initTWMCharts(){
+  if(twmDonut){twmDonut.destroy();twmDonut=null;}
+  if(twmBar){twmBar.destroy();twmBar=null;}
+  twmDonut=makeDonut('twm-donut',TWM,curTWM);
+  renderDonutLegend(TWM,curTWM,'twm');
+  twmBar=makeBarChart('twm-bar',TWM,TWM_MODEL_NAMES);
+}
+function initSRICharts(){
+  if(sriDonut){sriDonut.destroy();sriDonut=null;}
+  if(sriBar){sriBar.destroy();sriBar=null;}
+  sriDonut=makeDonut('sri-donut',SRI,curSRI);
+  renderDonutLegend(SRI,curSRI,'sri');
+  sriBar=makeBarChart('sri-bar',SRI,SRI_MODEL_NAMES);
+}
 
 function updateTWMView(m){curTWM=m;document.getElementById('twm-model-name').textContent=m;renderMetrics(TWM,m,'twm');renderAllocTable(TWM,m,'twm');updateDonut(TWM,m,'twm');}
 function updateSRIView(m){curSRI=m;document.getElementById('sri-model-name').textContent=m;renderMetrics(SRI,m,'sri');renderAllocTable(SRI,m,'sri');updateDonut(SRI,m,'sri');}
