@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Model Allocations Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    :root {
+      --bg:          #F7F6F2;
+      --surface:     #FFFFFF;
+      --surface2:    #F0EFE9;
+      --border:      rgba(0,0,0,0.08);
+      --border-mid:  rgba(0,0,0,0.14);
+      --text:        #1A1916;
+      --text-2:      #6B6A65;
+      --text-3:      #A8A79F;
+      --blue:        #1A6EBD;
+      --blue-bg:     #E8F1FA;
+      --blue-text:   #0C4481;
+      --teal:        #0F8A65;
+      --teal-bg:     #E0F4EE;
+      --teal-text:   #085040;
+      --green-bg:    #E6F2DC;
+      --green-text:  #2A5010;
+      --red-bg:      #FCEAEA;
+      --red-text:    #7A1F1F;
+      --accent:      #1A6EBD;
+      --radius-sm:   6px;
+      --radius-md:   10px;
+      --radius-lg:   14px;
+      --shadow:      0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    /* ── Top bar ── */
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 14px; }
+    .logo-mark {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--blue); display: flex; align-items: center; justify-content: center;
+    }
+    .logo-mark svg { width: 18px; height: 18px; fill: white; }
+    .topbar-title { font-size: 15px; font-weight: 500; letter-spacing: -0.01em; }
+    .topbar-sub { font-size: 12px; color: var(--text-2); margin-top: 1px; }
+    .topbar-right { display: flex; align-items: center; gap: 10px; }
+
+    .conn-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11px; font-weight: 500; padding: 4px 10px;
+      border-radius: 20px; border: 1px solid transparent;
+      font-family: 'DM Mono', monospace;
+    }
+    .conn-ok  { background: var(--green-bg); color: var(--green-text); border-color: rgba(42,80,16,0.15); }
+    .conn-err { background: var(--red-bg);   color: var(--red-text);   border-color: rgba(122,31,31,0.15); }
+    .conn-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .conn-ok  .conn-dot { background: #4a9e20; }
+    .conn-err .conn-dot { background: #b94040; }
+
+    .lock-btn {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 18px; border-radius: var(--radius-md);
+      background: var(--blue); color: white;
+      font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;
+      border: none; cursor: pointer; transition: background 0.15s, opacity 0.15s;
+    }
+    .lock-btn:hover:not(:disabled) { background: #155fa5; }
+    .lock-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .lock-btn svg { width: 14px; height: 14px; fill: white; }
+
+    /* ── Main layout ── */
+    .main { max-width: 1180px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+    /* ── Tabs ── */
+    .tab-row { display: flex; gap: 2px; margin-bottom: 1.75rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 3px; width: fit-content; }
+    .tab {
+      padding: 6px 18px; border-radius: calc(var(--radius-md) - 2px);
+      font-size: 13px; font-weight: 400; color: var(--text-2);
+      cursor: pointer; border: none; background: transparent;
+      transition: all 0.15s; white-space: nowrap;
+    }
+    .tab.active { background: var(--bg); color: var(--text); font-weight: 500; box-shadow: var(--shadow); }
+    .tab:hover:not(.active) { color: var(--text); }
+
+    /* ── Metric cards ── */
+    .metrics { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 1.5rem; }
+    .metric {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 14px 16px;
+    }
+    .metric-label { font-size: 11px; font-weight: 500; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+    .metric-value { font-size: 26px; font-weight: 300; color: var(--text); letter-spacing: -0.02em; font-family: 'DM Mono', monospace; }
+    .metric-sub { font-size: 11px; color: var(--text-3); margin-top: 3px; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 1.25rem 1.5rem;
+    }
+    .card-title {
+      font-size: 11px; font-weight: 500; color: var(--text-3);
+      text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 14px;
+    }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+
+    /* ── Model selector ── */
+    .model-selector { display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem; }
+    .model-selector label { font-size: 13px; color: var(--text-2); font-weight: 500; }
+    .model-selector select {
+      font-size: 14px; padding: 7px 12px;
+      border: 1px solid var(--border-mid); border-radius: var(--radius-md);
+      background: var(--surface); color: var(--text);
+      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      appearance: none; -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B6A65' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 10px center;
+      padding-right: 30px;
+    }
+
+    /* ── Alloc table ── */
+    .alloc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .alloc-table th {
+      font-size: 10px; font-weight: 500; color: var(--text-3);
+      text-transform: uppercase; letter-spacing: 0.06em;
+      text-align: right; padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .alloc-table th:first-child { text-align: left; }
+    .alloc-table td {
+      padding: 6px 10px; border-bottom: 1px solid var(--border);
+      color: var(--text); text-align: right; vertical-align: middle;
+    }
+    .alloc-table td:first-child { text-align: left; }
+    .alloc-table tr:last-child td { border-bottom: none; }
+    .alloc-table tr.subtotal td {
+      background: var(--bg); font-weight: 500; font-size: 12px;
+      color: var(--text-2);
+    }
+    .ticker-cell { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; color: var(--text); }
+    .fund-name { color: var(--text-2); font-size: 12px; text-align: left; }
+    .expense-cell { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-3); }
+
+    .editable {
+      cursor: text; padding: 3px 7px; border-radius: 5px;
+      min-width: 58px; display: inline-block; text-align: right;
+      font-family: 'DM Mono', monospace; font-size: 12px;
+      transition: background 0.1s;
+    }
+    .editable:hover { background: var(--surface2); outline: 1px solid var(--border-mid); }
+    .editable:focus { background: var(--surface2); outline: 2px solid var(--blue); outline-offset: 0; }
+
+    .bar-bg { background: var(--surface2); border-radius: 3px; height: 5px; overflow: hidden; min-width: 60px; }
+    .bar-fill { height: 100%; border-radius: 3px; transition: width 0.35s; }
+
+    .sum-display {
+      font-size: 13px; font-weight: 500; padding: 9px 12px;
+      border-radius: var(--radius-md); margin-top: 10px;
+      display: flex; justify-content: space-between; align-items: center;
+      font-family: 'DM Mono', monospace;
+    }
+    .sum-ok   { background: var(--green-bg); color: var(--green-text); }
+    .sum-warn { background: var(--red-bg);   color: var(--red-text); }
+
+    /* ── Legend ── */
+    .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 12px; }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-2); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+
+    /* ── History ── */
+    .hist-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .refresh-btn {
+      font-size: 12px; color: var(--blue); cursor: pointer;
+      border: none; background: none; padding: 4px 8px;
+      border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+    }
+    .refresh-btn:hover { background: var(--blue-bg); }
+
+    .history-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .history-table th {
+      font-size: 10px; font-weight: 500; color: var(--text-3);
+      text-transform: uppercase; letter-spacing: 0.06em;
+      text-align: left; padding: 5px 10px; border-bottom: 1px solid var(--border);
+    }
+    .history-table td { padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .history-table tr:last-child td { border-bottom: none; }
+    .snap-row td { background: var(--bg); }
+
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 20px;
+      font-size: 10px; font-weight: 500; font-family: 'DM Mono', monospace;
+      letter-spacing: 0.02em;
+    }
+    .badge-twm { background: var(--blue-bg); color: var(--blue-text); }
+    .badge-sri { background: var(--teal-bg); color: var(--teal-text); }
+    .diff-pos { color: var(--green-text); font-weight: 500; font-family: 'DM Mono', monospace; }
+    .diff-neg { color: var(--red-text);   font-weight: 500; font-family: 'DM Mono', monospace; }
+    .mono { font-family: 'DM Mono', monospace; }
+    .empty-state { text-align: center; padding: 40px; color: var(--text-3); font-size: 13px; }
+
+    /* ── Modal ── */
+    .modal-wrap {
+      display: none; position: fixed; inset: 0;
+      background: rgba(20,18,15,0.45); z-index: 100;
+      align-items: center; justify-content: center;
+      backdrop-filter: blur(2px);
+    }
+    .modal-wrap.open { display: flex; }
+    .modal {
+      background: var(--surface); border-radius: var(--radius-lg);
+      border: 1px solid var(--border-mid);
+      padding: 1.75rem; width: 420px; max-width: 94vw;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+      animation: modal-in 0.18s ease-out;
+    }
+    @keyframes modal-in { from { transform: scale(0.96) translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
+    .modal-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: var(--blue-bg); display: flex; align-items: center; justify-content: center;
+      margin-bottom: 14px;
+    }
+    .modal-icon svg { width: 20px; height: 20px; fill: var(--blue); }
+    .modal h2 { font-size: 17px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+    .modal p { font-size: 13px; color: var(--text-2); margin-bottom: 1.25rem; line-height: 1.6; }
+    .modal label { font-size: 12px; font-weight: 500; color: var(--text-2); display: block; margin-bottom: 5px; }
+    .modal input, .modal textarea {
+      width: 100%; font-size: 14px; padding: 9px 12px;
+      border: 1px solid var(--border-mid); border-radius: var(--radius-md);
+      background: var(--bg); color: var(--text);
+      margin-bottom: 14px; font-family: 'DM Sans', sans-serif;
+      transition: border-color 0.15s;
+    }
+    .modal input:focus, .modal textarea:focus { outline: none; border-color: var(--blue); }
+    .modal textarea { resize: vertical; min-height: 64px; }
+    .modal-meta {
+      font-size: 11px; color: var(--text-3); margin-bottom: 14px;
+      font-family: 'DM Mono', monospace; background: var(--bg);
+      padding: 7px 10px; border-radius: var(--radius-sm);
+    }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .btn-cancel {
+      padding: 8px 16px; border-radius: var(--radius-md); font-size: 13px;
+      cursor: pointer; background: transparent; color: var(--text-2);
+      border: 1px solid var(--border-mid); font-family: 'DM Sans', sans-serif;
+      transition: background 0.15s;
+    }
+    .btn-cancel:hover { background: var(--bg); }
+    .btn-save {
+      padding: 8px 20px; border-radius: var(--radius-md); font-size: 13px; font-weight: 500;
+      cursor: pointer; background: var(--blue); color: white; border: none;
+      font-family: 'DM Sans', sans-serif; transition: background 0.15s;
+    }
+    .btn-save:hover:not(:disabled) { background: #155fa5; }
+    .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+    .error-msg { font-size: 12px; color: var(--red-text); margin-top: -10px; margin-bottom: 10px; display: none; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 28px; right: 28px;
+      padding: 11px 18px; border-radius: var(--radius-md);
+      font-size: 13px; font-weight: 500; z-index: 200;
+      opacity: 0; transition: opacity 0.25s; pointer-events: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .toast.ok  { background: #2a5010; color: #e6f2dc; }
+    .toast.err { background: #7a1f1f; color: #fceaea; }
+    .toast.show { opacity: 1; }
+
+    /* ── Spinner ── */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { width: 13px; height: 13px; border: 2px solid rgba(255,255,255,0.35); border-top-color: white; border-radius: 50%; animation: spin 0.65s linear infinite; }
+
+    @media (max-width: 700px) {
+      .metrics { grid-template-columns: 1fr 1fr; }
+      .grid2 { grid-template-columns: 1fr; }
+      .topbar { padding: 0 1rem; }
+      .main { padding: 1.25rem 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24"><path d="M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 3h2v-2h2v2h2v2h-2v2h-2v-2h-2z"/></svg>
+    </div>
+    <div>
+      <div class="topbar-title">Model Allocations</div>
+      <div class="topbar-sub" id="last-snap-info">Connecting to database…</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="conn-badge conn-ok" id="conn-badge">
+      <span class="conn-dot"></span>
+      <span id="conn-label">Connecting…</span>
+    </span>
+    <button class="lock-btn" id="lock-btn" onclick="openModal()" disabled>
+      <svg viewBox="0 0 24 24"><path d="M12 1a5 5 0 0 0-5 5v3H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V11a2 2 0 0 0-2-2h-2V6a5 5 0 0 0-5-5zm0 2a3 3 0 0 1 3 3v3H9V6a3 3 0 0 1 3-3zm0 10a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/></svg>
+      <span id="lock-label">Lock &amp; Save</span>
+    </button>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main class="main">
+
+  <div class="tab-row">
+    <button class="tab active" onclick="switchTab('twm')">TWM Model</button>
+    <button class="tab" onclick="switchTab('sri')">SRI Model</button>
+    <button class="tab" onclick="switchTab('history')">Change History</button>
+  </div>
+
+  <!-- TWM TAB -->
+  <div id="tab-twm">
+    <div class="model-selector">
+      <label>View model:</label>
+      <select onchange="updateTWMView(this.value)" id="twm-model-sel">
+        <option value="IRA Conservative">IRA Conservative</option>
+        <option value="IRA Moderate" selected>IRA Moderate</option>
+        <option value="IRA Aggressive">IRA Aggressive</option>
+        <option value="IRA Ultra Aggressive">IRA Ultra Aggressive</option>
+        <option value="Taxable Conservative">Taxable Conservative</option>
+        <option value="Taxable Moderate">Taxable Moderate</option>
+        <option value="Taxable Aggressive">Taxable Aggressive</option>
+      </select>
+    </div>
+    <div class="metrics" id="twm-metrics"></div>
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">Asset class breakdown</div>
+        <div style="position:relative;height:200px;"><canvas id="twm-donut" role="img" aria-label="Asset class allocation donut chart for selected TWM model"></canvas></div>
+        <div class="legend" id="twm-donut-legend"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Equity vs. fixed income — all models</div>
+        <div style="position:relative;height:200px;"><canvas id="twm-bar" role="img" aria-label="Stacked bar chart comparing all TWM models"></canvas></div>
+        <div class="legend" style="margin-top:10px;">
+          <span class="legend-item"><span class="legend-dot" style="background:#7F77DD;"></span>Equities</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#378ADD;"></span>Fixed income</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#888780;"></span>Cash / Alt</span>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:14px;">
+      <div class="card-title">Fund allocations — <span id="twm-model-name">IRA Moderate</span> <span style="font-size:10px;font-weight:400;color:var(--text-3);text-transform:none;letter-spacing:0;">(click any value to edit)</span></div>
+      <table class="alloc-table" id="twm-alloc-table"></table>
+      <div class="sum-display sum-ok" id="twm-sum-display">100.00%</div>
+    </div>
+  </div>
+
+  <!-- SRI TAB -->
+  <div id="tab-sri" style="display:none;">
+    <div class="model-selector">
+      <label>View model:</label>
+      <select onchange="updateSRIView(this.value)" id="sri-model-sel">
+        <option value="SRI Conservative">SRI Conservative</option>
+        <option value="SRI Moderate" selected>SRI Moderate</option>
+        <option value="SRI Aggressive">SRI Aggressive</option>
+        <option value="SRI Ultra Aggressive">SRI Ultra Aggressive</option>
+      </select>
+    </div>
+    <div class="metrics" id="sri-metrics"></div>
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">Asset class breakdown</div>
+        <div style="position:relative;height:200px;"><canvas id="sri-donut" role="img" aria-label="Asset class allocation donut chart for selected SRI model"></canvas></div>
+        <div class="legend" id="sri-donut-legend"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Equity vs. fixed income — all models</div>
+        <div style="position:relative;height:200px;"><canvas id="sri-bar" role="img" aria-label="Stacked bar chart comparing all SRI models"></canvas></div>
+        <div class="legend" style="margin-top:10px;">
+          <span class="legend-item"><span class="legend-dot" style="background:#7F77DD;"></span>Equities</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#378ADD;"></span>Fixed income</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#888780;"></span>Cash</span>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:14px;">
+      <div class="card-title">Fund allocations — <span id="sri-model-name">SRI Moderate</span> <span style="font-size:10px;font-weight:400;color:var(--text-3);text-transform:none;letter-spacing:0;">(click any value to edit)</span></div>
+      <table class="alloc-table" id="sri-alloc-table"></table>
+      <div class="sum-display sum-ok" id="sri-sum-display">100.00%</div>
+    </div>
+  </div>
+
+  <!-- HISTORY TAB -->
+  <div id="tab-history" style="display:none;">
+    <div class="card">
+      <div class="hist-header">
+        <div class="card-title" style="margin-bottom:0;">Audit trail — locked snapshots</div>
+        <button class="refresh-btn" onclick="loadHistory()">↻ Refresh</button>
+      </div>
+      <div id="history-container"><div class="empty-state">Loading history…</div></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- SAVE MODAL -->
+<div class="modal-wrap" id="modal">
+  <div class="modal">
+    <div class="modal-icon">
+      <svg viewBox="0 0 24 24"><path d="M12 1a5 5 0 0 0-5 5v3H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V11a2 2 0 0 0-2-2h-2V6a5 5 0 0 0-5-5zm0 2a3 3 0 0 1 3 3v3H9V6a3 3 0 0 1 3-3zm0 10a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/></svg>
+    </div>
+    <h2>Lock &amp; save snapshot</h2>
+    <p>This will record the current state of all model allocations to the permanent audit trail.</p>
+    <label for="user-name">Your full name <span style="color:var(--red-text);">*</span></label>
+    <input type="text" id="user-name" placeholder="e.g. Jane Smith" autocomplete="name" />
+    <div class="error-msg" id="name-error">Please enter your name to continue.</div>
+    <label for="snap-notes">Notes <span style="font-weight:400;color:var(--text-3);">(optional)</span></label>
+    <textarea id="snap-notes" placeholder="e.g. Q2 rebalance — shifted equity up in aggressive models"></textarea>
+    <div class="modal-meta" id="modal-datetime">Saving at: —</div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" id="btn-save" onclick="doSave()">Save snapshot</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const SB_URL = 'https://xvcxguzonyebodsnodjw.supabase.co';
+  const SB_KEY = 'sb_publishable_VgdPJZ9zZPBIn9fvwcOW5Q_4DriVNfI';
+  const H = {
+    'apikey': SB_KEY,
+    'Authorization': 'Bearer ' + SB_KEY,
+    'Content-Type': 'application/json',
+    'Prefer': 'return=representation'
+  };
+
+  async function sbGet(path) {
+    const r = await fetch(SB_URL + path, { headers: H });
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  }
+  async function sbPost(path, body) {
+    const r = await fetch(SB_URL + path, { method: 'POST', headers: H, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  }
+
+  function toast(msg, type='ok') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'toast ' + type + ' show';
+    setTimeout(() => el.className = 'toast ' + type, 2800);
+  }
+
+  /* ── Data ── */
+  const TWM = {
+    funds: [
+      { ticker:'FGTXX', name:'Cash',                   expense:0.0018, category:'Cash' },
+      { ticker:'VGSTX', name:'Vanguard STAR',           expense:0.003,  category:'Blended' },
+      { ticker:'FDUIX', name:'Fidelity Inter Bond',     expense:0.006,  category:'Fixed Income' },
+      { ticker:'FEHIX', name:'Fidelity HY Bond',        expense:0.0054, category:'Fixed Income' },
+      { ticker:'CGMU',  name:'iShares Munis',           expense:0.0027, category:'Fixed Income' },
+      { ticker:'BND',   name:'Vanguard Bond',           expense:0.0003, category:'Fixed Income' },
+      { ticker:'VUSB',  name:'Vanguard ST Bond',        expense:0.001,  category:'Fixed Income' },
+      { ticker:'VB',    name:'Vanguard Small Cap',      expense:0.0005, category:'Equities' },
+      { ticker:'VTI',   name:'Vanguard Total Market',   expense:0.0003, category:'Equities' },
+      { ticker:'SGIIX', name:'Sextant Global Growth',   expense:0.0086, category:'Equities' },
+      { ticker:'FEBIX', name:'Fidelity Emerging Mkts',  expense:0.0096, category:'Equities' },
+      { ticker:'GARIX', name:'Counterpoint Alternatives',expense:0.0152,category:'Alternatives' },
+      { ticker:'MAFIX', name:'Manning & Napier Alts',   expense:0.0179, category:'Alternatives' },
+    ],
+    models: {
+      'IRA Conservative':     { cash:0.015,FGTXX:0.025,VGSTX:0.19,FDUIX:0,   FEHIX:0,   CGMU:0,   BND:0.27,VUSB:0.11,VB:0,   VTI:0,   SGIIX:0.25,FEBIX:0.05,GARIX:0.04,MAFIX:0.05 },
+      'IRA Moderate':         { cash:0.015,FGTXX:0.025,VGSTX:0.20,FDUIX:0,   FEHIX:0,   CGMU:0,   BND:0.16,VUSB:0.09,VB:0,   VTI:0.04,SGIIX:0.25,FEBIX:0.12,GARIX:0.05,MAFIX:0.05 },
+      'IRA Aggressive':       { cash:0.01, FGTXX:0.02, VGSTX:0.26,FDUIX:0,   FEHIX:0,   CGMU:0,   BND:0.07,VUSB:0.04,VB:0,   VTI:0.08,SGIIX:0.25,FEBIX:0.13,GARIX:0.07,MAFIX:0.07 },
+      'IRA Ultra Aggressive': { cash:0.01, FGTXX:0,    VGSTX:0.25,FDUIX:0,   FEHIX:0,   CGMU:0,   BND:0,   VUSB:0,   VB:0.04,VTI:0.15,SGIIX:0.27,FEBIX:0.13,GARIX:0.07,MAFIX:0.08 },
+      'Taxable Conservative': { cash:0.015,FGTXX:0.025,VGSTX:0.10,FDUIX:0.07,FEHIX:0.10,CGMU:0.25,BND:0,   VUSB:0,   VB:0,   VTI:0,   SGIIX:0.27,FEBIX:0.08,GARIX:0.04,MAFIX:0.05 },
+      'Taxable Moderate':     { cash:0.015,FGTXX:0.025,VGSTX:0.12,FDUIX:0.03,FEHIX:0.05,CGMU:0.21,BND:0,   VUSB:0,   VB:0,   VTI:0.04,SGIIX:0.25,FEBIX:0.16,GARIX:0.05,MAFIX:0.05 },
+      'Taxable Aggressive':   { cash:0.01, FGTXX:0.02, VGSTX:0.10,FDUIX:0.03,FEHIX:0.06,CGMU:0.11,BND:0,   VUSB:0,   VB:0,   VTI:0.10,SGIIX:0.25,FEBIX:0.17,GARIX:0.07,MAFIX:0.08 },
+    },
+    summary: {
+      'IRA Conservative':     { equities:0.421847,fixedIncome:0.448153,alternatives:0.09, cash:0.04 },
+      'IRA Moderate':         { equities:0.53826, fixedIncome:0.32174, alternatives:0.10, cash:0.04 },
+      'IRA Aggressive':       { equities:0.626738,fixedIncome:0.203262,alternatives:0.14, cash:0.03 },
+      'IRA Ultra Aggressive': { equities:0.750325,fixedIncome:0.089675,alternatives:0.15, cash:0.01 },
+      'Taxable Conservative': { equities:0.41413, fixedIncome:0.45587, alternatives:0.09, cash:0.04 },
+      'Taxable Moderate':     { equities:0.526956,fixedIncome:0.333044,alternatives:0.10, cash:0.04 },
+      'Taxable Aggressive':   { equities:0.58413, fixedIncome:0.23587, alternatives:0.15, cash:0.03 },
+    }
+  };
+
+  const SRI = {
+    funds: [
+      { ticker:'FGTXX', name:'Cash',                    expense:0.0018, category:'Cash' },
+      { ticker:'LMRNX', name:'Loomis Sayles Blend',     expense:0.007,  category:'Blended' },
+      { ticker:'SUSB',  name:'iShares ESG 1-5Y Bond',   expense:0.0012, category:'Fixed Income' },
+      { ticker:'TSBIX', name:'Thornburg Ltd Term Muni',  expense:0.0035, category:'Fixed Income' },
+      { ticker:'PFPLX', name:'Parnassus Fixed Income',   expense:0.0039, category:'Fixed Income' },
+      { ticker:'DSI',   name:'iShares MSCI KLD 400',    expense:0.0025, category:'Equities' },
+      { ticker:'PFPWX', name:'Parnassus Core Equity',   expense:0.0065, category:'Equities' },
+      { ticker:'PXWIX', name:'PIMCO Alloc Plus',        expense:0.0052, category:'Equities' },
+      { ticker:'PGINX', name:'PIMCO International Dev', expense:0.0089, category:'Equities' },
+    ],
+    models: {
+      'SRI Conservative':     { cash:0.02,FGTXX:0.04,LMRNX:0.15,SUSB:0.13,TSBIX:0.27,PFPLX:0.05,DSI:0.09,PFPWX:0.09,PXWIX:0.08,PGINX:0.08 },
+      'SRI Moderate':         { cash:0.01,FGTXX:0.04,LMRNX:0.16,SUSB:0.07,TSBIX:0.20,PFPLX:0.05,DSI:0.14,PFPWX:0.13,PXWIX:0.11,PGINX:0.09 },
+      'SRI Aggressive':       { cash:0.01,FGTXX:0.03,LMRNX:0.17,SUSB:0.06,TSBIX:0.18,PFPLX:0,   DSI:0.15,PFPWX:0.14,PXWIX:0.13,PGINX:0.13 },
+      'SRI Ultra Aggressive': { cash:0.01,FGTXX:0.02,LMRNX:0.20,SUSB:0.03,TSBIX:0.08,PFPLX:0,   DSI:0.19,PFPWX:0.15,PXWIX:0.17,PGINX:0.15 },
+    },
+    summary: {
+      'SRI Conservative':     { equities:0.44095,fixedIncome:0.49905,alternatives:0,cash:0.06 },
+      'SRI Moderate':         { equities:0.57768,fixedIncome:0.37232,alternatives:0,cash:0.05 },
+      'SRI Aggressive':       { equities:0.66441,fixedIncome:0.29559,alternatives:0,cash:0.04 },
+      'SRI Ultra Aggressive': { equities:0.7946, fixedIncome:0.1754, alternatives:0,cash:0.03 },
+    }
+  };
+
+  let currentTWMModel = 'IRA Moderate';
+  let currentSRIModel = 'SRI Moderate';
+  let twmDonut, sriDonut, twmBar, sriBar;
+  let lastSnapshot = null;
+
+  const catColors = {
+    Cash: '#888780', Blended: '#5DCAA5',
+    'Fixed Income': '#378ADD', Equities: '#7F77DD', Alternatives: '#D85A30'
+  };
+
+  const pct  = v => (v * 100).toFixed(1) + '%';
+  const num  = v => (v * 100).toFixed(1);
+
+  /* ── Tab switching ── */
+  function switchTab(tab) {
+    ['twm','sri','history'].forEach(t => {
+      document.getElementById('tab-' + t).style.display = t === tab ? '' : 'none';
+    });
+    document.querySelectorAll('.tab').forEach((el, i) => {
+      el.classList.toggle('active', ['twm','sri','history'][i] === tab);
+    });
+    if (tab === 'history') loadHistory();
+    if (tab === 'twm' && !twmDonut) setTimeout(initTWMCharts, 50);
+    if (tab === 'sri' && !sriDonut) setTimeout(initSRICharts, 50);
+  }
+
+  /* ── Helpers ── */
+  function getCatTotals(data, model) {
+    const alloc = data.models[model], totals = {};
+    data.funds.forEach(f => { totals[f.category] = (totals[f.category] || 0) + (alloc[f.ticker] || 0); });
+    return totals;
+  }
+
+  function renderMetrics(data, model, prefix) {
+    const s = data.summary[model];
+    document.getElementById(prefix + '-metrics').innerHTML = `
+      <div class="metric"><div class="metric-label">Equities</div><div class="metric-value">${pct(s.equities)}</div><div class="metric-sub">Equity exposure</div></div>
+      <div class="metric"><div class="metric-label">Fixed income</div><div class="metric-value">${pct(s.fixedIncome)}</div><div class="metric-sub">Bond allocation</div></div>
+      <div class="metric"><div class="metric-label">Cash</div><div class="metric-value">${pct(s.cash)}</div><div class="metric-sub">Liquidity</div></div>
+      <div class="metric"><div class="metric-label">Alternatives</div><div class="metric-value">${pct(s.alternatives)}</div><div class="metric-sub">Alt exposure</div></div>`;
+  }
+
+  function renderAllocTable(data, model, prefix) {
+    const alloc = data.models[model];
+    const cats = {};
+    data.funds.forEach(f => { if (!cats[f.category]) cats[f.category] = []; cats[f.category].push(f); });
+    let html = `<thead><tr>
+      <th>Ticker</th><th style="text-align:left;">Fund name</th>
+      <th>Expense ratio</th><th>Allocation</th><th style="width:90px;"></th>
+    </tr></thead><tbody>`;
+    Object.keys(cats).forEach(cat => {
+      const funds = cats[cat];
+      const catTotal = funds.reduce((a, f) => a + (alloc[f.ticker] || 0), 0);
+      funds.forEach(f => {
+        const v = alloc[f.ticker] || 0;
+        const barW = Math.min(100, (v / 0.30) * 100).toFixed(1);
+        html += `<tr>
+          <td class="ticker-cell">${f.ticker}</td>
+          <td class="fund-name">${f.name}</td>
+          <td class="expense-cell">${pct(f.expense)}</td>
+          <td><span class="editable" contenteditable="true"
+            data-prefix="${prefix}" data-model="${model}" data-ticker="${f.ticker}"
+            onblur="onEditBlur(this)"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">${num(v)}%</span></td>
+          <td><div class="bar-bg"><div class="bar-fill" style="width:${barW}%;background:${catColors[cat]||'#888'};"></div></div></td>
+        </tr>`;
+      });
+      html += `<tr class="subtotal">
+        <td colspan="3" style="text-align:right;">${cat} subtotal</td>
+        <td class="mono">${pct(catTotal)}</td><td></td>
+      </tr>`;
+    });
+    html += '</tbody>';
+    document.getElementById(prefix + '-alloc-table').innerHTML = html;
+    updateSumDisplay(data, model, prefix);
+  }
+
+  function updateSumDisplay(data, model, prefix) {
+    const sum = Object.values(data.models[model]).reduce((a, b) => a + b, 0);
+    const el = document.getElementById(prefix + '-sum-display');
+    const ok = Math.abs(sum - 1) < 0.005;
+    el.className = 'sum-display ' + (ok ? 'sum-ok' : 'sum-warn');
+    el.textContent = 'Total: ' + (sum * 100).toFixed(2) + '%' + (ok ? '  ✓ balanced' : '  ⚠ does not sum to 100%');
+  }
+
+  function onEditBlur(el) {
+    const raw = el.textContent.replace('%', '').trim();
+    const val = parseFloat(raw);
+    const clamp = isNaN(val) ? 0 : Math.max(0, Math.min(100, val));
+    el.textContent = clamp.toFixed(1) + '%';
+    const { prefix, model, ticker } = el.dataset;
+    const data = prefix === 'twm' ? TWM : SRI;
+    data.models[model][ticker] = clamp / 100;
+    updateSumDisplay(data, model, prefix);
+    updateMetricsFromAlloc(data, model, prefix);
+    updateDonut(data, model, prefix);
+  }
+
+  function updateMetricsFromAlloc(data, model, prefix) {
+    const alloc = data.models[model];
+    const s = { equities:0, fixedIncome:0, alternatives:0, cash:0 };
+    data.funds.forEach(f => {
+      const v = alloc[f.ticker] || 0;
+      if (f.category === 'Equities') s.equities += v;
+      else if (f.category === 'Fixed Income') s.fixedIncome += v;
+      else if (f.category === 'Alternatives') s.alternatives += v;
+      else if (f.category === 'Cash') s.cash += v;
+    });
+    data.summary[model] = s;
+    renderMetrics(data, model, prefix);
+  }
+
+  /* ── Charts ── */
+  function makeDonut(canvasId, data, model) {
+    const ct = getCatTotals(data, model);
+    const labels = Object.keys(ct).filter(k => ct[k] > 0);
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    return new Chart(ctx, {
+      type: 'doughnut',
+      data: { labels, datasets: [{ data: labels.map(k => parseFloat((ct[k]*100).toFixed(2))), backgroundColor: labels.map(k => catColors[k]||'#aaa'), borderWidth: 2, borderColor: 'transparent' }] },
+      options: { responsive:true, maintainAspectRatio:false, cutout:'68%', plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>' '+c.label+': '+c.parsed.toFixed(1)+'%'}} } }
+    });
+  }
+
+  function updateDonut(data, model, prefix) {
+    const chart = prefix === 'twm' ? twmDonut : sriDonut;
+    if (!chart) return;
+    const ct = getCatTotals(data, model);
+    const labels = Object.keys(ct).filter(k => ct[k] > 0);
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = labels.map(k => parseFloat((ct[k]*100).toFixed(2)));
+    chart.data.datasets[0].backgroundColor = labels.map(k => catColors[k]||'#aaa');
+    chart.update();
+    renderDonutLegend(data, model, prefix);
+  }
+
+  function renderDonutLegend(data, model, prefix) {
+    const ct = getCatTotals(data, model);
+    document.getElementById(prefix + '-donut-legend').innerHTML = Object.keys(ct).filter(k=>ct[k]>0).map(k =>
+      `<span class="legend-item"><span class="legend-dot" style="background:${catColors[k]};"></span>${k}: ${pct(ct[k])}</span>`
+    ).join('');
+  }
+
+  function makeBarChart(canvasId, data) {
+    const mNames = Object.keys(data.summary);
+    const shortLabels = mNames.map(m => m.replace('IRA ','').replace('Taxable ','Tax. ').replace('SRI ',''));
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    return new Chart(ctx, {
+      type: 'bar',
+      data: { labels: shortLabels, datasets: [
+        { label:'Equities',     data: mNames.map(m=>parseFloat((data.summary[m].equities*100).toFixed(1))),    backgroundColor:'#7F77DD' },
+        { label:'Fixed Income', data: mNames.map(m=>parseFloat((data.summary[m].fixedIncome*100).toFixed(1))), backgroundColor:'#378ADD' },
+        { label:'Cash / Alt',   data: mNames.map(m=>parseFloat(((data.summary[m].cash+data.summary[m].alternatives)*100).toFixed(1))), backgroundColor:'#888780' },
+      ]},
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:{mode:'index',intersect:false} },
+        scales:{
+          x:{ stacked:true, ticks:{font:{size:10},autoSkip:false,maxRotation:30} },
+          y:{ stacked:true, max:100, ticks:{callback:v=>v+'%',font:{size:11}} }
+        }
+      }
+    });
+  }
+
+  function initTWMCharts() {
+    twmDonut = makeDonut('twm-donut', TWM, currentTWMModel);
+    renderDonutLegend(TWM, currentTWMModel, 'twm');
+    twmBar = makeBarChart('twm-bar', TWM);
+  }
+  function initSRICharts() {
+    sriDonut = makeDonut('sri-donut', SRI, currentSRIModel);
+    renderDonutLegend(SRI, currentSRIModel, 'sri');
+    sriBar = makeBarChart('sri-bar', SRI);
+  }
+
+  function updateTWMView(model) {
+    currentTWMModel = model;
+    document.getElementById('twm-model-name').textContent = model;
+    renderMetrics(TWM, model, 'twm');
+    renderAllocTable(TWM, model, 'twm');
+    updateDonut(TWM, model, 'twm');
+  }
+  function updateSRIView(model) {
+    currentSRIModel = model;
+    document.getElementById('sri-model-name').textContent = model;
+    renderMetrics(SRI, model, 'sri');
+    renderAllocTable(SRI, model, 'sri');
+    updateDonut(SRI, model, 'sri');
+  }
+
+  /* ── Modal ── */
+  function openModal() {
+    const now = new Date();
+    document.getElementById('modal-datetime').textContent =
+      'Saving at: ' + now.toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',second:'2-digit'});
+    document.getElementById('name-error').style.display = 'none';
+    document.getElementById('modal').classList.add('open');
+    setTimeout(() => document.getElementById('user-name').focus(), 60);
+  }
+  function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+  async function doSave() {
+    const name = document.getElementById('user-name').value.trim();
+    if (!name) { document.getElementById('name-error').style.display = 'block'; document.getElementById('user-name').focus(); return; }
+    document.getElementById('name-error').style.display = 'none';
+    const notes = document.getElementById('snap-notes').value.trim();
+    const btn = document.getElementById('btn-save');
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    try {
+      const snapResult = await sbPost('/rest/v1/model_snapshots', {
+        locked_by: name, notes: notes || null,
+        twm_models: TWM.models, sri_models: SRI.models,
+        twm_summary: TWM.summary, sri_summary: SRI.summary,
+      });
+      const snapId = snapResult[0].id;
+      const createdAt = snapResult[0].created_at;
+
+      const diffs = [];
+      if (lastSnapshot) {
+        Object.keys(TWM.models).forEach(model => {
+          Object.keys(TWM.models[model]).forEach(ticker => {
+            const curr = TWM.models[model][ticker];
+            const old  = (lastSnapshot.twm_models[model]||{})[ticker]||0;
+            if (Math.abs(curr-old)>0.0001) diffs.push({ snapshot_id:snapId, model_family:'TWM', model_name:model, ticker, from_pct:parseFloat((old*100).toFixed(4)), to_pct:parseFloat((curr*100).toFixed(4)), change_pp:parseFloat(((curr-old)*100).toFixed(4)) });
+          });
+        });
+        Object.keys(SRI.models).forEach(model => {
+          Object.keys(SRI.models[model]).forEach(ticker => {
+            const curr = SRI.models[model][ticker];
+            const old  = (lastSnapshot.sri_models[model]||{})[ticker]||0;
+            if (Math.abs(curr-old)>0.0001) diffs.push({ snapshot_id:snapId, model_family:'SRI', model_name:model, ticker, from_pct:parseFloat((old*100).toFixed(4)), to_pct:parseFloat((curr*100).toFixed(4)), change_pp:parseFloat(((curr-old)*100).toFixed(4)) });
+          });
+        });
+      }
+      if (diffs.length > 0) await sbPost('/rest/v1/snapshot_changes', diffs);
+
+      lastSnapshot = snapResult[0];
+      const fmtDate = new Date(createdAt).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+      document.getElementById('last-snap-info').textContent = 'Last snapshot: ' + fmtDate + ' by ' + name;
+      closeModal();
+      toast('Snapshot saved — ' + (diffs.length) + ' change(s) recorded');
+      document.getElementById('snap-notes').value = '';
+    } catch(e) {
+      toast('Save failed: ' + e.message, 'err');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Save snapshot';
+    }
+  }
+
+  /* ── History ── */
+  async function loadHistory() {
+    const el = document.getElementById('history-container');
+    el.innerHTML = '<div class="empty-state">Loading…</div>';
+    try {
+      const [snaps, changes] = await Promise.all([
+        sbGet('/rest/v1/model_snapshots?select=*&order=created_at.desc'),
+        sbGet('/rest/v1/snapshot_changes?select=*&order=snapshot_id,model_family,model_name,ticker')
+      ]);
+      const bySnap = {};
+      changes.forEach(c => { if (!bySnap[c.snapshot_id]) bySnap[c.snapshot_id]=[]; bySnap[c.snapshot_id].push(c); });
+      if (snaps.length === 0) { el.innerHTML='<div class="empty-state">No snapshots yet. Edit values and click Lock &amp; Save.</div>'; return; }
+      let html = `<table class="history-table"><thead><tr>
+        <th>Date &amp; time</th><th>Locked by</th><th>Family</th><th>Model</th>
+        <th>Ticker</th><th>From</th><th>To</th><th>Change</th><th>Notes</th>
+      </tr></thead><tbody>`;
+      snaps.forEach(snap => {
+        const dt = new Date(snap.created_at).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+        const snapChanges = bySnap[snap.id]||[];
+        if (snapChanges.length === 0) {
+          html += `<tr class="snap-row"><td class="mono">${dt}</td><td><strong>${snap.locked_by}</strong></td><td colspan="5" style="color:var(--text-3);font-size:11px;">Baseline snapshot</td><td style="font-size:11px;color:var(--text-3);">${snap.notes||''}</td></tr>`;
+        } else {
+          snapChanges.forEach((c,i) => {
+            const badge = c.model_family==='TWM'?'<span class="badge badge-twm">TWM</span>':'<span class="badge badge-sri">SRI</span>';
+            const diffStr = (c.change_pp>=0?'+':'')+c.change_pp.toFixed(2)+'pp';
+            html += `<tr ${i===0?'class="snap-row"':''}>
+              <td class="mono" style="font-size:11px;">${i===0?dt:''}</td>
+              <td>${i===0?'<strong>'+snap.locked_by+'</strong>':''}</td>
+              <td>${badge}</td>
+              <td style="font-size:11px;">${c.model_name}</td>
+              <td class="ticker-cell">${c.ticker}</td>
+              <td class="mono">${c.from_pct.toFixed(2)}%</td>
+              <td class="mono">${c.to_pct.toFixed(2)}%</td>
+              <td class="${c.change_pp>=0?'diff-pos':'diff-neg'}">${diffStr}</td>
+              <td style="font-size:11px;color:var(--text-3);">${i===0&&snap.notes?snap.notes:''}</td>
+            </tr>`;
+          });
+        }
+      });
+      html += '</tbody></table>';
+      el.innerHTML = html;
+      if (snaps.length > 0 && !lastSnapshot) lastSnapshot = snaps[0];
+    } catch(e) {
+      el.innerHTML = '<div class="empty-state" style="color:var(--red-text);">Failed to load history: '+e.message+'</div>';
+    }
+  }
+
+  /* ── Connection + bootstrap ── */
+  async function checkConnection() {
+    const badge = document.getElementById('conn-badge');
+    const label = document.getElementById('conn-label');
+    const lockBtn = document.getElementById('lock-btn');
+    try {
+      const snaps = await sbGet('/rest/v1/model_snapshots?select=*&order=created_at.desc&limit=1');
+      badge.className = 'conn-badge conn-ok';
+      label.textContent = 'Supabase connected';
+      lockBtn.disabled = false;
+      if (snaps.length > 0) {
+        lastSnapshot = snaps[0];
+        TWM.models = snaps[0].twm_models;
+        SRI.models  = snaps[0].sri_models;
+        TWM.summary = snaps[0].twm_summary;
+        SRI.summary = snaps[0].sri_summary;
+        const dt = new Date(snaps[0].created_at).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+        document.getElementById('last-snap-info').textContent = 'Last snapshot: '+dt+' by '+snaps[0].locked_by;
+        renderMetrics(TWM, currentTWMModel, 'twm');
+        renderAllocTable(TWM, currentTWMModel, 'twm');
+        renderMetrics(SRI, currentSRIModel, 'sri');
+        renderAllocTable(SRI, currentSRIModel, 'sri');
+        setTimeout(initTWMCharts, 60);
+      } else {
+        document.getElementById('last-snap-info').textContent = 'Connected — no snapshots yet';
+      }
+    } catch(e) {
+      badge.className = 'conn-badge conn-err';
+      label.textContent = 'Connection failed';
+      lockBtn.disabled = true;
+      document.getElementById('last-snap-info').textContent = 'Could not reach Supabase — check tables exist';
+    }
+  }
+
+  /* ── Init ── */
+  renderMetrics(TWM, currentTWMModel, 'twm');
+  renderAllocTable(TWM, currentTWMModel, 'twm');
+  document.getElementById('twm-model-name').textContent = currentTWMModel;
+  renderMetrics(SRI, currentSRIModel, 'sri');
+  renderAllocTable(SRI, currentSRIModel, 'sri');
+  document.getElementById('sri-model-name').textContent = currentSRIModel;
+  setTimeout(initTWMCharts, 100);
+  checkConnection();
+</script>
+</body>
+</html>
