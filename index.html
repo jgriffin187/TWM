@@ -443,6 +443,10 @@ const CAT_COLORS={Cash:'#888780',Blended:'#5DCAA5','Fixed Income':'#378ADD',Equi
 const pct=v=>(v*100).toFixed(1)+'%';
 const num=v=>(v*100).toFixed(1);
 
+// Fixed model name lists — bar charts always use exactly these, never Object.keys(data.summary)
+const TWM_MODEL_NAMES=['IRA Conservative','IRA Moderate','IRA Aggressive','IRA Ultra Aggressive','Taxable Conservative','Taxable Moderate','Taxable Aggressive'];
+const SRI_MODEL_NAMES=['SRI Conservative','SRI Moderate','SRI Aggressive','SRI Ultra Aggressive'];
+
 function switchTab(tab){
   ['twm','sri','history'].forEach(t=>document.getElementById('tab-'+t).style.display=t===tab?'':'none');
   document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['twm','sri','history'][i]===tab));
@@ -547,8 +551,8 @@ function renderDonutLegend(data,model,pfx){
   ).join('');
 }
 
-function makeBarChart(id,data){
-  const mNames=Object.keys(data.summary);
+function makeBarChart(id,data,modelNames){
+  const mNames=modelNames;
   const shorts=mNames.map(m=>m.replace('IRA ','').replace('Taxable ','Tax. ').replace('SRI ',''));
   const c=chartColors();
   return new Chart(document.getElementById(id).getContext('2d'),{
@@ -569,8 +573,8 @@ function makeBarChart(id,data){
   });
 }
 
-function initTWMCharts(){twmDonut=makeDonut('twm-donut',TWM,curTWM);renderDonutLegend(TWM,curTWM,'twm');twmBar=makeBarChart('twm-bar',TWM);}
-function initSRICharts(){sriDonut=makeDonut('sri-donut',SRI,curSRI);renderDonutLegend(SRI,curSRI,'sri');sriBar=makeBarChart('sri-bar',SRI);}
+function initTWMCharts(){twmDonut=makeDonut('twm-donut',TWM,curTWM);renderDonutLegend(TWM,curTWM,'twm');twmBar=makeBarChart('twm-bar',TWM,TWM_MODEL_NAMES);}
+function initSRICharts(){sriDonut=makeDonut('sri-donut',SRI,curSRI);renderDonutLegend(SRI,curSRI,'sri');sriBar=makeBarChart('sri-bar',SRI,SRI_MODEL_NAMES);}
 
 function updateTWMView(m){curTWM=m;document.getElementById('twm-model-name').textContent=m;renderMetrics(TWM,m,'twm');renderAllocTable(TWM,m,'twm');updateDonut(TWM,m,'twm');}
 function updateSRIView(m){curSRI=m;document.getElementById('sri-model-name').textContent=m;renderMetrics(SRI,m,'sri');renderAllocTable(SRI,m,'sri');updateDonut(SRI,m,'sri');}
@@ -661,8 +665,15 @@ async function checkConnection(){
     badge.className='conn-badge conn-ok';label.textContent='Supabase connected';btn.disabled=false;
     if(snaps.length){
       lastSnapshot=snaps[0];
-      TWM.models=snaps[0].twm_models;SRI.models=snaps[0].sri_models;
-      TWM.summary=snaps[0].twm_summary;SRI.summary=snaps[0].sri_summary;
+      // Restore only keys that belong to each family — never cross-contaminate
+      TWM_MODEL_NAMES.forEach(m=>{
+        if(snaps[0].twm_models[m]) TWM.models[m]=snaps[0].twm_models[m];
+        if(snaps[0].twm_summary[m]) TWM.summary[m]=snaps[0].twm_summary[m];
+      });
+      SRI_MODEL_NAMES.forEach(m=>{
+        if(snaps[0].sri_models[m]) SRI.models[m]=snaps[0].sri_models[m];
+        if(snaps[0].sri_summary[m]) SRI.summary[m]=snaps[0].sri_summary[m];
+      });
       const dt=new Date(snaps[0].created_at).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
       document.getElementById('last-snap-info').textContent='Last snapshot: '+dt+' by '+snaps[0].locked_by;
       renderMetrics(TWM,curTWM,'twm');renderAllocTable(TWM,curTWM,'twm');
