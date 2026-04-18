@@ -178,13 +178,46 @@
     .tab.active{background:var(--bg);color:var(--text);font-weight:500;box-shadow:var(--shadow);}
     .tab:hover:not(.active){color:var(--text);}
 
+    /* metrics-top: cyber tile row */
     .metrics-top{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:10px;}
+    /* metrics-cmp: comparison cards (beta, expense, ytd) */
     .metrics-cmp{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:1.5rem;}
     .metric{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;transition:background .2s,border-color .2s;}
     .metric-label{font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
     .metric.vs-sp{border-left:3px solid var(--blue);padding-left:13px;position:relative;}
     .metric-header{display:flex;align-items:center;gap:5px;margin-bottom:8px;}
     .metric-header .metric-label{margin-bottom:0;}
+    /* cyber tile cards */
+    .cyber-tile{border-radius:18px;padding:1.1rem 1.25rem;position:relative;overflow:hidden;cursor:default;
+      transition:transform .22s cubic-bezier(.34,1.56,.64,1), box-shadow .22s ease, border-color .22s ease;
+      backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);}
+    .cyber-tile:hover{transform:scale(1.025) translateY(-2px);}
+    [data-theme="light"] .cyber-tile{background:rgba(255,255,255,0.82);border:1px solid rgba(203,213,225,0.65);
+      box-shadow:0 2px 8px rgba(15,23,42,0.06),0 1px 3px rgba(15,23,42,0.04);}
+    [data-theme="dark"]  .cyber-tile{background:rgba(15,23,42,0.50);border:1px solid rgba(255,255,255,0.07);
+      box-shadow:0 1px 3px rgba(0,0,0,0.3);}
+    [data-theme="light"] .cyber-tile:hover{box-shadow:0 8px 28px rgba(15,23,42,0.13),0 2px 6px rgba(15,23,42,0.07);}
+    [data-theme="dark"]  .cyber-tile:hover{box-shadow:0 0 24px rgba(255,255,255,0.06),0 2px 8px rgba(0,0,0,0.4);}
+    .cyber-tile-wash{position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0.55;transition:opacity .22s ease;}
+    .cyber-tile:hover .cyber-tile-wash{opacity:1;}
+    .cyber-tile-label{font-size:10px;font-weight:700;letter-spacing:0.10em;text-transform:uppercase;
+      font-family:'Courier New',monospace;color:var(--text-2);margin-bottom:8px;position:relative;
+      display:flex;justify-content:space-between;align-items:center;}
+    .cyber-tile-icon{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .cyber-tile-num-wrap{border-radius:10px;padding:5px 9px;display:inline-block;margin-bottom:5px;position:relative;}
+    [data-theme="light"] .cyber-tile-num-wrap{background:rgba(15,23,42,0.03);}
+    [data-theme="dark"]  .cyber-tile-num-wrap{background:rgba(0,0,0,0.18);}
+    .cyber-tile-value{font-size:28px;font-weight:700;letter-spacing:-0.03em;
+      font-family:'Courier New',monospace;line-height:1;display:block;}
+    [data-theme="light"] .cyber-tile-value{color:#0f172a;}
+    [data-theme="dark"]  .cyber-tile-value{color:#f1f5f9;}
+    .cyber-tile-context{font-size:12px;font-weight:400;font-family:system-ui,sans-serif;position:relative;}
+    [data-theme="light"] .cyber-tile-context{color:rgba(71,85,105,0.80);}
+    [data-theme="dark"]  .cyber-tile-context{color:rgba(148,163,184,0.75);}
+    .cyber-tile-bar-track{height:3px;border-radius:99px;margin-top:12px;overflow:hidden;}
+    [data-theme="light"] .cyber-tile-bar-track{background:rgba(15,23,42,0.07);}
+    [data-theme="dark"]  .cyber-tile-bar-track{background:rgba(255,255,255,0.07);}
+    .cyber-tile-bar-fill{height:100%;border-radius:99px;transition:width .5s cubic-bezier(.4,0,.2,1);}
     .info-icon{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;border:1.5px solid var(--text-3);font-size:9px;font-weight:700;color:var(--text-3);cursor:default;flex-shrink:0;line-height:1;font-style:normal;transition:border-color .15s,color .15s;font-family:'Inter',sans-serif;}
     .info-icon:hover{border-color:var(--blue);color:var(--blue);}
     .tooltip-wrap{position:relative;display:inline-flex;}
@@ -355,6 +388,8 @@
     @media(max-width:700px){
       .metrics-top{grid-template-columns:1fr 1fr;}
       .metrics-cmp{grid-template-columns:1fr 1fr 1fr;}
+      .cyber-tile{border-radius:14px;padding:.9rem 1rem;}
+      .cyber-tile-value{font-size:22px;}
       .grid2{grid-template-columns:1fr;}
       .topbar{padding:0 1rem;}
       .main{padding:1.25rem 1rem;}
@@ -1364,6 +1399,90 @@ function getCatTotals(data,model){
   return t;
 }
 
+/* ── Performance tiles palette ── */
+const TILE_CFG={
+  equities:{
+    label:'Equities', context:'Equity exposure', color:'blue',
+    icon:'<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',
+    lightAccent:'#2563eb', darkAccent:'#38bdf8',
+    lightWash:'rgba(219,234,254,0.55)', darkWash:'rgba(56,189,248,0.08)',
+    lightInner:'inset 0 2px 8px rgba(37,99,235,0.13),inset 0 1px 3px rgba(37,99,235,0.07)',
+    darkInner:'inset 0 4px 14px rgba(56,189,248,0.28)',
+    lightIcon:'rgba(37,99,235,0.10)', darkIcon:'rgba(56,189,248,0.12)',
+    lightBar:'#3b82f6', darkBar:'#38bdf8',
+    lightHover:'rgba(37,99,235,0.16)', darkHover:'rgba(56,189,248,0.18)',
+  },
+  fixedIncome:{
+    label:'Fixed income', context:'Bond allocation', color:'green',
+    icon:'<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
+    lightAccent:'#059669', darkAccent:'#34d399',
+    lightWash:'rgba(209,250,229,0.55)', darkWash:'rgba(52,211,153,0.08)',
+    lightInner:'inset 0 2px 8px rgba(5,150,105,0.13),inset 0 1px 3px rgba(5,150,105,0.07)',
+    darkInner:'inset 0 4px 14px rgba(52,211,153,0.28)',
+    lightIcon:'rgba(5,150,105,0.10)', darkIcon:'rgba(52,211,153,0.12)',
+    lightBar:'#10b981', darkBar:'#34d399',
+    lightHover:'rgba(5,150,105,0.14)', darkHover:'rgba(52,211,153,0.18)',
+  },
+  cash:{
+    label:'Cash', context:'Liquidity', color:'gray',
+    icon:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+    lightAccent:'#475569', darkAccent:'#94a3b8',
+    lightWash:'rgba(241,245,249,0.65)', darkWash:'rgba(148,163,184,0.06)',
+    lightInner:'inset 0 2px 8px rgba(71,85,105,0.10),inset 0 1px 3px rgba(71,85,105,0.06)',
+    darkInner:'inset 0 4px 14px rgba(148,163,184,0.18)',
+    lightIcon:'rgba(71,85,105,0.08)', darkIcon:'rgba(148,163,184,0.10)',
+    lightBar:'#64748b', darkBar:'#94a3b8',
+    lightHover:'rgba(71,85,105,0.10)', darkHover:'rgba(148,163,184,0.14)',
+  },
+  alternatives:{
+    label:'Alternatives', context:'Alt exposure', color:'purple',
+    icon:'<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+    lightAccent:'#7c3aed', darkAccent:'#a78bfa',
+    lightWash:'rgba(237,233,254,0.55)', darkWash:'rgba(167,139,250,0.08)',
+    lightInner:'inset 0 2px 8px rgba(124,58,237,0.13),inset 0 1px 3px rgba(124,58,237,0.07)',
+    darkInner:'inset 0 4px 14px rgba(167,139,250,0.28)',
+    lightIcon:'rgba(124,58,237,0.10)', darkIcon:'rgba(167,139,250,0.12)',
+    lightBar:'#8b5cf6', darkBar:'#a78bfa',
+    lightHover:'rgba(124,58,237,0.14)', darkHover:'rgba(167,139,250,0.18)',
+  },
+};
+
+function renderCyberTile(cfg, valueRaw, maxPct){
+  const dk=isDark();
+  const accent=dk?cfg.darkAccent:cfg.lightAccent;
+  const wash=dk?cfg.darkWash:cfg.lightWash;
+  const inner=dk?cfg.darkInner:cfg.lightInner;
+  const iconBg=dk?cfg.darkIcon:cfg.lightIcon;
+  const bar=dk?cfg.darkBar:cfg.lightBar;
+  const barGlow=dk?`0 0 6px ${bar}80`:`0 1px 3px ${bar}50`;
+  const hoverColor=dk?cfg.darkHover:cfg.lightHover;
+  const barW=Math.min(100,(valueRaw*100)).toFixed(1)+'%';
+  const valStr=pct(valueRaw);
+
+  return `<div class="cyber-tile"
+    onmouseenter="this.style.borderColor='${accent}40';this.querySelector('.cyber-tile-bar-fill').style.boxShadow='${barGlow}';${dk?'this.style.boxShadow=\'0 0 24px '+hoverColor+',0 2px 8px rgba(0,0,0,0.4)\'':''}"
+    onmouseleave="this.style.borderColor='';this.querySelector('.cyber-tile-bar-fill').style.boxShadow='';${dk?'this.style.boxShadow=\'\'':''}"
+    >
+    <div class="cyber-tile-wash" style="background:${wash};"></div>
+    <div class="cyber-tile-label">
+      ${cfg.label}
+      <span class="cyber-tile-icon" style="background:${iconBg};box-shadow:${dk?'0 0 8px '+accent+'30':'0 1px 3px '+accent+'20'};">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
+          stroke="${accent}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          ${cfg.icon}
+        </svg>
+      </span>
+    </div>
+    <div class="cyber-tile-num-wrap" style="box-shadow:${inner};">
+      <span class="cyber-tile-value">${valStr}</span>
+    </div>
+    <div class="cyber-tile-context">${cfg.context}</div>
+    <div class="cyber-tile-bar-track">
+      <div class="cyber-tile-bar-fill" style="width:${barW};background:${bar};"></div>
+    </div>
+  </div>`;
+}
+
 function renderMetrics(data,model,pfx){
   const s=data.summary[model];
 
@@ -1391,28 +1510,11 @@ function renderMetrics(data,model,pfx){
     ?(dowYtd!=null?'DOW YTD: '+dowStr+' (portfolio loading…)':'Fetching DOW data…')
     :(ytdVsDow>=0?'+':'')+ytdVsDow.toFixed(2)+'% vs DOW ('+dowStr+')';
 
-  document.getElementById(pfx+'-metrics-top').innerHTML=`
-    <div class="metric">
-      <div class="metric-label">Equities</div>
-      <div class="metric-value">${pct(s.equities)}</div>
-      <div class="metric-sub">Equity exposure</div>
-    </div>
-    <div class="metric">
-      <div class="metric-label">Fixed income</div>
-      <div class="metric-value">${pct(s.fixedIncome)}</div>
-      <div class="metric-sub">Bond allocation</div>
-    </div>
-    <div class="metric">
-      <div class="metric-label">Cash</div>
-      <div class="metric-value">${pct(s.cash)}</div>
-      <div class="metric-sub">Liquidity</div>
-    </div>
-    <div class="metric">
-      <div class="metric-label">Alternatives</div>
-      <div class="metric-value">${pct(s.alternatives)}</div>
-      <div class="metric-sub">Alt exposure</div>
-    </div>
-`;
+  document.getElementById(pfx+'-metrics-top').innerHTML=
+    renderCyberTile(TILE_CFG.equities,    s.equities,    0.80) +
+    renderCyberTile(TILE_CFG.fixedIncome, s.fixedIncome, 0.80) +
+    renderCyberTile(TILE_CFG.cash,        s.cash,        0.30) +
+    renderCyberTile(TILE_CFG.alternatives,s.alternatives,0.30);
 
   document.getElementById(pfx+'-metrics-cmp').innerHTML=`
     <div class="metric vs-sp">
