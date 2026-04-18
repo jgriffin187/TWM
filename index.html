@@ -2114,6 +2114,7 @@ function drawCyberBar(containerId, data, modelNames){
   if(!el) return;
   el.innerHTML='';
 
+  const BAR_SERIES=getBAR_SERIES(); // theme-aware: BAR_DARK or BAR_LIGHT
   const W=el.offsetWidth||420, H=260;
   const margin={top:16,right:16,bottom:48,left:36};
   const iW=W-margin.left-margin.right, iH=H-margin.top-margin.bottom;
