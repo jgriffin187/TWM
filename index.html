@@ -251,7 +251,7 @@
     .add-fund-btn:hover{opacity:.8;}
     .add-modal-wrap{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:110;align-items:center;justify-content:center;backdrop-filter:blur(3px);}
     .add-modal-wrap.open{display:flex;}
-    .add-modal{background:var(--surface);border-radius:14px;border:1px solid var(--border-mid);padding:1.75rem;width:400px;max-width:94vw;box-shadow:var(--shadow-lg);animation:modal-in .18s ease-out;}
+    .add-modal{background:var(--surface);border-radius:14px;border:1px solid var(--border-mid);padding:1.75rem;width:520px;max-width:96vw;box-shadow:var(--shadow-lg);animation:modal-in .18s ease-out;}
     .add-modal h2{font-size:17px;font-weight:600;color:var(--text);margin-bottom:4px;}
     .add-modal p{font-size:13px;color:var(--text-2);margin-bottom:1.25rem;line-height:1.6;}
     .add-modal label{font-size:13px;font-weight:600;color:var(--text);display:block;margin-bottom:5px;}
@@ -262,6 +262,24 @@
     .add-modal-status.ok{color:var(--green-text);}
     .add-modal-status.err{color:var(--red-text);}
     .add-modal-status.loading{color:var(--text-3);}
+    .lookup-btn{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;color:white;background:var(--blue);border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-family:'Inter',sans-serif;transition:opacity .15s;flex-shrink:0;}
+    .lookup-btn:hover:not(:disabled){opacity:.85;}
+    .lookup-btn:disabled{opacity:.5;cursor:not-allowed;}
+    .lookup-row{display:flex;gap:8px;align-items:flex-end;margin-bottom:12px;}
+    .lookup-row input{flex:1;margin-bottom:0;}
+    .confidence-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;font-family:'IBM Plex Mono',monospace;margin-left:6px;vertical-align:middle;}
+    .conf-auto{background:var(--green-bg);color:var(--green-text);}
+    .conf-partial{background:var(--blue-bg);color:var(--blue-text);}
+    .conf-manual{background:var(--surface2);color:var(--text-3);}
+    .add-modal-section{background:var(--surface2);border-radius:10px;padding:12px 14px;margin-bottom:12px;display:none;}
+    .add-modal-section.show{display:block;}
+    .add-modal-section-title{font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;}
+    .add-modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .add-modal-field label{font-size:12px;font-weight:600;color:var(--text-2);display:block;margin-bottom:4px;}
+    .add-modal-field input,.add-modal-field select{width:100%;font-size:13px;padding:7px 10px;border:1.5px solid var(--border-mid);border-radius:8px;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;transition:border-color .15s;}
+    .add-modal-field input:focus,.add-modal-field select:focus{outline:none;border-color:var(--blue);}
+    .geo-preview{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+    .geo-preview-chip{font-size:11px;font-weight:600;padding:3px 8px;border-radius:5px;font-family:'IBM Plex Mono',monospace;}
     .geo-bar-label{font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
     .geo-bar-track{display:flex;height:10px;border-radius:5px;overflow:hidden;width:100%;}
     .geo-bar-us{background:#1558A8;height:100%;}
@@ -456,7 +474,10 @@
     <div class="card" style="margin-bottom:14px;">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
         <div class="card-title" style="margin-bottom:0;">Fund allocations — <span id="twm-model-name">IRA Moderate</span> <span style="font-size:10px;font-weight:400;color:var(--text-3);text-transform:none;letter-spacing:0;">(click any value to edit)</span></div>
-        <button class="refresh-prices" onclick="fetchPrices()">↻ Refresh prices</button>
+        <div style="display:flex;gap:8px;">
+          <button class="add-fund-btn" onclick="openAddModal(TWM,curTWM,'twm')">+ Add fund</button>
+          <button class="refresh-prices" onclick="fetchPrices()">↻ Refresh prices</button>
+        </div>
       </div>
       <div class="prices-bar" id="twm-prices-bar"><span class="price-ts" id="prices-ts">Prices not loaded</span></div>
       <table class="alloc-table" id="twm-alloc-table"></table>
@@ -497,7 +518,10 @@
     <div class="card" style="margin-bottom:14px;">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
         <div class="card-title" style="margin-bottom:0;">Fund allocations — <span id="sri-model-name">SRI Moderate</span> <span style="font-size:10px;font-weight:400;color:var(--text-3);text-transform:none;letter-spacing:0;">(click any value to edit)</span></div>
-        <button class="refresh-prices" onclick="fetchPrices()">↻ Refresh prices</button>
+        <div style="display:flex;gap:8px;">
+          <button class="add-fund-btn" onclick="openAddModal(SRI,curSRI,'sri')">+ Add fund</button>
+          <button class="refresh-prices" onclick="fetchPrices()">↻ Refresh prices</button>
+        </div>
       </div>
       <div class="prices-bar" id="sri-prices-bar"><span class="price-ts" id="sri-prices-ts">Prices not loaded</span></div>
       <table class="alloc-table" id="sri-alloc-table"></table>
@@ -551,26 +575,84 @@
 <!-- Modal -->
 <div class="add-modal-wrap" id="add-modal">
   <div class="add-modal">
-    <h2 id="add-modal-title">Add fund</h2>
-    <p id="add-modal-desc">Enter the fund details below. Price, beta, and geographic data will be fetched automatically.</p>
-    <label>Ticker symbol <span style="color:var(--red-text);">*</span></label>
-    <input type="text" id="add-ticker" placeholder="e.g. SCHD" oninput="this.value=this.value.toUpperCase()" />
-    <label>Fund name <span style="color:var(--red-text);">*</span></label>
-    <input type="text" id="add-name" placeholder="e.g. Schwab US Dividend Equity" />
-    <div class="add-modal-row">
-      <div>
-        <label>Expense ratio % <span style="color:var(--red-text);">*</span></label>
-        <input type="number" id="add-expense" placeholder="e.g. 0.06" step="0.01" min="0" max="5" />
+    <h2>Add fund</h2>
+    <p style="font-size:13px;color:var(--text-2);margin-bottom:1.25rem;line-height:1.6;">Enter a ticker and click Look up — we'll auto-fill the name, category, expense ratio, and geographic breakdown. You can override anything before adding.</p>
+
+    <!-- Step 1: Ticker lookup -->
+    <div class="lookup-row">
+      <div class="add-modal-field" style="flex:1;">
+        <label>Ticker symbol <span style="color:var(--red-text);">*</span></label>
+        <input type="text" id="add-ticker" placeholder="e.g. SCHD"
+          oninput="this.value=this.value.toUpperCase();resetAddModal()"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();lookupFund();}" />
       </div>
-      <div>
+      <button class="lookup-btn" id="lookup-btn" onclick="lookupFund()">
+        <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:white;"><path d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/></svg>
+        Look up
+      </button>
+    </div>
+
+    <div id="add-modal-status" class="add-modal-status" style="margin-bottom:10px;"></div>
+
+    <!-- Step 2: Fund details (shown after lookup) -->
+    <div class="add-modal-section" id="add-details-section">
+      <div class="add-modal-section-title">Fund details <span id="add-conf-badge" class="confidence-badge"></span></div>
+      <div class="add-modal-grid">
+        <div class="add-modal-field" style="grid-column:1/-1;">
+          <label>Fund name <span style="color:var(--red-text);">*</span></label>
+          <input type="text" id="add-name" placeholder="e.g. Schwab US Dividend Equity" />
+        </div>
+        <div class="add-modal-field">
+          <label>Asset class bucket <span style="color:var(--red-text);">*</span></label>
+          <select id="add-category">
+            <option value="Equities">Equities</option>
+            <option value="Fixed Income">Fixed Income</option>
+            <option value="Blended">Blended</option>
+            <option value="Cash">Cash</option>
+            <option value="Alternatives">Alternatives</option>
+          </select>
+        </div>
+        <div class="add-modal-field">
+          <label>Expense ratio %</label>
+          <input type="number" id="add-expense" placeholder="e.g. 0.35" step="0.01" min="0" max="5" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Geographic exposure (shown after lookup) -->
+    <div class="add-modal-section" id="add-geo-section">
+      <div class="add-modal-section-title">Geographic exposure <span id="add-geo-conf-badge" class="confidence-badge"></span></div>
+      <div class="add-modal-grid">
+        <div class="add-modal-field">
+          <label>U.S. %</label>
+          <input type="number" id="add-geo-us" step="0.1" min="0" max="100" oninput="updateAddGeoSum()" />
+        </div>
+        <div class="add-modal-field">
+          <label>Non-U.S. %</label>
+          <input type="number" id="add-geo-intl" step="0.1" min="0" max="100" oninput="updateAddGeoSum()" />
+        </div>
+        <div class="add-modal-field">
+          <label>Other %</label>
+          <input type="number" id="add-geo-other" step="0.1" min="0" max="100" oninput="updateAddGeoSum()" />
+        </div>
+        <div class="add-modal-field" style="display:flex;align-items:flex-end;padding-bottom:2px;">
+          <span id="add-geo-sum" style="font-size:12px;font-family:'IBM Plex Mono',monospace;font-weight:700;"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4: Allocation (shown after lookup) -->
+    <div class="add-modal-section" id="add-alloc-section">
+      <div class="add-modal-section-title">Allocation for <span id="add-model-name-label">this model</span></div>
+      <div class="add-modal-field">
         <label>Initial allocation % <span style="color:var(--red-text);">*</span></label>
         <input type="number" id="add-alloc" placeholder="e.g. 5.0" step="0.1" min="0" max="100" />
       </div>
     </div>
-    <div id="add-modal-status" class="add-modal-status"></div>
+
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
-      <button class="btn-save" id="add-modal-save" onclick="confirmAddFund()">Add fund</button>
+      <button class="btn-save" id="add-modal-save" onclick="confirmAddFund()" disabled>Add fund</button>
     </div>
   </div>
 </div>
@@ -818,7 +900,7 @@ const SRI={
 };
 
 let curTWM='IRA Moderate', curSRI='SRI Moderate';
-let pendingAdd={data:null,model:null,pfx:null,cat:null}; // state for add-fund modal
+let pendingAdd={data:null,model:null,pfx:null}; // state for add-fund modal
 let twmDonut,sriDonut,twmBar,sriBar,lastSnapshot=null;
 const CAT_COLORS={Cash:'#888780',Blended:'#5DCAA5','Fixed Income':'#378ADD',Equities:'#7F77DD',Alternatives:'#D85A30'};
 
@@ -1429,14 +1511,10 @@ function renderAllocTable(data,model,pfx){
         </td>
       </tr>`;
     });
-    // Category subtotal + Add fund button on same row
-    const dataSrc=pfx==='twm'?'TWM':'SRI';
     html+=`<tr class="subtotal">
       <td colspan="4" style="text-align:right;padding:10px 14px;font-size:13px;font-weight:600;color:var(--text-2);">${cat} subtotal</td>
       <td style="text-align:right;padding:10px 14px;" class="mono">${pct(catTotal)}</td>
-      <td style="padding:8px 14px;text-align:right;">
-        <button class="add-fund-btn" onclick="openAddModal(${dataSrc},'${model}','${pfx}','${cat}')">+ Add</button>
-      </td>
+      <td style="padding:8px 14px;"></td>
     </tr>`;
   });
   document.getElementById(pfx+'-alloc-table').innerHTML=html+'</tbody>';
@@ -1476,17 +1554,167 @@ function updateMetricsFromAlloc(data,model,pfx){
 
 /* ── Fund add / delete ── */
 
-function openAddModal(data, model, pfx, cat){
-  pendingAdd={data,model,pfx,cat};
-  document.getElementById('add-modal-title').textContent='Add fund to '+cat;
-  document.getElementById('add-modal-desc').textContent='Enter the fund details. Price, beta & geographic data will be fetched automatically.';
+// ── Classify Morningstar category → dashboard bucket ──
+function classifyCategory(cat){
+  if(!cat) return null;
+  const c=cat.toLowerCase();
+  if(/money.?market|cash|stable.?value|ultra.?short/.test(c)) return 'Cash';
+  if(/bond|income|fixed|muni|treasury|credit|gilt|floating|inflation|tips|mortgage|securitized|government|corporate debt/.test(c)) return 'Fixed Income';
+  if(/managed future|market.?neutral|multi.?alt|commodit|real.?estate|reit|infrastructure|option|hedge|macro/.test(c)) return 'Alternatives';
+  if(/allocation|balanced|world|target.?date|lifecycle|multi.?asset/.test(c)) return 'Blended';
+  if(/equity|growth|value|blend|large|mid|small|intl|foreign|emerging|stock|global/.test(c)) return 'Equities';
+  return null;
+}
+
+// ── Parse geographic exposure from Yahoo quoteSummary ──
+function parseGeoFromYahoo(result){
+  const h=result?.topHoldings;
+  if(!h) return null;
+  // Yahoo returns domesticEquity and foreignEquity as fractions of total equity portion
+  const dom=h.domesticEquity?.value??null;
+  const fgn=h.foreignEquity?.value??null;
+  if(dom===null||fgn===null) return null;
+  // These are fractions of equity; scale to portfolio level using equity+bond mix
+  // Simple approach: use them as-is, put remainder in other
+  const other=Math.max(0,1-dom-fgn);
+  return {us:parseFloat(dom.toFixed(4)), intl:parseFloat(fgn.toFixed(4)), other:parseFloat(other.toFixed(4)), source:'yahoo'};
+}
+
+function resetAddModal(){
+  ['add-details-section','add-geo-section','add-alloc-section'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.classList.remove('show');
+  });
+  document.getElementById('add-modal-save').disabled=true;
+  document.getElementById('add-modal-status').textContent='';
+  document.getElementById('add-modal-status').className='add-modal-status';
+}
+
+function updateAddGeoSum(){
+  const us=parseFloat(document.getElementById('add-geo-us')?.value)||0;
+  const intl=parseFloat(document.getElementById('add-geo-intl')?.value)||0;
+  const other=parseFloat(document.getElementById('add-geo-other')?.value)||0;
+  const sum=us+intl+other;
+  const el=document.getElementById('add-geo-sum');
+  if(el){
+    el.textContent='Sum: '+sum.toFixed(1)+'%';
+    el.style.color=Math.abs(sum-100)<0.5?'var(--green-text)':'var(--red-text)';
+  }
+}
+
+async function lookupFund(){
+  const ticker=document.getElementById('add-ticker').value.trim().toUpperCase();
+  if(!ticker){ return; }
+  const statusEl=document.getElementById('add-modal-status');
+  const lookupBtn=document.getElementById('lookup-btn');
+  statusEl.className='add-modal-status loading';
+  statusEl.textContent='Looking up '+ticker+'…';
+  lookupBtn.disabled=true;
+
+  const YAHOO=`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=quoteType,summaryProfile,defaultKeyStatistics,topHoldings,fundProfile`;
+  let result=null;
+  for(const makeProxy of [
+    u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+    u=>`https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+  ]){
+    try{
+      const r=await fetch(makeProxy(YAHOO));
+      if(!r.ok) continue;
+      const text=await r.text();
+      const d=JSON.parse(text);
+      if(d?.quoteSummary?.result?.[0]){result=d.quoteSummary.result[0];break;}
+    }catch(e){}
+  }
+
+  lookupBtn.disabled=false;
+
+  if(!result){
+    statusEl.className='add-modal-status err';
+    statusEl.textContent='Could not find ticker "'+ticker+'". Check the symbol and try again.';
+    return;
+  }
+
+  // ── Extract data from Yahoo response ──
+  const qt=result?.quoteType;
+  const fp=result?.fundProfile;
+  const ks=result?.defaultKeyStatistics;
+
+  // Name
+  const name=qt?.longName||qt?.shortName||ticker;
+
+  // Expense ratio (Yahoo returns as decimal e.g. 0.0003)
+  const expenseRaw=fp?.annualReportExpenseRatio?.raw??ks?.annualHoldingsTurnover?.raw??null;
+  const expensePct=expenseRaw!=null?parseFloat((expenseRaw*100).toFixed(3)):null;
+
+  // Category → bucket
+  const mstarCat=fp?.categoryName||'';
+  const detectedCat=classifyCategory(mstarCat);
+
+  // Beta
+  const beta=ks?.beta?.raw??null;
+  if(beta!=null) betaMap[ticker]=beta;
+
+  // Geographic exposure
+  const geoFromYahoo=parseGeoFromYahoo(result);
+  const geoKnown=GEO_MAP[ticker]||null;
+  let geo=geoFromYahoo||geoKnown;
+  let geoSource=geoFromYahoo?'yahoo':geoKnown?'known':'default';
+  if(!geo) geo={us:0.85,intl:0.10,other:0.05};
+
+  // ── Confidence badge ──
+  const fieldsFound=[name!==ticker, expensePct!=null, detectedCat!=null].filter(Boolean).length;
+  const confLabel=fieldsFound===3?'auto-filled':fieldsFound>=1?'partial':'manual';
+  const confClass=fieldsFound===3?'conf-auto':fieldsFound>=1?'conf-partial':'conf-manual';
+
+  // ── Populate form ──
+  document.getElementById('add-name').value=name;
+  if(expensePct!=null) document.getElementById('add-expense').value=expensePct;
+  if(detectedCat){
+    document.getElementById('add-category').value=detectedCat;
+  }
+  document.getElementById('add-geo-us').value=(geo.us*100).toFixed(1);
+  document.getElementById('add-geo-intl').value=(geo.intl*100).toFixed(1);
+  document.getElementById('add-geo-other').value=(geo.other*100).toFixed(1);
+  updateAddGeoSum();
+
+  // ── Show badges ──
+  const confBadge=document.getElementById('add-conf-badge');
+  confBadge.textContent=confLabel;
+  confBadge.className='confidence-badge '+confClass;
+
+  const geoBadge=document.getElementById('add-geo-conf-badge');
+  const geoLabels={yahoo:'from Yahoo',known:'from database',default:'estimate'};
+  const geoClasses={yahoo:'conf-auto',known:'conf-partial',default:'conf-manual'};
+  geoBadge.textContent=geoLabels[geoSource];
+  geoBadge.className='confidence-badge '+geoClasses[geoSource];
+
+  // ── Show sections ──
+  ['add-details-section','add-geo-section','add-alloc-section'].forEach(id=>{
+    document.getElementById(id).classList.add('show');
+  });
+
+  // ── Update model label ──
+  const{model}=pendingAdd;
+  document.getElementById('add-model-name-label').textContent=model||'this model';
+
+  // ── Status ──
+  const hints=[];
+  if(mstarCat) hints.push('Category: '+mstarCat);
+  if(beta!=null) hints.push('Beta: '+beta.toFixed(2));
+  statusEl.className='add-modal-status ok';
+  statusEl.textContent='✓ '+ticker+(hints.length?' — '+hints.join(' · '):'');
+
+  document.getElementById('add-modal-save').disabled=false;
+  document.getElementById('add-name').focus();
+}
+
+function openAddModal(data, model, pfx){
+  pendingAdd={data, model, pfx, cat:null};
   document.getElementById('add-ticker').value='';
   document.getElementById('add-name').value='';
   document.getElementById('add-expense').value='';
   document.getElementById('add-alloc').value='';
-  document.getElementById('add-modal-status').textContent='';
-  document.getElementById('add-modal-status').className='add-modal-status';
-  document.getElementById('add-modal-save').disabled=false;
+  resetAddModal();
   document.getElementById('add-modal').classList.add('open');
   setTimeout(()=>document.getElementById('add-ticker').focus(),60);
 }
@@ -1495,67 +1723,77 @@ function closeAddModal(){ document.getElementById('add-modal').classList.remove(
 async function confirmAddFund(){
   const ticker=document.getElementById('add-ticker').value.trim().toUpperCase();
   const name=document.getElementById('add-name').value.trim();
-  const expenseRaw=parseFloat(document.getElementById('add-expense').value);
+  const expenseRaw=parseFloat(document.getElementById('add-expense').value)||0;
   const allocRaw=parseFloat(document.getElementById('add-alloc').value);
+  const cat=document.getElementById('add-category').value;
   const statusEl=document.getElementById('add-modal-status');
 
-  if(!ticker||!name||isNaN(expenseRaw)||isNaN(allocRaw)){
+  if(!ticker||!name||!cat||isNaN(allocRaw)){
     statusEl.className='add-modal-status err';
-    statusEl.textContent='Please fill in all fields.';
+    statusEl.textContent='Please complete all required fields.';
     return;
   }
-  const{data,model,pfx,cat}=pendingAdd;
-  if(data.funds.find(f=>f.ticker===ticker)){
+
+  const{data,model,pfx}=pendingAdd;
+  if([...TWM.funds,...SRI.funds].find(f=>f.ticker===ticker&&f.category)){
+    // Allow adding to other family but warn if already in this one
+    if(data.funds.find(f=>f.ticker===ticker)){
+      statusEl.className='add-modal-status err';
+      statusEl.textContent=ticker+' already exists in this model family.';
+      return;
+    }
+  }
+
+  // Validate geo sums to ~100
+  const geoUs=parseFloat(document.getElementById('add-geo-us').value)||0;
+  const geoIntl=parseFloat(document.getElementById('add-geo-intl').value)||0;
+  const geoOther=parseFloat(document.getElementById('add-geo-other').value)||0;
+  if(Math.abs(geoUs+geoIntl+geoOther-100)>=1){
     statusEl.className='add-modal-status err';
-    statusEl.textContent=ticker+' already exists in this model.';
+    statusEl.textContent='Geographic exposure must sum to 100%.';
     return;
   }
 
   document.getElementById('add-modal-save').disabled=true;
   statusEl.className='add-modal-status loading';
-  statusEl.textContent='Fetching price & beta for '+ticker+'…';
+  statusEl.textContent='Fetching price…';
 
-  // Fetch price
-  try{ priceMap[ticker]=await fetchOneTicker(ticker); }
-  catch(e){ priceMap[ticker]=null; }
-
-  // Fetch beta via Yahoo profile
-  if(betaMap[ticker]===undefined){
-    try{
-      const YAHOO=`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=defaultKeyStatistics`;
-      const r=await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(YAHOO)}`);
-      if(r.ok){
-        const d=await r.json();
-        const b=d?.quoteSummary?.result?.[0]?.defaultKeyStatistics?.beta?.raw;
-        if(b!=null) betaMap[ticker]=b;
-      }
-    }catch(e){}
-    if(betaMap[ticker]===undefined) betaMap[ticker]=1.0; // sensible default
+  // Fetch price (use cache if available)
+  if(!priceMap[ticker]){
+    try{ priceMap[ticker]=await fetchOneTicker(ticker); }
+    catch(e){ priceMap[ticker]=null; }
   }
 
-  // Geographic default — mostly US unless ticker suggests otherwise
-  if(!GEO_MAP[ticker]) GEO_MAP[ticker]={us:0.85,intl:0.10,other:0.05};
+  // Store geo
+  GEO_MAP[ticker]={us:geoUs/100, intl:geoIntl/100, other:geoOther/100};
 
-  // Add to data structure
+  // Write geo to Supabase fund_geo table
+  try{
+    await fetch(SB_URL+'/rest/v1/fund_geo',{
+      method:'POST',
+      headers:{...getHeaders(),'Prefer':'resolution=merge-duplicates'},
+      body:JSON.stringify([{ticker, fund_name:name, us_pct:geoUs, intl_pct:geoIntl, other_pct:geoOther, updated_at:new Date().toISOString()}])
+    });
+    geoDbTickers.add(ticker);
+  }catch(e){ console.warn('Could not save geo:',e.message); }
+
+  // Add fund to data structure
   const newFund={ticker, name, expense:expenseRaw/100, category:cat};
   data.funds.push(newFund);
   data.models[model][ticker]=allocRaw/100;
-
-  // Add to all other models in same family at 0%
   Object.keys(data.models).forEach(m=>{
-    if(m!==model && data.models[m][ticker]===undefined) data.models[m][ticker]=0;
+    if(m!==model&&data.models[m][ticker]===undefined) data.models[m][ticker]=0;
   });
 
   statusEl.className='add-modal-status ok';
-  statusEl.textContent=(priceMap[ticker]?'✓ Price fetched':'Price unavailable')+' — fund added.';
+  statusEl.textContent=(priceMap[ticker]?'✓ Price loaded':'Price unavailable')+' — '+ticker+' added to '+cat+'.';
 
-  // Re-render everything
   renderAllocTable(data,model,pfx);
   updateMetricsFromAlloc(data,model,pfx);
   updateDonut(data,model,pfx);
   renderGeoBar(data,model,pfx);
 
-  setTimeout(closeAddModal, 700);
+  setTimeout(closeAddModal,800);
   document.getElementById('add-modal-save').disabled=false;
 }
 
