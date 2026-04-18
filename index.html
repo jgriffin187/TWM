@@ -846,8 +846,7 @@ async function fetchPrices() {
       background:rgba(255,255,255,0.80) !important;
       backdrop-filter:blur(24px) !important;-webkit-backdrop-filter:blur(24px) !important;
       border:1px solid rgba(203,213,225,0.65) !important;
-      box-shadow:0 4px 24px rgba(15,23,42,0.07),0 1px 4px rgba(15,23,42,0.04) !important;
-      overflow:hidden;}
+      box-shadow:0 4px 24px rgba(15,23,42,0.07),0 1px 4px rgba(15,23,42,0.04) !important;}
     [data-theme="dark"] .card-cyber{
       background:rgba(15,23,42,0.52) !important;
       border:1px solid rgba(255,255,255,0.08) !important;
@@ -872,7 +871,11 @@ async function fetchPrices() {
     .model-selector select{font-size:14px;padding:8px 32px 8px 12px;border:1px solid var(--border-mid);border-radius:10px;background:var(--surface);color:var(--text);cursor:pointer;font-family:'Inter',sans-serif;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B6A65' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;transition:background .2s,border-color .2s,color .2s;}
 
     /* ── Cyber-glass table ── */
-    .alloc-table{width:100%;border-collapse:collapse;font-size:14px;}
+    .alloc-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+    .alloc-table-wrap::-webkit-scrollbar{height:4px;}
+    .alloc-table-wrap::-webkit-scrollbar-track{background:transparent;}
+    .alloc-table-wrap::-webkit-scrollbar-thumb{background:rgba(148,163,184,0.25);border-radius:99px;}
+    .alloc-table{width:100%;border-collapse:collapse;font-size:14px;min-width:520px;}
     .alloc-table th{font-size:10px;font-weight:700;color:var(--text-2);text-transform:uppercase;
       letter-spacing:.08em;text-align:right;padding:9px 14px;font-family:'IBM Plex Mono',monospace;
       border-bottom:1px solid rgba(203,213,225,0.55);}
@@ -1044,6 +1047,10 @@ async function fetchPrices() {
 
     @media(max-width:700px){
       .metrics-top{grid-template-columns:1fr 1fr;}
+      .alloc-table th:last-child,.alloc-table td:last-child{display:none;}
+      .alloc-table{font-size:12px;}
+      .alloc-table th{padding:7px 10px;}
+      .alloc-table td{padding:9px 10px;}
       .metrics-cmp{grid-template-columns:1fr 1fr 1fr;}
       .cyber-tile{border-radius:14px;padding:.9rem 1rem;}
       .cyber-tile-value{font-size:22px;}
@@ -1185,7 +1192,7 @@ async function fetchPrices() {
         </div>
       </div>
       <div class="prices-bar" id="twm-prices-bar"><span class="price-ts" id="prices-ts">Prices not loaded</span></div>
-      <table class="alloc-table" id="twm-alloc-table"></table>
+      <div class="alloc-table-wrap"><table class="alloc-table" id="twm-alloc-table"></table></div>
       <div style="display:flex;justify-content:center;padding:4px 0 0;">
         <div class="sum-display sum-ok" id="twm-sum-display">Total: 100.00%  ✓ balanced</div>
       </div>
@@ -1223,7 +1230,7 @@ async function fetchPrices() {
         </div>
       </div>
       <div class="prices-bar" id="sri-prices-bar"><span class="price-ts" id="sri-prices-ts">Prices not loaded</span></div>
-      <table class="alloc-table" id="sri-alloc-table"></table>
+      <div class="alloc-table-wrap"><table class="alloc-table" id="sri-alloc-table"></table></div>
       <div style="display:flex;justify-content:center;padding:4px 0 0;">
         <div class="sum-display sum-ok" id="sri-sum-display">Total: 100.00%  ✓ balanced</div>
       </div>
