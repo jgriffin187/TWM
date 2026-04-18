@@ -854,16 +854,7 @@ function toggleTheme(){
 function isDark(){ return document.documentElement.getAttribute('data-theme')==='dark'; }
 
 
-function refreshChartTheme(){
-  _tip=null; // reset tooltip so it picks up new theme colors
-  // Re-render all theme-sensitive components
-  initTWMCharts();
-  initSRICharts();
-  renderMetrics(TWM,curTWM,'twm');
-  renderMetrics(SRI,curSRI,'sri');
-  renderAllocTable(TWM,curTWM,'twm');
-  renderAllocTable(SRI,curSRI,'sri');
-}
+
 
 /* ── Supabase ── */
 const SB_URL='https://xvcxguzonyebodsnodjw.supabase.co';
@@ -2594,7 +2585,8 @@ function refreshChartTheme(){
   _tip=null;
   initTWMCharts();
   initSRICharts();
-  // Re-render tables so category dots and bar colors update
+  renderMetrics(TWM,curTWM,'twm');
+  renderMetrics(SRI,curSRI,'sri');
   renderAllocTable(TWM,curTWM,'twm');
   renderAllocTable(SRI,curSRI,'sri');
 }
