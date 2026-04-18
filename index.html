@@ -1481,8 +1481,9 @@ function switchTab(tab){
   if(tab==='history') loadHistory();
   if(tab==='versions') loadVersionsList();
   if(tab==='geo') loadGeoData();
-  if(tab==='twm'&&!twmDonut) setTimeout(initTWMCharts,50);
-  if(tab==='sri'&&!sriDonut) setTimeout(initSRICharts,50);
+  // Always reinit charts when tab becomes visible — offsetWidth is 0 while hidden
+  if(tab==='twm') requestAnimationFrame(initTWMCharts);
+  if(tab==='sri') requestAnimationFrame(initSRICharts);
 }
 
 function getCatTotals(data,model){
@@ -2231,7 +2232,8 @@ function drawCyberDonut(containerId, data, model){
   const slices=Object.keys(ct).filter(k=>ct[k]>0).map(k=>({name:k,value:ct[k]}));
   if(!slices.length) return;
 
-  const W=el.offsetWidth||320, H=260;
+  const W=el.offsetWidth;
+  if(!W){ requestAnimationFrame(()=>drawCyberDonut(containerId,data,model)); return; }
   const cx=W/2, cy=H/2-10, OR=Math.min(W,H)*0.42, IR=OR*0.72;
   const PAD=0.12, CR=8; // padding angle in radians, corner radius px
 
@@ -2395,7 +2397,8 @@ function drawCyberBar(containerId, data, modelNames){
   el.innerHTML='';
 
   const BAR_SERIES=getBAR_SERIES(); // theme-aware: BAR_DARK or BAR_LIGHT
-  const W=el.offsetWidth||420, H=260;
+  const W=el.offsetWidth;
+  if(!W){ requestAnimationFrame(()=>drawCyberBar(containerId,data,modelNames)); return; }
   const margin={top:16,right:16,bottom:48,left:36};
   const iW=W-margin.left-margin.right, iH=H-margin.top-margin.bottom;
 
@@ -3275,6 +3278,7 @@ document.getElementById('twm-model-name').textContent=curTWM;
 renderMetrics(SRI,curSRI,'sri');renderAllocTable(SRI,curSRI,'sri');
 document.getElementById('sri-model-name').textContent=curSRI;
 setTimeout(initTWMCharts,100);
+setTimeout(initSRICharts,150); // pre-render SRI so it's ready when tab switches
 
 // Check for existing session — if found, skip login screen
 (function(){
