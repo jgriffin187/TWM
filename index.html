@@ -151,6 +151,24 @@
 
     .bar-bg{background:var(--surface2);border-radius:3px;height:5px;overflow:hidden;min-width:60px;transition:background .2s;}
     .geo-bar-wrap{margin-top:14px;padding-top:12px;border-top:1px solid var(--border);}
+    .del-btn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:5px;border:none;background:transparent;color:var(--text-3);cursor:pointer;font-size:14px;line-height:1;transition:background .12s,color .12s;flex-shrink:0;}
+    .del-btn:hover{background:var(--red-bg);color:var(--red-text);}
+    .add-fund-row td{padding:6px 14px;border-bottom:none;}
+    .add-fund-btn{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--blue);background:var(--blue-bg);border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-family:'Inter',sans-serif;transition:opacity .15s;}
+    .add-fund-btn:hover{opacity:.8;}
+    .add-modal-wrap{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:110;align-items:center;justify-content:center;backdrop-filter:blur(3px);}
+    .add-modal-wrap.open{display:flex;}
+    .add-modal{background:var(--surface);border-radius:14px;border:1px solid var(--border-mid);padding:1.75rem;width:400px;max-width:94vw;box-shadow:var(--shadow-lg);animation:modal-in .18s ease-out;}
+    .add-modal h2{font-size:17px;font-weight:600;color:var(--text);margin-bottom:4px;}
+    .add-modal p{font-size:13px;color:var(--text-2);margin-bottom:1.25rem;line-height:1.6;}
+    .add-modal label{font-size:13px;font-weight:600;color:var(--text);display:block;margin-bottom:5px;}
+    .add-modal input,.add-modal select{width:100%;font-size:14px;padding:9px 12px;border:1px solid var(--border-mid);border-radius:10px;background:var(--bg);color:var(--text);margin-bottom:12px;font-family:'Inter',sans-serif;transition:border-color .15s;}
+    .add-modal input:focus,.add-modal select:focus{outline:none;border-color:var(--blue);}
+    .add-modal-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .add-modal-status{font-size:12px;min-height:18px;margin-bottom:8px;font-family:'IBM Plex Mono',monospace;}
+    .add-modal-status.ok{color:var(--green-text);}
+    .add-modal-status.err{color:var(--red-text);}
+    .add-modal-status.loading{color:var(--text-3);}
     .geo-bar-label{font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
     .geo-bar-track{display:flex;height:10px;border-radius:5px;overflow:hidden;width:100%;}
     .geo-bar-us{background:#1558A8;height:100%;}
@@ -351,6 +369,32 @@
 </main>
 
 <!-- Modal -->
+<div class="add-modal-wrap" id="add-modal">
+  <div class="add-modal">
+    <h2 id="add-modal-title">Add fund</h2>
+    <p id="add-modal-desc">Enter the fund details below. Price, beta, and geographic data will be fetched automatically.</p>
+    <label>Ticker symbol <span style="color:var(--red-text);">*</span></label>
+    <input type="text" id="add-ticker" placeholder="e.g. SCHD" oninput="this.value=this.value.toUpperCase()" />
+    <label>Fund name <span style="color:var(--red-text);">*</span></label>
+    <input type="text" id="add-name" placeholder="e.g. Schwab US Dividend Equity" />
+    <div class="add-modal-row">
+      <div>
+        <label>Expense ratio % <span style="color:var(--red-text);">*</span></label>
+        <input type="number" id="add-expense" placeholder="e.g. 0.06" step="0.01" min="0" max="5" />
+      </div>
+      <div>
+        <label>Initial allocation % <span style="color:var(--red-text);">*</span></label>
+        <input type="number" id="add-alloc" placeholder="e.g. 5.0" step="0.1" min="0" max="100" />
+      </div>
+    </div>
+    <div id="add-modal-status" class="add-modal-status"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
+      <button class="btn-save" id="add-modal-save" onclick="confirmAddFund()">Add fund</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-wrap" id="modal">
   <div class="modal">
     <div class="modal-icon">
@@ -478,6 +522,7 @@ const SRI={
 };
 
 let curTWM='IRA Moderate', curSRI='SRI Moderate';
+let pendingAdd={data:null,model:null,pfx:null,cat:null}; // state for add-fund modal
 let twmDonut,sriDonut,twmBar,sriBar,lastSnapshot=null;
 const CAT_COLORS={Cash:'#888780',Blended:'#5DCAA5','Fixed Income':'#378ADD',Equities:'#7F77DD',Alternatives:'#D85A30'};
 
@@ -817,7 +862,6 @@ function renderMetrics(data,model,pfx){
 function renderAllocTable(data,model,pfx){
   const alloc=data.models[model],cats={};
   data.funds.forEach(f=>{if(!cats[f.category])cats[f.category]=[];cats[f.category].push(f);});
-  // Inline styles on every th/td so nothing can be overridden by cascade
   const thL='style="text-align:left;padding:10px 14px;"';
   const thR='style="text-align:right;padding:10px 14px;"';
   let html=`<thead><tr>
@@ -826,12 +870,17 @@ function renderAllocTable(data,model,pfx){
     <th ${thR}>Expense</th>
     <th ${thR}>Last price</th>
     <th ${thR}>Allocation</th>
-    <th style="width:100px;padding:10px 14px;"></th>
+    <th style="width:120px;padding:10px 14px;"></th>
   </tr></thead><tbody>`;
-  Object.keys(cats).forEach(cat=>{
+
+  const catKeys=Object.keys(cats);
+  catKeys.forEach(cat=>{
     const funds=cats[cat],catTotal=funds.reduce((a,f)=>a+(alloc[f.ticker]||0),0);
     funds.forEach(f=>{
       const v=alloc[f.ticker]||0,bw=Math.min(100,(v/0.30)*100).toFixed(1);
+      // Escape ticker for inline onclick safety
+      const safeTicker=f.ticker.replace(/'/g,"\\'");
+      const safePfx=pfx.replace(/'/g,"\\'");
       html+=`<tr>
         <td style="text-align:left;padding:10px 14px;white-space:nowrap;">
           <span class="ticker-cell">${f.ticker}</span>
@@ -849,15 +898,22 @@ function renderAllocTable(data,model,pfx){
           <span class="editable" contenteditable="true" data-prefix="${pfx}" data-model="${model}" data-ticker="${f.ticker}"
             onblur="onEditBlur(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">${num(v)}%</span>
         </td>
-        <td style="padding:10px 14px;width:100px;">
-          <div class="bar-bg"><div class="bar-fill" style="width:${bw}%;background:${CAT_COLORS[cat]||'#888'};"></div></div>
+        <td style="padding:10px 14px;width:120px;text-align:right;">
+          <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;">
+            <div class="bar-bg" style="flex:1;"><div class="bar-fill" style="width:${bw}%;background:${CAT_COLORS[cat]||'#888'};"></div></div>
+            <button class="del-btn" title="Remove ${f.ticker}" onclick="deleteFund('${safePfx}','${safeTicker}')">✕</button>
+          </div>
         </td>
       </tr>`;
     });
+    // Category subtotal + Add fund button on same row
+    const dataSrc=pfx==='twm'?'TWM':'SRI';
     html+=`<tr class="subtotal">
       <td colspan="4" style="text-align:right;padding:10px 14px;font-size:13px;font-weight:600;color:var(--text-2);">${cat} subtotal</td>
       <td style="text-align:right;padding:10px 14px;" class="mono">${pct(catTotal)}</td>
-      <td style="padding:10px 14px;"></td>
+      <td style="padding:8px 14px;text-align:right;">
+        <button class="add-fund-btn" onclick="openAddModal(${dataSrc},'${model}','${pfx}','${cat}')">+ Add</button>
+      </td>
     </tr>`;
   });
   document.getElementById(pfx+'-alloc-table').innerHTML=html+'</tbody>';
@@ -893,6 +949,108 @@ function updateMetricsFromAlloc(data,model,pfx){
   });
   data.summary[model]=s;
   renderMetrics(data,model,pfx);
+}
+
+/* ── Fund add / delete ── */
+
+function openAddModal(data, model, pfx, cat){
+  pendingAdd={data,model,pfx,cat};
+  document.getElementById('add-modal-title').textContent='Add fund to '+cat;
+  document.getElementById('add-modal-desc').textContent='Enter the fund details. Price, beta & geographic data will be fetched automatically.';
+  document.getElementById('add-ticker').value='';
+  document.getElementById('add-name').value='';
+  document.getElementById('add-expense').value='';
+  document.getElementById('add-alloc').value='';
+  document.getElementById('add-modal-status').textContent='';
+  document.getElementById('add-modal-status').className='add-modal-status';
+  document.getElementById('add-modal-save').disabled=false;
+  document.getElementById('add-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('add-ticker').focus(),60);
+}
+function closeAddModal(){ document.getElementById('add-modal').classList.remove('open'); }
+
+async function confirmAddFund(){
+  const ticker=document.getElementById('add-ticker').value.trim().toUpperCase();
+  const name=document.getElementById('add-name').value.trim();
+  const expenseRaw=parseFloat(document.getElementById('add-expense').value);
+  const allocRaw=parseFloat(document.getElementById('add-alloc').value);
+  const statusEl=document.getElementById('add-modal-status');
+
+  if(!ticker||!name||isNaN(expenseRaw)||isNaN(allocRaw)){
+    statusEl.className='add-modal-status err';
+    statusEl.textContent='Please fill in all fields.';
+    return;
+  }
+  const{data,model,pfx,cat}=pendingAdd;
+  if(data.funds.find(f=>f.ticker===ticker)){
+    statusEl.className='add-modal-status err';
+    statusEl.textContent=ticker+' already exists in this model.';
+    return;
+  }
+
+  document.getElementById('add-modal-save').disabled=true;
+  statusEl.className='add-modal-status loading';
+  statusEl.textContent='Fetching price & beta for '+ticker+'…';
+
+  // Fetch price
+  try{ priceMap[ticker]=await fetchOneTicker(ticker); }
+  catch(e){ priceMap[ticker]=null; }
+
+  // Fetch beta via Yahoo profile
+  if(betaMap[ticker]===undefined){
+    try{
+      const YAHOO=`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=defaultKeyStatistics`;
+      const r=await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(YAHOO)}`);
+      if(r.ok){
+        const d=await r.json();
+        const b=d?.quoteSummary?.result?.[0]?.defaultKeyStatistics?.beta?.raw;
+        if(b!=null) betaMap[ticker]=b;
+      }
+    }catch(e){}
+    if(betaMap[ticker]===undefined) betaMap[ticker]=1.0; // sensible default
+  }
+
+  // Geographic default — mostly US unless ticker suggests otherwise
+  if(!GEO_MAP[ticker]) GEO_MAP[ticker]={us:0.85,intl:0.10,other:0.05};
+
+  // Add to data structure
+  const newFund={ticker, name, expense:expenseRaw/100, category:cat};
+  data.funds.push(newFund);
+  data.models[model][ticker]=allocRaw/100;
+
+  // Add to all other models in same family at 0%
+  Object.keys(data.models).forEach(m=>{
+    if(m!==model && data.models[m][ticker]===undefined) data.models[m][ticker]=0;
+  });
+
+  statusEl.className='add-modal-status ok';
+  statusEl.textContent=(priceMap[ticker]?'✓ Price fetched':'Price unavailable')+' — fund added.';
+
+  // Re-render everything
+  renderAllocTable(data,model,pfx);
+  updateMetricsFromAlloc(data,model,pfx);
+  updateDonut(data,model,pfx);
+  renderGeoBar(data,model,pfx);
+
+  setTimeout(closeAddModal, 700);
+  document.getElementById('add-modal-save').disabled=false;
+}
+
+function deleteFund(pfx, ticker){
+  const data=pfx==='twm'?TWM:SRI;
+  const model=pfx==='twm'?curTWM:curSRI;
+
+  // Remove from funds list
+  data.funds=data.funds.filter(f=>f.ticker!==ticker);
+
+  // Remove from all models in family
+  Object.keys(data.models).forEach(m=>{ delete data.models[m][ticker]; });
+
+  // Re-render
+  renderAllocTable(data,model,pfx);
+  updateMetricsFromAlloc(data,model,pfx);
+  updateDonut(data,model,pfx);
+  renderGeoBar(data,model,pfx);
 }
 
 /* Charts */
