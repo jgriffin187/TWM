@@ -198,8 +198,37 @@
 
     /* metrics-top: cyber tile row */
     .metrics-top{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:10px;}
-    /* metrics-cmp: comparison cards (beta, expense, ytd) */
+    /* metrics-cmp: cyber-glass comparison tiles */
     .metrics-cmp{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:1.5rem;}
+    .cmp-tile{border-radius:18px;overflow:hidden;position:relative;cursor:default;
+      backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+      transition:transform .22s cubic-bezier(.34,1.56,.64,1),box-shadow .22s ease,border-color .22s ease;
+      display:flex;flex-direction:column;}
+    .cmp-tile:hover{transform:scale(1.025) translateY(-2px);}
+    .cmp-tile-body{padding:1rem 1.1rem .7rem;flex:1;position:relative;}
+    .cmp-tile-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+    .cmp-tile-label{font-size:10px;font-weight:700;letter-spacing:0.10em;text-transform:uppercase;
+      font-family:'IBM Plex Mono',monospace;color:var(--text-2);}
+    .cmp-tile-info{width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;
+      justify-content:center;font-size:10px;font-weight:700;font-style:normal;cursor:default;
+      font-family:'Inter',sans-serif;flex-shrink:0;position:relative;
+      border:1.5px solid rgba(148,163,184,0.30);color:rgba(148,163,184,0.55);}
+    .cmp-tile-info .tooltip-box{position:absolute;bottom:calc(100% + 8px);right:0;width:200px;
+      font-size:12px;line-height:1.6;padding:9px 12px;border-radius:10px;pointer-events:none;
+      opacity:0;transition:opacity .15s;z-index:99;white-space:normal;text-align:left;
+      font-family:'Inter',sans-serif;font-weight:400;}
+    [data-theme="dark"] .cmp-tile-info .tooltip-box{background:rgba(15,23,42,0.95);color:rgba(148,163,184,.9);border:1px solid rgba(255,255,255,.10);box-shadow:0 8px 32px rgba(0,0,0,.5);}
+    [data-theme="light"] .cmp-tile-info .tooltip-box{background:rgba(255,255,255,0.97);color:rgba(51,65,85,.85);border:1px solid rgba(203,213,225,.80);box-shadow:0 4px 20px rgba(15,23,42,.12);}
+    .cmp-tile-info:hover .tooltip-box{opacity:1;}
+    .cmp-tile-num-wrap{border-radius:10px;padding:5px 9px;display:inline-block;margin-bottom:6px;}
+    [data-theme="dark"] .cmp-tile-num-wrap{background:rgba(0,0,0,0.18);}
+    [data-theme="light"] .cmp-tile-num-wrap{background:rgba(15,23,42,0.03);}
+    .cmp-tile-value{font-size:28px;font-weight:700;letter-spacing:-0.03em;font-family:'IBM Plex Mono',monospace;line-height:1;display:block;}
+    .cmp-tile-cmp{font-size:12px;font-family:'IBM Plex Mono',monospace;font-weight:600;letter-spacing:0.02em;}
+    .cmp-tile-bar{height:3px;position:relative;flex-shrink:0;}
+    .cmp-tile-bar-track{position:absolute;inset:0;}
+    .cmp-tile-bar-fill{position:absolute;left:0;top:0;bottom:0;border-radius:0 2px 2px 0;
+      transition:width .5s cubic-bezier(.4,0,.2,1);}
     .metric{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;transition:background .2s,border-color .2s;}
     .metric-label{font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
     .metric.vs-sp{border-left:3px solid var(--blue);padding-left:13px;position:relative;}
@@ -1552,6 +1581,86 @@ function renderCyberTile(cfg, valueRaw, maxPct){
   </div>`;
 }
 
+/* ── Cyber-glass comparison tile renderer ── */
+function cmpSentiment(good){
+  const dk=isDark();
+  if(dk) return {
+    accent:      good?'#4ade80':'#f87171',
+    accentFaint: good?'rgba(74,222,128,0.12)':'rgba(248,113,113,0.12)',
+    accentMid:   good?'rgba(74,222,128,0.25)':'rgba(248,113,113,0.25)',
+    glow:        good?'rgba(74,222,128,0.22)':'rgba(248,113,113,0.22)',
+    glowHover:   good?'rgba(74,222,128,0.38)':'rgba(248,113,113,0.38)',
+    textVal:     '#f1f5f9',
+    textCmp:     good?'#86efac':'#fca5a5',
+    borderBase:  'rgba(255,255,255,0.07)',
+    shadowBase:  '0 2px 10px rgba(0,0,0,0.30)',
+    insetShadow: good?'inset 0 4px 14px rgba(74,222,128,0.25)':'inset 0 4px 14px rgba(248,113,113,0.25)',
+    textGlow:    good?'0 0 10px rgba(74,222,128,0.40)':'0 0 10px rgba(248,113,113,0.40)',
+  };
+  return {
+    accent:      good?'#15803d':'#991b1b',
+    accentFaint: good?'rgba(21,128,61,0.07)':'rgba(153,27,27,0.07)',
+    accentMid:   good?'rgba(21,128,61,0.15)':'rgba(153,27,27,0.15)',
+    glow:        good?'rgba(21,128,61,0.12)':'rgba(153,27,27,0.10)',
+    glowHover:   good?'rgba(21,128,61,0.22)':'rgba(153,27,27,0.18)',
+    textVal:     '#0f172a',
+    textCmp:     good?'#15803d':'#991b1b',
+    borderBase:  'rgba(203,213,225,0.65)',
+    shadowBase:  '0 2px 8px rgba(15,23,42,0.06),0 1px 3px rgba(15,23,42,0.04)',
+    insetShadow: good?'inset 0 2px 8px rgba(21,128,61,0.13),inset 0 1px 3px rgba(21,128,61,0.07)':'inset 0 2px 8px rgba(153,27,27,0.12),inset 0 1px 3px rgba(153,27,27,0.07)',
+    textGlow:    'none',
+  };
+}
+
+function renderCmpTile(label,valueStr,cmpStr,sentiment,barPct,tooltipText){
+  const good=sentiment==='good';
+  const neutral=sentiment==='neutral';
+  const tok=cmpSentiment(neutral?true:good); // neutral uses loading state
+  const dk=isDark();
+  const cardBg=dk?'rgba(15,23,42,0.50)':'rgba(255,255,255,0.80)';
+  const hoverBorder=good?tok.accent:'rgba(248,113,113,0.30)';
+  const hoverGlow=dk?`0 0 28px ${tok.glowHover},0 2px 12px rgba(0,0,0,.4)`:`0 8px 28px ${tok.glowHover},0 2px 6px ${tok.glow}`;
+  const baseShadow=dk?tok.shadowBase:tok.shadowBase;
+
+  // Loading state gets muted colors
+  const valColor=neutral?'var(--text-2)':tok.textVal;
+  const cmpColor=neutral?'var(--text-3)':tok.textCmp;
+  const barColor=neutral?'rgba(148,163,184,0.30)':tok.accent;
+  const barGlow=neutral?'none':(dk?`0 0 8px ${tok.accent}`:`0 0 4px ${tok.glow}`);
+  const inset=neutral?'none':tok.insetShadow;
+  const wash=neutral?'transparent':tok.accentFaint;
+
+  return `<div class="cmp-tile"
+    style="background:${cardBg};border:1px solid ${tok.borderBase};box-shadow:${baseShadow};"
+    onmouseenter="
+      this.style.borderColor='${neutral?tok.borderBase:hoverBorder}';
+      this.style.boxShadow='${neutral?baseShadow:hoverGlow}';
+      this.querySelector('.cmp-tile-wash').style.opacity='1';
+    "
+    onmouseleave="
+      this.style.borderColor='${tok.borderBase}';
+      this.style.boxShadow='${baseShadow}';
+      this.querySelector('.cmp-tile-wash').style.opacity='0.55';
+    ">
+    <div class="cmp-tile-wash" style="position:absolute;inset:0;background:${wash};border-radius:inherit;pointer-events:none;opacity:0.55;transition:opacity .22s;"></div>
+    <div class="cmp-tile-body">
+      <div class="cmp-tile-header">
+        <span class="cmp-tile-label">${label}</span>
+        <i class="cmp-tile-info">i
+          <span class="tooltip-box">${tooltipText}</span>
+        </i>
+      </div>
+      <div class="cmp-tile-num-wrap" style="box-shadow:${inset};">
+        <span class="cmp-tile-value" style="color:${valColor};">${valueStr}</span>
+      </div>
+      <div class="cmp-tile-cmp" style="color:${cmpColor};text-shadow:${tok.textGlow};">${cmpStr}</div>
+    </div>
+    <div class="cmp-tile-bar" style="background:${dk?'rgba(255,255,255,0.06)':'rgba(15,23,42,0.07)'};">
+      <div class="cmp-tile-bar-fill" style="width:${barPct}%;background:${barColor};box-shadow:${barGlow};"></div>
+    </div>
+  </div>`;
+}
+
 function renderMetrics(data,model,pfx){
   const s=data.summary[model];
 
@@ -1585,46 +1694,32 @@ function renderMetrics(data,model,pfx){
     renderCyberTile(TILE_CFG.cash,        s.cash,        0.30) +
     renderCyberTile(TILE_CFG.alternatives,s.alternatives,0.30);
 
-  document.getElementById(pfx+'-metrics-cmp').innerHTML=`
-    <div class="metric vs-sp">
-      <div class="metric-header">
-        <div class="metric-label">Portfolio beta</div>
-        <span class="tooltip-wrap">
-          <i class="info-icon">i</i>
-          <span class="tooltip-box">Beta measures how much this portfolio moves relative to the S&P 500. Beta of 1.0 = moves with the market. Below 1.0 = less volatile (lower risk, lower potential return). Above 1.0 = more volatile. Calculated as a weighted average of each fund's beta.</span>
-        </span>
-      </div>
-      <div class="metric-value">${betaStr}</div>
-      <div class="metric-vs">
-        <span class="${betaCls}">${betaDiffStr}</span>
-      </div>
-    </div>
-    <div class="metric vs-sp">
-      <div class="metric-header">
-        <div class="metric-label">Wtd. expense</div>
-        <span class="tooltip-wrap">
-          <i class="info-icon">i</i>
-          <span class="tooltip-box">Weighted expense ratio is the blended annual cost of the portfolio — each fund's expense ratio multiplied by its allocation weight, then summed. Compared to SPY (S&P 500 ETF) at 0.09%. Lower is better; every 0.10% in fees costs $100/yr per $100k invested.</span>
-        </span>
-      </div>
-      <div class="metric-value">${expStr}</div>
-      <div class="metric-vs">
-        <span class="${expCls}">${expDiffStr}</span>
-      </div>
-    </div>
-    <div class="metric vs-sp">
-      <div class="metric-header">
-        <div class="metric-label">YTD vs DOW</div>
-        <span class="tooltip-wrap">
-          <i class="info-icon">i</i>
-          <span class="tooltip-box">Year-to-date return of this portfolio vs. the Dow Jones Industrial Average. Portfolio YTD is a weighted average of each fund's YTD return. Green = outperforming the DOW, red = underperforming. Click Refresh prices to load YTD data.</span>
-        </span>
-      </div>
-      <div class="metric-value">${ytdStr}</div>
-      <div class="metric-vs">
-        <span class="${ytdCls}">${ytdDiffStr}</span>
-      </div>
-  `;
+  // Sentiment: beta — good if below market (beta < 1)
+  const betaSentiment=betaDiff===null?'neutral':betaDiff<0?'good':'bad';
+  // beta bar: 0=no beta, 200=beta of 2.0 mapped to 100%
+  const betaBar=beta>0?Math.min(100,(beta/2)*100).toFixed(0):'0';
+
+  // Sentiment: expense — good if below SPY ER
+  const expSentiment=expDiff===null?'neutral':expDiff<0?'good':'bad';
+  const expBar=wExp>0?Math.min(100,(wExp/0.01)*100).toFixed(0):'0';
+
+  // Sentiment: ytd — good if beating DOW
+  const ytdSentiment=ytdVsDow===null?'neutral':ytdVsDow>=0?'good':'bad';
+  const ytdBar=portYtd!=null?Math.min(100,Math.max(0,50+portYtd*5)).toFixed(0):'50';
+
+  document.getElementById(pfx+'-metrics-cmp').innerHTML=
+    renderCmpTile(
+      'Portfolio beta', betaStr, betaDiffStr, betaSentiment, betaBar,
+      'Beta measures how much this portfolio moves relative to the S&P 500. Beta of 1.0 = moves with the market. Below 1.0 = less volatile. Calculated as a weighted average of each fund.'
+    )+
+    renderCmpTile(
+      'Wtd. expense', expStr, expDiffStr, expSentiment, expBar,
+      'Weighted expense ratio is the blended annual cost of the portfolio. Compared to SPY at 0.09%. Lower is better — every 0.10% costs $100/yr per $100k invested.'
+    )+
+    renderCmpTile(
+      'YTD vs DOW', ytdStr, ytdDiffStr, ytdSentiment, ytdBar,
+      'Year-to-date return of this portfolio vs. the Dow Jones Industrial Average. Green = outperforming the DOW, red = underperforming. Load prices to populate.'
+    );
 }
 
 function catDot(cat){
