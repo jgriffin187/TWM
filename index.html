@@ -231,6 +231,19 @@
 
     .bar-bg{background:var(--surface2);border-radius:3px;height:5px;overflow:hidden;min-width:60px;transition:background .2s;}
     .geo-bar-wrap{margin-top:14px;padding-top:12px;border-top:1px solid var(--border);}
+    .geo-edit-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:14px;}
+    .geo-edit-table th{font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;text-align:left;padding:7px 12px;border-bottom:2px solid var(--border-mid);}
+    .geo-edit-table th.num{text-align:right;}
+    .geo-edit-table td{padding:7px 12px;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--text);}
+    .geo-edit-table tr:last-child td{border-bottom:none;}
+    .geo-edit-table tr:hover td{background:var(--surface2);}
+    .geo-num-input{width:72px;font-size:13px;padding:4px 8px;border:1.5px solid var(--border-mid);border-radius:7px;background:var(--bg);color:var(--text);text-align:right;font-family:'IBM Plex Mono',monospace;transition:border-color .15s;}
+    .geo-num-input:focus{outline:none;border-color:var(--blue);}
+    .geo-sum-ok{color:var(--green-text);font-weight:700;font-family:'IBM Plex Mono',monospace;font-size:12px;}
+    .geo-sum-warn{color:var(--red-text);font-weight:700;font-family:'IBM Plex Mono',monospace;font-size:12px;}
+    .geo-source-badge{font-size:10px;font-weight:600;padding:2px 6px;border-radius:5px;font-family:'IBM Plex Mono',monospace;}
+    .geo-source-db{background:var(--green-bg);color:var(--green-text);}
+    .geo-source-est{background:var(--surface2);color:var(--text-3);}
     .del-btn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:5px;border:none;background:transparent;color:var(--text-3);cursor:pointer;font-size:14px;line-height:1;transition:background .12s,color .12s;flex-shrink:0;}
     .del-btn:hover{background:var(--red-bg);color:var(--red-text);}
     .add-fund-row td{padding:6px 14px;border-bottom:none;}
@@ -404,6 +417,7 @@
     <button class="tab" onclick="switchTab('sri')">SRI Model</button>
     <button class="tab" onclick="switchTab('history')">Change History</button>
     <button class="tab" onclick="switchTab('versions')">Versions</button>
+    <button class="tab" onclick="switchTab('geo')">Geographic Data</button>
   </div>
 
   <!-- TWM -->
@@ -510,6 +524,26 @@
         <button class="refresh-btn" onclick="loadVersionsList()">↻ Refresh</button>
       </div>
       <div id="versions-list-container"><div class="empty-state">Loading versions…</div></div>
+    </div>
+  </div>
+
+  <!-- Geographic Data tab -->
+  <div id="tab-geo" style="display:none;">
+    <div class="card">
+      <div class="hist-header">
+        <div>
+          <div class="card-title" style="margin-bottom:4px;">Geographic exposure — fund data</div>
+          <div style="font-size:12px;color:var(--text-2);font-weight:400;">
+            Edit the US / Non-US / Other breakdown for each fund. Values are saved to the database and used in all geographic exposure calculations. Updates are typically needed monthly or quarterly when fund managers publish new fact sheets.
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
+          <span id="geo-last-updated" style="font-size:11px;color:var(--text-3);font-family:'IBM Plex Mono',monospace;"></span>
+          <button class="refresh-btn" onclick="loadGeoData()">↻ Refresh</button>
+          <button class="btn-save" id="geo-save-btn" onclick="saveGeoData()" style="padding:6px 14px;font-size:13px;">Save changes</button>
+        </div>
+      </div>
+      <div id="geo-table-container"><div class="empty-state">Loading…</div></div>
     </div>
   </div>
 </main>
@@ -692,7 +726,7 @@ function onLoginSuccess(){
   document.getElementById('user-menu-wrap').classList.add('visible');
   document.getElementById('pdf-btn').style.display='';
   // Boot the dashboard
-  checkConnection().then(()=>{ fetchPrices(); fetchBetas(); fetchDowYtd(); });
+  checkConnection().then(()=>{ fetchPrices(); fetchBetas(); fetchDowYtd(); loadGeoData(); });
 }
 
 function doLogout(){
@@ -790,7 +824,7 @@ const CAT_COLORS={Cash:'#888780',Blended:'#5DCAA5','Fixed Income':'#378ADD',Equi
 
 // Geographic breakdown per fund — US vs Non-US vs Other
 // Sources: Fund Data sheet (spreadsheet) + Morningstar/prospectus for tickers not in sheet
-const GEO_MAP={
+let GEO_MAP={
   'FGTXX': {us:1.000, intl:0.000, other:0.000}, // money market
   'VGSTX': {us:0.776, intl:0.223, other:0.001}, // Vanguard STAR — from Fund Data
   'FDUIX': {us:0.970, intl:0.030, other:0.000}, // Fidelity Intermediate Bond
@@ -1123,10 +1157,11 @@ function priceCell(ticker){
 }
 
 function switchTab(tab){
-  ['twm','sri','history','versions'].forEach(t=>document.getElementById('tab-'+t).style.display=t===tab?'':'none');
-  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['twm','sri','history','versions'][i]===tab));
+  ['twm','sri','history','versions','geo'].forEach(t=>document.getElementById('tab-'+t).style.display=t===tab?'':'none');
+  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['twm','sri','history','versions','geo'][i]===tab));
   if(tab==='history') loadHistory();
   if(tab==='versions') loadVersionsList();
+  if(tab==='geo') loadGeoData();
   if(tab==='twm'&&!twmDonut) setTimeout(initTWMCharts,50);
   if(tab==='sri'&&!sriDonut) setTimeout(initSRICharts,50);
 }
@@ -1925,6 +1960,191 @@ function exitReadOnly(){
   setTimeout(()=>{initTWMCharts();initSRICharts();},80);
   switchTab('twm');
   toast('Returned to live model');
+}
+
+/* ── Geographic data editor ── */
+
+// Tracks which tickers have been saved to DB (vs just hardcoded fallback)
+let geoDbTickers=new Set();
+
+async function loadGeoData(){
+  const container=document.getElementById('geo-table-container');
+  if(!container) return;
+  container.innerHTML='<div class="empty-state">Loading geographic data…</div>';
+  try{
+    const rows=await sbGet('/rest/v1/fund_geo?select=*&order=ticker.asc');
+    // Merge DB values into GEO_MAP
+    geoDbTickers=new Set();
+    rows.forEach(r=>{
+      GEO_MAP[r.ticker]={us:r.us_pct/100, intl:r.intl_pct/100, other:r.other_pct/100};
+      geoDbTickers.add(r.ticker);
+    });
+    if(rows.length){
+      const latest=rows.reduce((a,b)=>a.updated_at>b.updated_at?a:b);
+      const dt=new Date(latest.updated_at).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+      const el=document.getElementById('geo-last-updated');
+      if(el) el.textContent='Last updated: '+dt;
+    }
+    // Re-render geo bars with updated data
+    renderGeoBar(TWM,curTWM,'twm');
+    renderGeoBar(SRI,curSRI,'sri');
+  }catch(e){
+    console.warn('Could not load geo data from DB:',e.message);
+  }
+  renderGeoTable();
+}
+
+function renderGeoTable(){
+  const container=document.getElementById('geo-table-container');
+  if(!container) return;
+
+  // Build combined fund list from both TWM and SRI, deduplicated
+  const seen=new Set();
+  const allFunds=[];
+  [...TWM.funds,...SRI.funds].forEach(f=>{
+    if(!seen.has(f.ticker)){seen.add(f.ticker);allFunds.push(f);}
+  });
+
+  let t=`<table class="geo-edit-table">
+    <thead><tr>
+      <th>Ticker</th>
+      <th>Fund name</th>
+      <th>Family</th>
+      <th class="num">U.S. %</th>
+      <th class="num">Non-U.S. %</th>
+      <th class="num">Other %</th>
+      <th class="num">Sum</th>
+      <th>Source</th>
+    </tr></thead><tbody>`;
+
+  allFunds.forEach(f=>{
+    const g=GEO_MAP[f.ticker]||{us:0.85,intl:0.10,other:0.05};
+    const usV=(g.us*100).toFixed(1);
+    const intlV=(g.intl*100).toFixed(1);
+    const otherV=(g.other*100).toFixed(1);
+    const sum=(g.us+g.intl+g.other)*100;
+    const sumOk=Math.abs(sum-100)<0.5;
+    const inTWM=TWM.funds.some(x=>x.ticker===f.ticker);
+    const inSRI=SRI.funds.some(x=>x.ticker===f.ticker);
+    const family=(inTWM&&inSRI)?'TWM & SRI':inTWM?'TWM':'SRI';
+    const fromDb=geoDbTickers.has(f.ticker);
+    const safeT=f.ticker.replace(/'/g,"\\'");
+    t+=`<tr id="geo-row-${f.ticker}">
+      <td><span class="ticker-cell">${f.ticker}</span></td>
+      <td style="color:var(--text);font-size:13px;">${f.name}</td>
+      <td style="font-size:12px;color:var(--text-2);">${family}</td>
+      <td style="text-align:right;">
+        <input class="geo-num-input" type="number" step="0.1" min="0" max="100"
+          id="geo-us-${f.ticker}" value="${usV}"
+          oninput="updateGeoSum('${safeT}')" />
+      </td>
+      <td style="text-align:right;">
+        <input class="geo-num-input" type="number" step="0.1" min="0" max="100"
+          id="geo-intl-${f.ticker}" value="${intlV}"
+          oninput="updateGeoSum('${safeT}')" />
+      </td>
+      <td style="text-align:right;">
+        <input class="geo-num-input" type="number" step="0.1" min="0" max="100"
+          id="geo-other-${f.ticker}" value="${otherV}"
+          oninput="updateGeoSum('${safeT}')" />
+      </td>
+      <td style="text-align:right;">
+        <span id="geo-sum-${f.ticker}" class="${sumOk?'geo-sum-ok':'geo-sum-warn'}">${sum.toFixed(1)}%</span>
+      </td>
+      <td>
+        <span class="geo-source-badge ${fromDb?'geo-source-db':'geo-source-est'}">${fromDb?'database':'estimate'}</span>
+      </td>
+    </tr>`;
+  });
+
+  t+='</tbody></table>';
+  container.innerHTML=t;
+}
+
+function updateGeoSum(ticker){
+  const us=parseFloat(document.getElementById('geo-us-'+ticker)?.value)||0;
+  const intl=parseFloat(document.getElementById('geo-intl-'+ticker)?.value)||0;
+  const other=parseFloat(document.getElementById('geo-other-'+ticker)?.value)||0;
+  const sum=us+intl+other;
+  const el=document.getElementById('geo-sum-'+ticker);
+  if(el){
+    el.textContent=sum.toFixed(1)+'%';
+    el.className=Math.abs(sum-100)<0.5?'geo-sum-ok':'geo-sum-warn';
+  }
+}
+
+async function saveGeoData(){
+  const btn=document.getElementById('geo-save-btn');
+  btn.disabled=true; btn.textContent='Saving…';
+
+  // Collect all rows from table
+  const seen=new Set();
+  const allFunds=[];
+  [...TWM.funds,...SRI.funds].forEach(f=>{
+    if(!seen.has(f.ticker)){seen.add(f.ticker);allFunds.push(f);}
+  });
+
+  // Validate — all rows must sum to ~100%
+  const invalid=[];
+  allFunds.forEach(f=>{
+    const us=parseFloat(document.getElementById('geo-us-'+f.ticker)?.value)||0;
+    const intl=parseFloat(document.getElementById('geo-intl-'+f.ticker)?.value)||0;
+    const other=parseFloat(document.getElementById('geo-other-'+f.ticker)?.value)||0;
+    if(Math.abs(us+intl+other-100)>=0.5) invalid.push(f.ticker);
+  });
+  if(invalid.length){
+    toast('Fix rows that don't sum to 100%: '+invalid.join(', '),'err');
+    btn.disabled=false; btn.textContent='Save changes';
+    return;
+  }
+
+  // Upsert all rows to fund_geo table
+  const rows=allFunds.map(f=>({
+    ticker:f.ticker,
+    fund_name:f.name,
+    us_pct:parseFloat(parseFloat(document.getElementById('geo-us-'+f.ticker)?.value||0).toFixed(2)),
+    intl_pct:parseFloat(parseFloat(document.getElementById('geo-intl-'+f.ticker)?.value||0).toFixed(2)),
+    other_pct:parseFloat(parseFloat(document.getElementById('geo-other-'+f.ticker)?.value||0).toFixed(2)),
+    updated_at:new Date().toISOString(),
+  }));
+
+  try{
+    // Upsert using ON CONFLICT on ticker
+    const r=await fetch(SB_URL+'/rest/v1/fund_geo',{
+      method:'POST',
+      headers:{...getHeaders(),'Prefer':'resolution=merge-duplicates,return=representation'},
+      body:JSON.stringify(rows)
+    });
+    if(!r.ok) throw new Error(await r.text());
+
+    // Update in-memory GEO_MAP immediately
+    rows.forEach(row=>{
+      GEO_MAP[row.ticker]={us:row.us_pct/100,intl:row.intl_pct/100,other:row.other_pct/100};
+      geoDbTickers.add(row.ticker);
+    });
+
+    // Update source badges to 'database'
+    allFunds.forEach(f=>{
+      const row=document.getElementById('geo-row-'+f.ticker);
+      if(row){
+        const badge=row.querySelector('.geo-source-badge');
+        if(badge){badge.className='geo-source-badge geo-source-db';badge.textContent='database';}
+      }
+    });
+
+    const now=new Date().toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+    const el=document.getElementById('geo-last-updated');
+    if(el) el.textContent='Last updated: '+now;
+
+    // Re-render geo bars with updated values
+    renderGeoBar(TWM,curTWM,'twm');
+    renderGeoBar(SRI,curSRI,'sri');
+
+    toast('Geographic data saved — '+rows.length+' funds updated');
+  }catch(e){
+    toast('Failed to save: '+e.message,'err');
+  }
+  btn.disabled=false; btn.textContent='Save changes';
 }
 
 function toggleUserMenu(){
