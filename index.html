@@ -2499,14 +2499,15 @@ function drawCyberBar(containerId, data, modelNames){
           <span style="font-size:10px;color:${_bt.textHint};font-family:Courier New,monospace;">Total</span>
           <span style="font-size:12px;font-weight:700;color:${_bt.textPrimary};font-family:Courier New,monospace;">${d.equities+d.fixed+d.cash}%</span>
         </div>`;
+      colGroup._tip=tipHtml;
       showTip(tipHtml,e);
     });
-    colGroup.addEventListener('mousemove',e=>showTip(colGroup._tip,e));
+    colGroup.addEventListener('mousemove',e=>{if(colGroup._tip) showTip(colGroup._tip,e);});
     colGroup.addEventListener('mouseleave',()=>{
       document.querySelectorAll(`#${containerId} .bar-col`).forEach(gc=>gc.style.opacity='1');
       hideTip();
     });
-    colGroup._tip='placeholder';
+    colGroup._tip=null;
     colGroup.classList.add('bar-col');
     g.appendChild(colGroup);
 
