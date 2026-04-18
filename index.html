@@ -2872,26 +2872,25 @@ function drawCyberDonut(containerId, data, model){
   svg.appendChild(defs);
 
   function arcPath(sa,ea,ir,or,cr){
-    // Rounded arc path
-    const cosS=Math.cos(sa),sinS=Math.sin(sa),cosE=Math.cos(ea),sinE=Math.sin(ea);
-    const crOr=Math.min(cr,((ea-sa)*or)/2-1);
-    const crIr=Math.min(cr,((ea-sa)*ir)/2-1);
+    const sweep=ea-sa;
+    if(sweep<=0) return '';
+    // Clamp corner radius so it never goes negative on thin slices
+    const crOr=Math.max(0,Math.min(cr,(sweep*or)/2-1));
+    const crIr=Math.max(0,Math.min(cr,(sweep*ir)/2-1));
     const orOuter=or, irInner=ir;
-    // Angle offsets for corner radius
-    const aOr=crOr/or, aIr=crIr/ir;
+    const aOr=crOr>0?crOr/or:0, aIr=crIr>0?crIr/ir:0;
     const p=([r,a])=>[cx+r*Math.cos(a),cy+r*Math.sin(a)];
     const pts={
       outerStart: p([orOuter, sa+aOr]),
       outerEnd:   p([orOuter, ea-aOr]),
       innerEnd:   p([irInner, ea-aIr]),
       innerStart: p([irInner, sa+aIr]),
-      // corner tangent points
       outerStartCorner: p([orOuter-crOr, sa+aOr]),
       outerEndCorner:   p([orOuter-crOr, ea-aOr]),
       innerEndCorner:   p([irInner+crIr, ea-aIr]),
       innerStartCorner: p([irInner+crIr, sa+aIr]),
     };
-    const laf=(ea-sa)>Math.PI?1:0;
+    const laf=sweep>Math.PI?1:0;
     return [
       `M ${pts.outerStart}`,
       `A ${orOuter} ${orOuter} 0 ${laf} 1 ${pts.outerEnd}`,
@@ -3000,6 +2999,7 @@ function drawCyberBar(containerId, data, modelNames){
   el.innerHTML='';
 
   const BAR_SERIES=getBAR_SERIES(); // theme-aware: BAR_DARK or BAR_LIGHT
+  const gradPfx=containerId.replace(/[^a-z0-9]/gi,'_');
   const margin={top:16,right:16,bottom:48,left:36};
   const iW=W-margin.left-margin.right, iH=H-margin.top-margin.bottom;
 
@@ -3019,7 +3019,7 @@ function drawCyberBar(containerId, data, modelNames){
   const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
   BAR_SERIES.forEach(s=>{
     const lg=document.createElementNS('http://www.w3.org/2000/svg','linearGradient');
-    lg.id='bg-'+s.key;lg.setAttribute('x1','0');lg.setAttribute('y1','0');lg.setAttribute('x2','0');lg.setAttribute('y2','1');
+    lg.id=gradPfx+'_bg_'+s.key;lg.setAttribute('x1','0');lg.setAttribute('y1','0');lg.setAttribute('x2','0');lg.setAttribute('y2','1');
     const st1=document.createElementNS('http://www.w3.org/2000/svg','stop');
     st1.setAttribute('offset','0%');st1.setAttribute('stop-color',s.c1);st1.setAttribute('stop-opacity','0.95');
     const st2=document.createElementNS('http://www.w3.org/2000/svg','stop');
@@ -3070,7 +3070,7 @@ function drawCyberBar(containerId, data, modelNames){
       const r=document.createElementNS('http://www.w3.org/2000/svg','rect');
       r.setAttribute('x',barX);r.setAttribute('y',stackY);
       r.setAttribute('width',bW);r.setAttribute('height',bH);
-      r.setAttribute('fill',`url(#bg-${s.key})`);
+      r.setAttribute('fill',`url(#${gradPfx}_bg_${s.key})`);
       if(isTop) r.setAttribute('rx',barR);
       colGroup.appendChild(r);
     });
