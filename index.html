@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
     /* ── Login screen ── */
     .login-screen{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center;transition:opacity .3s;}
@@ -27,6 +28,11 @@
     .login-submit:disabled{opacity:.5;cursor:not-allowed;}
     .login-error{font-size:13px;font-weight:500;color:var(--red-text);background:var(--red-bg);border-radius:8px;padding:9px 12px;margin-bottom:12px;display:none;}
     .logout-btn{font-size:12px;font-weight:600;color:var(--text-2);background:var(--surface2);border:1px solid var(--border-mid);border-radius:8px;padding:5px 12px;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s;}
+    .pdf-btn{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-2);background:var(--surface2);border:1px solid var(--border-mid);border-radius:8px;padding:5px 12px;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s,color .15s;}
+    .pdf-btn:hover{background:var(--blue-bg);color:var(--blue-text);border-color:var(--blue);}
+    .pdf-btn:disabled{opacity:.5;cursor:not-allowed;}
+    .pdf-btn svg{width:13px;height:13px;fill:currentColor;}
+    @media print{.login-screen,.topbar,.tab-row,.readonly-banner,.modal-wrap,.add-modal-wrap,.ver-modal-wrap,.toast{display:none!important;}.main{padding:0!important;max-width:100%!important;}}
     .logout-btn:hover{background:var(--red-bg);color:var(--red-text);border-color:var(--red-text);}
     .login-user-badge{font-size:12px;color:var(--text-2);font-family:'IBM Plex Mono',monospace;padding:4px 8px;background:var(--surface2);border-radius:6px;border:1px solid var(--border);}
 
@@ -338,6 +344,10 @@
       <span class="conn-dot"></span>
       <span id="conn-label">Connecting…</span>
     </span>
+    <button class="pdf-btn" id="pdf-btn" onclick="exportPDF()" title="Export current view as PDF" style="display:none;">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM8 17h8v1H8v-1zm0-3h8v1H8v-1zm0-3h5v1H8v-1z"/></svg>
+      Export PDF
+    </button>
     <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode" aria-label="Toggle dark mode">
       <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
       <svg class="icon-sun" viewBox="0 0 24 24"><path d="M12 3v1m0 16v1M4.22 4.22l.7.7m12.02 12.02.7.7M3 12h1m16 0h1M4.92 19.78l.7-.7M18.36 5.64l.7-.7M12 7a5 5 0 1 0 0 10A5 5 0 0 0 12 7z"/></svg>
@@ -647,6 +657,7 @@ function onLoginSuccess(){
   document.getElementById('user-badge').textContent=email;
   document.getElementById('user-badge').style.display='';
   document.getElementById('logout-btn').style.display='';
+  document.getElementById('pdf-btn').style.display='';
   // Boot the dashboard
   checkConnection().then(()=>{ fetchPrices(); fetchBetas(); fetchDowYtd(); });
 }
@@ -660,6 +671,7 @@ function doLogout(){
   ls.style.display='flex'; ls.classList.remove('hidden');
   document.getElementById('user-badge').style.display='none';
   document.getElementById('logout-btn').style.display='none';
+  document.getElementById('pdf-btn').style.display='none';
   document.getElementById('login-email').value='';
   document.getElementById('login-password').value='';
   document.getElementById('login-error').style.display='none';
@@ -1523,6 +1535,147 @@ async function loadHistory(){
     el.innerHTML=html+'</tbody></table>';
     if(snaps.length&&!lastSnapshot)lastSnapshot=snaps[0];
   }catch(e){el.innerHTML='<div class="empty-state" style="color:var(--red-text);">Error: '+e.message+'</div>';}
+}
+
+/* ── PDF Export ── */
+async function exportPDF(){
+  const btn=document.getElementById('pdf-btn');
+  btn.disabled=true;
+  const origText=btn.innerHTML;
+  btn.innerHTML='<svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor;animation:spin .7s linear infinite;"><path d="M12 2a10 10 0 1 0 10 10h-2a8 8 0 1 1-8-8V2z"/></svg> Generating…';
+
+  // Determine which model is active
+  const isTWM=document.getElementById('tab-twm').style.display!=='none';
+  const isSRI=document.getElementById('tab-sri').style.display!=='none';
+  const pfx=isSRI?'sri':'twm';
+  const modelName=isSRI?curSRI:curTWM;
+  const family=isSRI?'SRI':'TWM';
+  const versionName=document.getElementById('version-label').textContent||'—';
+  const isRO=isReadOnly;
+  const now=new Date().toLocaleString('en-US',{month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+
+  // Build a clean printable div
+  const wrap=document.createElement('div');
+  wrap.style.cssText='font-family:Inter,sans-serif;color:#0F0E0C;background:#fff;padding:32px 36px;max-width:900px;margin:0 auto;';
+
+  // Header
+  wrap.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #E8E7E0;padding-bottom:18px;margin-bottom:22px;">
+      <div>
+        <div style="font-size:22px;font-weight:700;letter-spacing:-.02em;color:#0F0E0C;">Model Allocations Dashboard</div>
+        <div style="font-size:15px;font-weight:600;color:#1558A8;margin-top:4px;">${versionName}${isRO?' (read-only)':''}</div>
+        <div style="font-size:12px;color:#706F68;margin-top:3px;font-family:IBM Plex Mono,monospace;">${family} — ${modelName}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:11px;color:#706F68;">Generated</div>
+        <div style="font-size:12px;font-family:IBM Plex Mono,monospace;color:#3D3C38;">${now}</div>
+        ${authUser?'<div style="font-size:11px;color:#706F68;margin-top:2px;">'+authUser.email+'</div>':''}
+      </div>
+    </div>`;
+
+  // Metrics rows — clone from DOM
+  const metricsTop=document.getElementById(pfx+'-metrics-top');
+  const metricsCmp=document.getElementById(pfx+'-metrics-cmp');
+  if(metricsTop){
+    const mWrap=document.createElement('div');
+    mWrap.style.cssText='margin-bottom:18px;';
+    mWrap.appendChild(metricsTop.cloneNode(true));
+    mWrap.appendChild(metricsCmp.cloneNode(true));
+    // Override grid for print
+    mWrap.querySelectorAll('.metrics-top').forEach(el=>el.style.cssText='display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px;');
+    mWrap.querySelectorAll('.metrics-cmp').forEach(el=>el.style.cssText='display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;');
+    mWrap.querySelectorAll('.metric').forEach(el=>el.style.cssText='background:#F2F1EC;border:1px solid rgba(0,0,0,.12);border-radius:10px;padding:12px 14px;');
+    mWrap.querySelectorAll('.metric-label').forEach(el=>el.style.cssText='font-size:10px;font-weight:700;color:#3D3C38;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;');
+    mWrap.querySelectorAll('.metric-value').forEach(el=>el.style.cssText='font-size:22px;font-weight:500;color:#0F0E0C;font-family:IBM Plex Mono,monospace;');
+    mWrap.querySelectorAll('.metric-sub,.metric-vs').forEach(el=>el.style.cssText='font-size:11px;color:#3D3C38;margin-top:3px;');
+    mWrap.querySelectorAll('.vs-better').forEach(el=>el.style.color='#1E3D09');
+    mWrap.querySelectorAll('.vs-worse').forEach(el=>el.style.color='#5E1212');
+    mWrap.querySelectorAll('.metric.vs-sp').forEach(el=>el.style.borderLeft='3px solid #1558A8');
+    // Hide tooltips
+    mWrap.querySelectorAll('.tooltip-wrap').forEach(el=>el.style.display='none');
+    wrap.appendChild(mWrap);
+  }
+
+  // Charts — capture as images using Chart.js canvas toDataURL
+  const chartsRow=document.createElement('div');
+  chartsRow.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;';
+
+  const donutCanvas=document.getElementById(pfx+'-donut');
+  const barCanvas=document.getElementById(pfx+'-bar');
+  if(donutCanvas&&barCanvas){
+    const donutImg=donutCanvas.toDataURL('image/png');
+    const barImg=barCanvas.toDataURL('image/png');
+    chartsRow.innerHTML=`
+      <div style="background:#F2F1EC;border-radius:12px;padding:14px;">
+        <div style="font-size:10px;font-weight:700;color:#3D3C38;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Asset class breakdown</div>
+        <img src="${donutImg}" style="width:100%;border-radius:6px;" />
+        <div>${(()=>{const lg=document.getElementById(pfx+'-donut-legend');return lg?lg.innerHTML:'';})()}</div>
+      </div>
+      <div style="background:#F2F1EC;border-radius:12px;padding:14px;">
+        <div style="font-size:10px;font-weight:700;color:#3D3C38;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Equity vs. fixed income — all models</div>
+        <img src="${barImg}" style="width:100%;border-radius:6px;" />
+      </div>`;
+    wrap.appendChild(chartsRow);
+  }
+
+  // Geo bar
+  const geoEl=document.getElementById(pfx+'-geo-bar');
+  if(geoEl&&geoEl.innerHTML){
+    const geoClone=geoEl.cloneNode(true);
+    geoClone.style.cssText='background:#F2F1EC;border-radius:10px;padding:12px 16px;margin-bottom:20px;';
+    geoClone.querySelectorAll('.geo-bar-track').forEach(el=>el.style.height='12px');
+    wrap.appendChild(geoClone);
+  }
+
+  // Allocation table
+  const tableEl=document.getElementById(pfx+'-alloc-table');
+  if(tableEl){
+    const tSection=document.createElement('div');
+    tSection.innerHTML='<div style="font-size:11px;font-weight:700;color:#3D3C38;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Fund allocations — '+modelName+'</div>';
+    const tClone=tableEl.cloneNode(true);
+    // Remove delete buttons and bar columns from PDF
+    tClone.querySelectorAll('.del-btn,.add-fund-btn').forEach(el=>el.remove());
+    tClone.querySelectorAll('.bar-bg').forEach(el=>el.closest('td').style.display='none');
+    tClone.querySelectorAll('.editable').forEach(el=>{
+      el.contentEditable='false';
+      el.style.cssText='font-family:IBM Plex Mono,monospace;font-size:12px;';
+    });
+    tClone.style.cssText='width:100%;border-collapse:collapse;font-size:12px;';
+    tClone.querySelectorAll('th').forEach(el=>el.style.cssText='font-size:10px;font-weight:700;color:#3D3C38;text-transform:uppercase;padding:7px 10px;border-bottom:2px solid rgba(0,0,0,.15);text-align:right;');
+    tClone.querySelectorAll('th:first-child,th:nth-child(2)').forEach(el=>el.style.textAlign='left');
+    tClone.querySelectorAll('td').forEach(el=>el.style.cssText='padding:7px 10px;border-bottom:1px solid rgba(0,0,0,.08);text-align:right;color:#0F0E0C;font-size:12px;');
+    tClone.querySelectorAll('td:first-child').forEach(el=>el.style.textAlign='left');
+    tClone.querySelectorAll('td:nth-child(2)').forEach(el=>el.style.textAlign='left');
+    tClone.querySelectorAll('tr.subtotal td').forEach(el=>el.style.cssText='background:#E8E7E0;font-weight:700;padding:7px 10px;font-size:11px;color:#3D3C38;text-align:right;');
+    tSection.appendChild(tClone);
+    wrap.appendChild(tSection);
+  }
+
+  // Footer
+  const footer=document.createElement('div');
+  footer.style.cssText='margin-top:24px;padding-top:12px;border-top:1px solid #E8E7E0;font-size:10px;color:#A8A79F;display:flex;justify-content:space-between;';
+  footer.innerHTML='<span>Model Allocations Dashboard — Confidential</span><span>'+versionName+' · '+now+'</span>';
+  wrap.appendChild(footer);
+
+  // Generate PDF
+  const filename=(versionName.replace(/[^a-z0-9]/gi,'_')+'_'+family+'_'+modelName.replace(/[^a-z0-9]/gi,'_')+'.pdf').toLowerCase();
+  const opt={
+    margin:[8,8,8,8],
+    filename,
+    image:{type:'jpeg',quality:0.97},
+    html2canvas:{scale:2,useCORS:true,logging:false,backgroundColor:'#ffffff'},
+    jsPDF:{unit:'mm',format:'a4',orientation:'landscape'}
+  };
+
+  try{
+    await html2pdf().set(opt).from(wrap).save();
+    toast('PDF exported successfully');
+  }catch(e){
+    toast('PDF export failed: '+e.message,'err');
+    console.error(e);
+  }
+  btn.disabled=false;
+  btn.innerHTML=origText;
 }
 
 /* ── Version management ── */
