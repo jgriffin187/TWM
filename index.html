@@ -6,8 +6,420 @@
   <title>Trailhead Model Allocations</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js">
+/* ── About modal ── */
+function openAboutModal(){
+  document.getElementById('about-overlay').classList.add('open');
+  document.addEventListener('keydown',_aboutEsc);
+  switchAboutSection('sources');
+}
+function closeAboutModal(){
+  document.getElementById('about-overlay').classList.remove('open');
+  document.removeEventListener('keydown',_aboutEsc);
+}
+function _aboutEsc(e){ if(e.key==='Escape') closeAboutModal(); }
+
+function switchAboutSection(id){
+  document.querySelectorAll('.about-nav-item').forEach(el=>el.classList.toggle('active',el.dataset.section===id));
+  const content=document.getElementById('about-content');
+  content.scrollTop=0;
+  content.innerHTML=ABOUT_SECTIONS[id]||'';
+}
+
+function aboutSectionLabel(text){
+  return `<div class="about-section-label">${text}</div>`;
+}
+function aboutTableRow(key,val){
+  return `<div class="about-table-row"><span class="about-table-key">${key}</span><span class="about-table-val">${val}</span></div>`;
+}
+function aboutFormula(label,math,note){
+  return `<div class="about-formula">
+    <div class="about-formula-label">${label}</div>
+    <div class="about-formula-math">${math}</div>
+    ${note?`<div class="about-formula-note">${note}</div>`:''}
+  </div>`;
+}
+function aboutCode(lang,code){
+  const id='cb-'+Math.random().toString(36).slice(2);
+  return `<div class="about-code-wrap">
+    <div class="about-code-bar">
+      <span class="about-code-lang">${lang}</span>
+      <button class="about-code-copy" onclick="
+        navigator.clipboard&&navigator.clipboard.writeText(document.getElementById('${id}').textContent);
+        this.textContent='copied!';setTimeout(()=>this.textContent='copy',1500);">copy</button>
+    </div>
+    <pre class="about-code-pre" id="${id}">${code}</pre>
+  </div>`;
+}
+
+const ABOUT_SECTIONS={
+  sources:`
+    ${aboutSectionLabel('Supabase database tables')}
+    ${aboutTableRow('model_snapshots','Audit trail of every locked save — stores locked_by, notes, and full TWM/SRI model state as JSONB.')}
+    ${aboutTableRow('snapshot_changes','Per-field diff records for each snapshot, enabling granular change history.')}
+    ${aboutTableRow('model_versions','Named quarterly snapshots with version_name, creator, DOW YTD, and full model allocations.')}
+    ${aboutTableRow('fund_geo','Geographic exposure per ticker: us_pct, intl_pct, other_pct. Used to render the geo exposure bars.')}
+    ${aboutTableRow('price_cache','Daily price cache keyed by (ticker, trade_date). Stores prev_close, change_amt, change_pct, ytd_return.')}
+    <div style="margin-bottom:20px;"></div>
+    ${aboutSectionLabel('API endpoints')}
+    ${aboutTableRow('Yahoo Finance v8','Chart endpoint for OHLCV and previous close. Used for daily price, YTD return, and DOW benchmark.')}
+    ${aboutTableRow('Yahoo Finance v10','quoteSummary endpoint for fund metadata: name, Morningstar category, expense ratio, top holdings.')}
+    ${aboutTableRow('Supabase REST','PostgREST auto-generated API. All calls use the anon key with RLS enforcing auth.role() = authenticated.')}
+    ${aboutTableRow('CORS proxies','Three-proxy fallback chain: codetabs.com → corsproxy.io → allorigins.win for browser-side Yahoo fetches.')}
+    <div style="margin-bottom:4px;"></div>
+    ${aboutSectionLabel('Example query')}
+    ${aboutCode('sql',`-- Fetch the latest price snapshot for all tickers
+SELECT
+  ticker,
+  prev_close,
+  change_pct,
+  ytd_return,
+  trade_date
+FROM price_cache
+WHERE trade_date = (
+  SELECT MAX(trade_date) FROM price_cache
+)
+ORDER BY ticker;`)}
+    ${aboutCode('sql',`-- Load a named version's full model state
+SELECT
+  version_name,
+  created_by,
+  created_at,
+  twm_models,
+  sri_models,
+  twm_summary,
+  sri_summary
+FROM model_versions
+WHERE id = $1;`)}`,
+
+  methodology:`
+    ${aboutSectionLabel('Portfolio beta')}
+    ${aboutFormula('Weighted portfolio beta','β_portfolio = Σ ( wᵢ × βᵢ )','Where wᵢ is the decimal allocation weight of fund i and βᵢ is that fund\'s 3-year beta vs the S&P 500. Cash is assigned β = 0. The sum runs over all funds in the selected model.')}
+    ${aboutFormula('Beta differential','Δβ = β_portfolio − β_S&P500    where β_S&P500 = 1.00','A negative Δβ means the portfolio is less sensitive to market swings than the index — generally desirable for conservative mandates.')}
+    ${aboutSectionLabel('Weighted expense ratio')}
+    ${aboutFormula('Blended expense ratio','ER_wtd = Σ ( wᵢ × ERᵢ )','Each fund\'s annual expense ratio (ERᵢ, as a decimal) is multiplied by its weight wᵢ. Compared against SPY\'s ER of 0.09%. Every additional 0.10% costs ~$100/yr per $100k invested.')}
+    ${aboutSectionLabel('YTD return')}
+    ${aboutFormula('Weighted portfolio YTD','YTD_portfolio = Σ ( wᵢ × YTDᵢ )','YTD return for each fund is pulled from the price_cache table (ytd_return column), populated from Yahoo Finance\'s YTD range query. Funds without cached YTD data are excluded from the weighted average.')}
+    ${aboutFormula('YTD vs DOW differential','Δ_YTD = YTD_portfolio − YTD_DOW','DOW YTD is fetched from Yahoo Finance using the ^DJI ticker with range=ytd. A positive Δ_YTD means the portfolio is outperforming the Dow Jones Industrial Average year-to-date.')}
+    ${aboutSectionLabel('Allocation normalisation')}
+    ${aboutFormula('Category totals','Cat_k = Σᵢ wᵢ   ∀ fund i where category(i) = k','Allocations are stored as decimal fractions (0.0–1.0). The Sum Pill turns green when |Σ wᵢ − 1.00| < 0.005, indicating the model is fully allocated.')}
+    ${aboutCode('javascript',`// Weighted beta calculation (from index.html)
+function calcPortfolioBeta(data, model) {
+  const alloc = data.models[model];
+  let totalWeight = 0, weightedBeta = 0;
+
+  data.funds.forEach(f => {
+    const w = alloc[f.ticker] || 0;
+    const b = betaMap[f.ticker];   // loaded from Yahoo quoteSummary
+    if (b != null) {
+      weightedBeta += w * b;
+      totalWeight  += w;
+    }
+  });
+
+  const cashW = alloc['cash'] || 0; // cash contributes zero beta
+  totalWeight += cashW;
+
+  return totalWeight > 0.05 ? weightedBeta : 0;
+}`)}`,
+
+  stack:`
+    ${aboutSectionLabel('Runtime stack')}
+    <div class="about-stack-grid">
+      ${[['Vanilla JS','ES2023','#f59e0b'],['D3.js','v7.8.5','#f97316'],['Supabase','PostgREST','#3ecf8e'],
+         ['GitHub Pages','Static CDN','#94a3b8'],['Yahoo API','v8 / v10','#7c3aed'],['HTML2PDF','v0.10.1','#38bdf8']]
+        .map(([n,v,c])=>`<div class="about-stack-badge" style="background:${c}10;border:1px solid ${c}28;">
+          <div class="about-stack-name">${n}</div>
+          <div class="about-stack-ver" style="color:${c};">${v}</div>
+        </div>`).join('')}
+    </div>
+    ${aboutSectionLabel('Architecture overview')}
+    <div style="padding:13px 16px;border-radius:12px;margin-bottom:16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);">
+      ${[['Single HTML file','The entire dashboard ships as one index.html — no build step, no bundler, no Node.js runtime. Deployed directly to GitHub Pages.'],
+         ['D3 charts','Donut and bar charts are pure SVG rendered by D3 scaleBand / scaleLinear. Fully resolution-independent and theme-aware via isDark().'],
+         ['Supabase auth','Email/password via Supabase Auth. JWT stored in sessionStorage (cleared on tab close). All API calls include the Bearer token with RLS.'],
+         ['CSS custom properties','Light/dark theming via data-theme attribute on &lt;html&gt;. No CSS frameworks — all styles are scoped custom properties.']]
+        .map(([t,d])=>`<div class="about-arch-item">
+          <span class="about-arch-arrow">›</span>
+          <div><div class="about-arch-title">${t}</div><div class="about-arch-desc">${d}</div></div>
+        </div>`).join('')}
+    </div>
+    ${aboutSectionLabel('File layout')}
+    ${aboutCode('text',['jgriffin187.github.io/TWM/',
+      'index.html    (entire app - single file)',
+      '  style       CSS custom properties + theming',
+      '  body        Topbar, tabs, chart cards, modals',
+      '  script      ~2900 lines vanilla JS',
+      '    Data      TWM / SRI model objects',
+      '    Supabase  auth, CRUD, price cache',
+      '    Charts    drawCyberDonut(), drawCyberBar()',
+      '    Tiles     renderCyberTile(), renderCmpTile()',
+      '    Table     renderAllocTable(), catDot()',
+      '    Modals    lock/save, add fund, versions, about',
+    ].join('\n'))}`,
+
+  cache:`
+    ${aboutSectionLabel('Price cache lifecycle')}
+    <div class="about-timeline">
+      ${[['1','Determine last trading date','lastTradingDate() computes the most recent completed session. Saturdays, Sundays, and Mondays before market open resolve to the previous Friday.'],
+         ['2','Query price_cache','On load, the dashboard fetches all rows WHERE trade_date = lastTradingDate(). Tickers found in the cache are served immediately with no network call.'],
+         ['3','Fetch missing tickers','Any ticker not in the cache is fetched from Yahoo Finance v8/chart via the three-proxy fallback chain. FGTXX is hardcoded at $1.00 and never fetched.'],
+         ['4','Write back to cache','Newly fetched prices are upserted into price_cache with resolution=merge-duplicates. Subsequent loads within the same trading day hit the cache instantly.'],
+         ['5','YTD return pass','After all prices load, a second pass retrieves ytd_return for each ticker (range=ytd). These are also cached and displayed in the allocation table.']]
+        .map(([n,t,d])=>`<div class="about-timeline-item">
+          <div class="about-timeline-dot">${n}</div>
+          <div><div class="about-timeline-title">${t}</div><div class="about-timeline-desc">${d}</div></div>
+        </div>`).join('')}
+    </div>
+    ${aboutSectionLabel('Refresh prices flow')}
+    ${aboutCode('javascript',`// Triggered by '↻ Refresh prices' button
+async function fetchPrices() {
+  const tickers = [...new Set(
+    [...TWM.funds, ...SRI.funds].map(f => f.ticker)
+  )];
+
+  // 1. Check Supabase cache for today's date
+  const cached = await fetchCachedPrices(tickers, CACHE_DATE);
+  const missing = tickers.filter(t =>
+    t !== 'FGTXX' && !cached[t]
+  );
+
+  // 2. Fetch only what's missing from Yahoo
+  for (const ticker of missing) {
+    const quote = await fetchOneTicker(ticker);
+    if (quote) {
+      priceMap[ticker] = quote;
+      await upsertPriceCache(ticker, quote, CACHE_DATE);
+    }
+  }
+
+  // 3. Re-render all price cells + metrics
+  renderAllocTable(TWM, curTWM, 'twm');
+  renderAllocTable(SRI, curSRI, 'sri');
+  renderMetrics(TWM, curTWM, 'twm');
+  renderMetrics(SRI, curSRI, 'sri');
+}`)}
+    <div style="margin-bottom:14px;"></div>
+    ${aboutSectionLabel('Version system')}
+    <div class="about-note-box">
+      Named versions (e.g. <span class="about-mono">Q1 2026 Final</span>) are stored in
+      <span class="about-mono">model_versions</span> and are read-only snapshots.
+      Loading a version enters a red-banner read-only mode — no edits, no Lock &amp; Save.
+      Exiting restores the live model state from memory. The
+      <span class="about-mono">Lock &amp; Save</span> action writes to
+      <span class="about-mono">model_snapshots</span> (audit log) and optionally creates
+      a new named version in <span class="about-mono">model_versions</span>.
+    </div>`
+};
+
+</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js">
+/* ── About modal ── */
+function openAboutModal(){
+  document.getElementById('about-overlay').classList.add('open');
+  document.addEventListener('keydown',_aboutEsc);
+  switchAboutSection('sources');
+}
+function closeAboutModal(){
+  document.getElementById('about-overlay').classList.remove('open');
+  document.removeEventListener('keydown',_aboutEsc);
+}
+function _aboutEsc(e){ if(e.key==='Escape') closeAboutModal(); }
+
+function switchAboutSection(id){
+  document.querySelectorAll('.about-nav-item').forEach(el=>el.classList.toggle('active',el.dataset.section===id));
+  const content=document.getElementById('about-content');
+  content.scrollTop=0;
+  content.innerHTML=ABOUT_SECTIONS[id]||'';
+}
+
+function aboutSectionLabel(text){
+  return `<div class="about-section-label">${text}</div>`;
+}
+function aboutTableRow(key,val){
+  return `<div class="about-table-row"><span class="about-table-key">${key}</span><span class="about-table-val">${val}</span></div>`;
+}
+function aboutFormula(label,math,note){
+  return `<div class="about-formula">
+    <div class="about-formula-label">${label}</div>
+    <div class="about-formula-math">${math}</div>
+    ${note?`<div class="about-formula-note">${note}</div>`:''}
+  </div>`;
+}
+function aboutCode(lang,code){
+  const id='cb-'+Math.random().toString(36).slice(2);
+  return `<div class="about-code-wrap">
+    <div class="about-code-bar">
+      <span class="about-code-lang">${lang}</span>
+      <button class="about-code-copy" onclick="
+        navigator.clipboard&&navigator.clipboard.writeText(document.getElementById('${id}').textContent);
+        this.textContent='copied!';setTimeout(()=>this.textContent='copy',1500);">copy</button>
+    </div>
+    <pre class="about-code-pre" id="${id}">${code}</pre>
+  </div>`;
+}
+
+const ABOUT_SECTIONS={
+  sources:`
+    ${aboutSectionLabel('Supabase database tables')}
+    ${aboutTableRow('model_snapshots','Audit trail of every locked save — stores locked_by, notes, and full TWM/SRI model state as JSONB.')}
+    ${aboutTableRow('snapshot_changes','Per-field diff records for each snapshot, enabling granular change history.')}
+    ${aboutTableRow('model_versions','Named quarterly snapshots with version_name, creator, DOW YTD, and full model allocations.')}
+    ${aboutTableRow('fund_geo','Geographic exposure per ticker: us_pct, intl_pct, other_pct. Used to render the geo exposure bars.')}
+    ${aboutTableRow('price_cache','Daily price cache keyed by (ticker, trade_date). Stores prev_close, change_amt, change_pct, ytd_return.')}
+    <div style="margin-bottom:20px;"></div>
+    ${aboutSectionLabel('API endpoints')}
+    ${aboutTableRow('Yahoo Finance v8','Chart endpoint for OHLCV and previous close. Used for daily price, YTD return, and DOW benchmark.')}
+    ${aboutTableRow('Yahoo Finance v10','quoteSummary endpoint for fund metadata: name, Morningstar category, expense ratio, top holdings.')}
+    ${aboutTableRow('Supabase REST','PostgREST auto-generated API. All calls use the anon key with RLS enforcing auth.role() = authenticated.')}
+    ${aboutTableRow('CORS proxies','Three-proxy fallback chain: codetabs.com → corsproxy.io → allorigins.win for browser-side Yahoo fetches.')}
+    <div style="margin-bottom:4px;"></div>
+    ${aboutSectionLabel('Example query')}
+    ${aboutCode('sql',`-- Fetch the latest price snapshot for all tickers
+SELECT
+  ticker,
+  prev_close,
+  change_pct,
+  ytd_return,
+  trade_date
+FROM price_cache
+WHERE trade_date = (
+  SELECT MAX(trade_date) FROM price_cache
+)
+ORDER BY ticker;`)}
+    ${aboutCode('sql',`-- Load a named version's full model state
+SELECT
+  version_name,
+  created_by,
+  created_at,
+  twm_models,
+  sri_models,
+  twm_summary,
+  sri_summary
+FROM model_versions
+WHERE id = $1;`)}`,
+
+  methodology:`
+    ${aboutSectionLabel('Portfolio beta')}
+    ${aboutFormula('Weighted portfolio beta','β_portfolio = Σ ( wᵢ × βᵢ )','Where wᵢ is the decimal allocation weight of fund i and βᵢ is that fund\'s 3-year beta vs the S&P 500. Cash is assigned β = 0. The sum runs over all funds in the selected model.')}
+    ${aboutFormula('Beta differential','Δβ = β_portfolio − β_S&P500    where β_S&P500 = 1.00','A negative Δβ means the portfolio is less sensitive to market swings than the index — generally desirable for conservative mandates.')}
+    ${aboutSectionLabel('Weighted expense ratio')}
+    ${aboutFormula('Blended expense ratio','ER_wtd = Σ ( wᵢ × ERᵢ )','Each fund\'s annual expense ratio (ERᵢ, as a decimal) is multiplied by its weight wᵢ. Compared against SPY\'s ER of 0.09%. Every additional 0.10% costs ~$100/yr per $100k invested.')}
+    ${aboutSectionLabel('YTD return')}
+    ${aboutFormula('Weighted portfolio YTD','YTD_portfolio = Σ ( wᵢ × YTDᵢ )','YTD return for each fund is pulled from the price_cache table (ytd_return column), populated from Yahoo Finance\'s YTD range query. Funds without cached YTD data are excluded from the weighted average.')}
+    ${aboutFormula('YTD vs DOW differential','Δ_YTD = YTD_portfolio − YTD_DOW','DOW YTD is fetched from Yahoo Finance using the ^DJI ticker with range=ytd. A positive Δ_YTD means the portfolio is outperforming the Dow Jones Industrial Average year-to-date.')}
+    ${aboutSectionLabel('Allocation normalisation')}
+    ${aboutFormula('Category totals','Cat_k = Σᵢ wᵢ   ∀ fund i where category(i) = k','Allocations are stored as decimal fractions (0.0–1.0). The Sum Pill turns green when |Σ wᵢ − 1.00| < 0.005, indicating the model is fully allocated.')}
+    ${aboutCode('javascript',`// Weighted beta calculation (from index.html)
+function calcPortfolioBeta(data, model) {
+  const alloc = data.models[model];
+  let totalWeight = 0, weightedBeta = 0;
+
+  data.funds.forEach(f => {
+    const w = alloc[f.ticker] || 0;
+    const b = betaMap[f.ticker];   // loaded from Yahoo quoteSummary
+    if (b != null) {
+      weightedBeta += w * b;
+      totalWeight  += w;
+    }
+  });
+
+  const cashW = alloc['cash'] || 0; // cash contributes zero beta
+  totalWeight += cashW;
+
+  return totalWeight > 0.05 ? weightedBeta : 0;
+}`)}`,
+
+  stack:`
+    ${aboutSectionLabel('Runtime stack')}
+    <div class="about-stack-grid">
+      ${[['Vanilla JS','ES2023','#f59e0b'],['D3.js','v7.8.5','#f97316'],['Supabase','PostgREST','#3ecf8e'],
+         ['GitHub Pages','Static CDN','#94a3b8'],['Yahoo API','v8 / v10','#7c3aed'],['HTML2PDF','v0.10.1','#38bdf8']]
+        .map(([n,v,c])=>`<div class="about-stack-badge" style="background:${c}10;border:1px solid ${c}28;">
+          <div class="about-stack-name">${n}</div>
+          <div class="about-stack-ver" style="color:${c};">${v}</div>
+        </div>`).join('')}
+    </div>
+    ${aboutSectionLabel('Architecture overview')}
+    <div style="padding:13px 16px;border-radius:12px;margin-bottom:16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);">
+      ${[['Single HTML file','The entire dashboard ships as one index.html — no build step, no bundler, no Node.js runtime. Deployed directly to GitHub Pages.'],
+         ['D3 charts','Donut and bar charts are pure SVG rendered by D3 scaleBand / scaleLinear. Fully resolution-independent and theme-aware via isDark().'],
+         ['Supabase auth','Email/password via Supabase Auth. JWT stored in sessionStorage (cleared on tab close). All API calls include the Bearer token with RLS.'],
+         ['CSS custom properties','Light/dark theming via data-theme attribute on &lt;html&gt;. No CSS frameworks — all styles are scoped custom properties.']]
+        .map(([t,d])=>`<div class="about-arch-item">
+          <span class="about-arch-arrow">›</span>
+          <div><div class="about-arch-title">${t}</div><div class="about-arch-desc">${d}</div></div>
+        </div>`).join('')}
+    </div>
+    ${aboutSectionLabel('File layout')}
+    ${aboutCode('text',['jgriffin187.github.io/TWM/',
+      'index.html    (entire app - single file)',
+      '  style       CSS custom properties + theming',
+      '  body        Topbar, tabs, chart cards, modals',
+      '  script      ~2900 lines vanilla JS',
+      '    Data      TWM / SRI model objects',
+      '    Supabase  auth, CRUD, price cache',
+      '    Charts    drawCyberDonut(), drawCyberBar()',
+      '    Tiles     renderCyberTile(), renderCmpTile()',
+      '    Table     renderAllocTable(), catDot()',
+      '    Modals    lock/save, add fund, versions, about',
+    ].join('\n'))}`,
+
+  cache:`
+    ${aboutSectionLabel('Price cache lifecycle')}
+    <div class="about-timeline">
+      ${[['1','Determine last trading date','lastTradingDate() computes the most recent completed session. Saturdays, Sundays, and Mondays before market open resolve to the previous Friday.'],
+         ['2','Query price_cache','On load, the dashboard fetches all rows WHERE trade_date = lastTradingDate(). Tickers found in the cache are served immediately with no network call.'],
+         ['3','Fetch missing tickers','Any ticker not in the cache is fetched from Yahoo Finance v8/chart via the three-proxy fallback chain. FGTXX is hardcoded at $1.00 and never fetched.'],
+         ['4','Write back to cache','Newly fetched prices are upserted into price_cache with resolution=merge-duplicates. Subsequent loads within the same trading day hit the cache instantly.'],
+         ['5','YTD return pass','After all prices load, a second pass retrieves ytd_return for each ticker (range=ytd). These are also cached and displayed in the allocation table.']]
+        .map(([n,t,d])=>`<div class="about-timeline-item">
+          <div class="about-timeline-dot">${n}</div>
+          <div><div class="about-timeline-title">${t}</div><div class="about-timeline-desc">${d}</div></div>
+        </div>`).join('')}
+    </div>
+    ${aboutSectionLabel('Refresh prices flow')}
+    ${aboutCode('javascript',`// Triggered by '↻ Refresh prices' button
+async function fetchPrices() {
+  const tickers = [...new Set(
+    [...TWM.funds, ...SRI.funds].map(f => f.ticker)
+  )];
+
+  // 1. Check Supabase cache for today's date
+  const cached = await fetchCachedPrices(tickers, CACHE_DATE);
+  const missing = tickers.filter(t =>
+    t !== 'FGTXX' && !cached[t]
+  );
+
+  // 2. Fetch only what's missing from Yahoo
+  for (const ticker of missing) {
+    const quote = await fetchOneTicker(ticker);
+    if (quote) {
+      priceMap[ticker] = quote;
+      await upsertPriceCache(ticker, quote, CACHE_DATE);
+    }
+  }
+
+  // 3. Re-render all price cells + metrics
+  renderAllocTable(TWM, curTWM, 'twm');
+  renderAllocTable(SRI, curSRI, 'sri');
+  renderMetrics(TWM, curTWM, 'twm');
+  renderMetrics(SRI, curSRI, 'sri');
+}`)}
+    <div style="margin-bottom:14px;"></div>
+    ${aboutSectionLabel('Version system')}
+    <div class="about-note-box">
+      Named versions (e.g. <span class="about-mono">Q1 2026 Final</span>) are stored in
+      <span class="about-mono">model_versions</span> and are read-only snapshots.
+      Loading a version enters a red-banner read-only mode — no edits, no Lock &amp; Save.
+      Exiting restores the live model state from memory. The
+      <span class="about-mono">Lock &amp; Save</span> action writes to
+      <span class="about-mono">model_snapshots</span> (audit log) and optionally creates
+      a new named version in <span class="about-mono">model_versions</span>.
+    </div>`
+};
+
+</script>
   <style>
     /* ── Login screen ── */
     .login-screen{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center;transition:opacity .3s;}
@@ -170,6 +582,155 @@
     .lock-btn:hover:not(:disabled){opacity:.88;}
     .lock-btn:disabled{opacity:.4;cursor:not-allowed;}
     .lock-btn svg{width:14px;height:14px;fill:white;}
+    /* About modal button */
+    .about-btn{display:flex;align-items:center;justify-content:center;width:32px;height:32px;
+      border-radius:8px;border:1px solid var(--border-mid);background:var(--surface2);
+      cursor:pointer;transition:all .15s ease;color:var(--text-2);flex-shrink:0;}
+    .about-btn:hover{background:var(--blue-bg);color:var(--blue);border-color:var(--blue);}
+    .about-btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;}
+    /* About modal overlay */
+    .about-overlay{position:fixed;inset:0;z-index:900;background:rgba(2,6,23,0.80);
+      backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+      display:none;align-items:center;justify-content:center;padding:2rem;}
+    [data-theme="light"] .about-overlay{background:rgba(15,23,42,0.45);}
+    .about-overlay.open{display:flex;animation:aboutFadeIn .2s ease;}
+    @keyframes aboutFadeIn{from{opacity:0}to{opacity:1}}
+    .about-panel{width:100%;max-width:860px;height:min(88vh,720px);
+      background:rgba(10,17,38,0.92);
+      backdrop-filter:blur(32px);-webkit-backdrop-filter:blur(32px);
+      border:1px solid rgba(255,255,255,0.08);border-radius:24px;
+      box-shadow:0 32px 80px rgba(0,0,0,0.60),inset 0 1px 0 rgba(255,255,255,0.06);
+      display:flex;flex-direction:column;overflow:hidden;
+      animation:aboutSlideUp .22s ease;}
+    [data-theme="light"] .about-panel{background:rgba(255,255,255,0.92);
+      border:1px solid rgba(203,213,225,0.70);
+      box-shadow:0 24px 60px rgba(15,23,42,0.18),0 4px 16px rgba(15,23,42,0.08);}
+    @keyframes aboutSlideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+    .about-header{display:flex;align-items:center;justify-content:space-between;
+      padding:1.1rem 1.5rem;border-bottom:1px solid rgba(255,255,255,0.08);flex-shrink:0;}
+    [data-theme="light"] .about-header{border-bottom:1px solid rgba(203,213,225,0.60);}
+    .about-header-label{font-size:10px;font-weight:700;letter-spacing:0.10em;text-transform:uppercase;
+      font-family:'IBM Plex Mono',monospace;color:rgba(100,116,139,0.80);margin:0 0 3px;}
+    .about-header-title{font-size:18px;font-weight:700;color:#f1f5f9;margin:0;}
+    [data-theme="light"] .about-header-title{color:#0f172a;}
+    .about-close{width:34px;height:34px;border-radius:10px;border:none;
+      display:flex;align-items:center;justify-content:center;
+      background:rgba(255,255,255,0.06);cursor:pointer;transition:all .15s ease;
+      color:rgba(148,163,184,0.80);}
+    [data-theme="light"] .about-close{background:rgba(15,23,42,0.06);color:rgba(71,85,105,0.80);}
+    .about-close:hover{background:rgba(248,113,113,0.15)!important;color:#f87171!important;}
+    [data-theme="light"] .about-close:hover{background:rgba(220,38,38,0.08)!important;color:#dc2626!important;}
+    .about-close svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;}
+    .about-body{display:flex;flex:1;overflow:hidden;}
+    .about-nav{width:180px;flex-shrink:0;padding:.75rem;
+      background:rgba(2,6,23,0.60);border-right:1px solid rgba(255,255,255,0.08);
+      display:flex;flex-direction:column;gap:3px;}
+    [data-theme="light"] .about-nav{background:rgba(248,250,252,0.80);
+      border-right:1px solid rgba(203,213,225,0.60);}
+    .about-nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;
+      border-radius:10px;border:none;width:100%;text-align:left;cursor:pointer;
+      font-family:'Inter',sans-serif;font-size:13px;font-weight:400;
+      color:rgba(148,163,184,0.65);background:transparent;transition:all .15s ease;}
+    [data-theme="light"] .about-nav-item{color:rgba(100,116,139,0.75);}
+    .about-nav-item.active{font-weight:600;color:#38bdf8;
+      background:rgba(56,189,248,0.10);box-shadow:0 0 12px rgba(56,189,248,0.10);}
+    [data-theme="light"] .about-nav-item.active{color:#2563eb;background:rgba(37,99,235,0.08);box-shadow:none;}
+    .about-nav-item svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0;}
+    .about-nav-footer{margin-top:auto;padding:12px 4px 4px;
+      font-size:10px;font-family:'IBM Plex Mono',monospace;letter-spacing:0.06em;
+      color:rgba(71,85,105,0.60);line-height:1.7;}
+    .about-content{flex:1;overflow-y:auto;padding:1.5rem 1.75rem;}
+    .about-content::-webkit-scrollbar{width:5px;}
+    .about-content::-webkit-scrollbar-track{background:transparent;}
+    .about-content::-webkit-scrollbar-thumb{background:rgba(148,163,184,0.20);border-radius:99px;}
+    /* Section components */
+    .about-section-label{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;
+      font-family:'IBM Plex Mono',monospace;color:rgba(56,189,248,0.70);
+      margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+    [data-theme="light"] .about-section-label{color:rgba(37,99,235,0.65);}
+    .about-section-label::before{content:'';display:inline-block;width:20px;height:1px;
+      background:rgba(56,189,248,0.40);}
+    [data-theme="light"] .about-section-label::before{background:rgba(37,99,235,0.30);}
+    .about-table-row{display:grid;grid-template-columns:180px 1fr;
+      padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.05);gap:14px;align-items:start;}
+    [data-theme="light"] .about-table-row{border-bottom:1px solid rgba(15,23,42,0.06);}
+    .about-table-key{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;
+      color:#38bdf8;letter-spacing:0.04em;}
+    [data-theme="light"] .about-table-key{color:#2563eb;}
+    .about-table-val{font-size:13px;font-family:'Inter',sans-serif;line-height:1.6;
+      color:rgba(148,163,184,0.80);}
+    [data-theme="light"] .about-table-val{color:rgba(51,65,85,0.80);}
+    .about-formula{padding:13px 16px;border-radius:12px;margin-bottom:12px;
+      background:rgba(56,189,248,0.04);border:1px solid rgba(56,189,248,0.10);}
+    [data-theme="light"] .about-formula{background:rgba(37,99,235,0.04);border:1px solid rgba(37,99,235,0.10);}
+    .about-formula-label{font-size:11px;font-family:'IBM Plex Mono',monospace;font-weight:700;
+      color:rgba(100,116,139,0.80);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:9px;}
+    .about-formula-math{font-family:Georgia,'Times New Roman',serif;font-size:16px;
+      line-height:1.8;color:#e2e8f0;letter-spacing:0.01em;padding:5px 0;}
+    [data-theme="light"] .about-formula-math{color:#1e293b;}
+    .about-formula-note{font-size:12px;font-family:'Inter',sans-serif;line-height:1.6;
+      color:rgba(148,163,184,0.65);border-top:1px solid rgba(255,255,255,0.05);padding-top:8px;margin-top:8px;}
+    [data-theme="light"] .about-formula-note{color:rgba(71,85,105,0.70);border-top:1px solid rgba(15,23,42,0.06);}
+    .about-code-wrap{border-radius:12px;overflow:hidden;margin-top:10px;margin-bottom:16px;
+      background:rgba(2,6,23,0.70);border:1px solid rgba(255,255,255,0.07);}
+    [data-theme="light"] .about-code-wrap{background:rgba(15,23,42,0.05);border:1px solid rgba(15,23,42,0.10);}
+    .about-code-bar{display:flex;justify-content:space-between;align-items:center;
+      padding:6px 13px;border-bottom:1px solid rgba(255,255,255,0.05);
+      background:rgba(255,255,255,0.02);font-family:'IBM Plex Mono',monospace;}
+    [data-theme="light"] .about-code-bar{border-bottom:1px solid rgba(15,23,42,0.07);background:rgba(15,23,42,0.03);}
+    .about-code-lang{font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;
+      color:rgba(100,116,139,0.80);}
+    .about-code-copy{font-size:11px;font-weight:600;color:rgba(56,189,248,0.70);
+      background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:4px;
+      font-family:'IBM Plex Mono',monospace;transition:opacity .15s;}
+    [data-theme="light"] .about-code-copy{color:rgba(37,99,235,0.65);}
+    .about-code-copy:hover{opacity:1;}
+    .about-code-pre{margin:0;padding:13px 15px;font-family:'IBM Plex Mono',monospace;
+      font-size:12px;line-height:1.7;color:#94a3b8;overflow-x:auto;white-space:pre;}
+    [data-theme="light"] .about-code-pre{color:#334155;}
+    .about-stack-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;}
+    .about-stack-badge{padding:10px 14px;border-radius:12px;text-align:center;}
+    .about-stack-name{font-size:14px;font-weight:700;font-family:'Inter',sans-serif;
+      color:#f1f5f9;margin-bottom:3px;}
+    [data-theme="light"] .about-stack-name{color:#0f172a;}
+    .about-stack-ver{font-size:10px;font-family:'IBM Plex Mono',monospace;font-weight:600;
+      letter-spacing:0.06em;opacity:0.75;}
+    .about-arch-item{display:flex;gap:10px;padding-bottom:11px;margin-bottom:11px;
+      border-bottom:1px solid rgba(255,255,255,0.04);}
+    [data-theme="light"] .about-arch-item{border-bottom:1px solid rgba(15,23,42,0.05);}
+    .about-arch-arrow{color:#38bdf8;flex-shrink:0;margin-top:3px;font-size:14px;}
+    [data-theme="light"] .about-arch-arrow{color:#2563eb;}
+    .about-arch-title{font-size:13px;font-weight:600;font-family:'Inter',sans-serif;
+      color:#f1f5f9;margin-bottom:3px;}
+    [data-theme="light"] .about-arch-title{color:#0f172a;}
+    .about-arch-desc{font-size:12px;font-family:'Inter',sans-serif;line-height:1.6;
+      color:rgba(148,163,184,0.75);}
+    [data-theme="light"] .about-arch-desc{color:rgba(71,85,105,0.75);}
+    .about-timeline{position:relative;padding-left:22px;margin-bottom:24px;}
+    .about-timeline::before{content:'';position:absolute;left:7px;top:8px;bottom:8px;
+      width:1px;background:rgba(56,189,248,0.20);}
+    [data-theme="light"] .about-timeline::before{background:rgba(37,99,235,0.15);}
+    .about-timeline-item{display:flex;gap:12px;margin-bottom:16px;}
+    .about-timeline-dot{width:16px;height:16px;border-radius:50%;flex-shrink:0;
+      background:rgba(56,189,248,0.15);border:1px solid rgba(56,189,248,0.35);
+      display:flex;align-items:center;justify-content:center;margin-top:1px;
+      font-size:9px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:#38bdf8;}
+    [data-theme="light"] .about-timeline-dot{background:rgba(37,99,235,0.10);
+      border:1px solid rgba(37,99,235,0.28);color:#2563eb;}
+    .about-timeline-title{font-size:13px;font-weight:600;font-family:'Inter',sans-serif;
+      color:#f1f5f9;margin-bottom:3px;}
+    [data-theme="light"] .about-timeline-title{color:#0f172a;}
+    .about-timeline-desc{font-size:12px;font-family:'Inter',sans-serif;line-height:1.6;
+      color:rgba(148,163,184,0.75);}
+    [data-theme="light"] .about-timeline-desc{color:rgba(71,85,105,0.75);}
+    .about-note-box{padding:13px 16px;border-radius:12px;font-size:13px;
+      font-family:'Inter',sans-serif;line-height:1.7;
+      background:rgba(167,139,250,0.05);border:1px solid rgba(167,139,250,0.12);
+      color:rgba(148,163,184,0.85);}
+    [data-theme="light"] .about-note-box{background:rgba(124,58,237,0.04);
+      border:1px solid rgba(124,58,237,0.10);color:rgba(51,65,85,0.85);}
+    .about-mono{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#a78bfa;}
+    [data-theme="light"] .about-mono{color:#7c3aed;}
 
     .main{max-width:1180px;margin:0 auto;padding:2rem 1.5rem;}
 
@@ -557,6 +1118,15 @@
         </button>
       </div>
     </div>
+    <!-- About this dashboard -->
+    <button class="about-btn" onclick="openAboutModal()" title="About this dashboard" aria-label="About this dashboard">
+      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="8.5"/>
+        <polyline points="11 11.5 12 11.5 12 16"/>
+        <line x1="11" y1="16" x2="13" y2="16"/>
+      </svg>
+    </button>
     <!-- Lock & Save -->
     <button class="lock-btn" id="lock-btn" onclick="openModal()" disabled>
       <svg viewBox="0 0 24 24"><path d="M12 1a5 5 0 0 0-5 5v3H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V11a2 2 0 0 0-2-2h-2V6a5 5 0 0 0-5-5zm0 2a3 3 0 0 1 3 3v3H9V6a3 3 0 0 1 3-3zm0 10a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/></svg>
@@ -3291,6 +3861,249 @@ setTimeout(initSRICharts,150); // pre-render SRI so it's ready when tab switches
   }
   // Otherwise login screen stays visible (it's shown by default)
 })();
+
+/* ── About modal ── */
+function openAboutModal(){
+  document.getElementById('about-overlay').classList.add('open');
+  document.addEventListener('keydown',_aboutEsc);
+  switchAboutSection('sources');
+}
+function closeAboutModal(){
+  document.getElementById('about-overlay').classList.remove('open');
+  document.removeEventListener('keydown',_aboutEsc);
+}
+function _aboutEsc(e){ if(e.key==='Escape') closeAboutModal(); }
+
+function switchAboutSection(id){
+  document.querySelectorAll('.about-nav-item').forEach(el=>el.classList.toggle('active',el.dataset.section===id));
+  const content=document.getElementById('about-content');
+  content.scrollTop=0;
+  content.innerHTML=ABOUT_SECTIONS[id]||'';
+}
+
+function aboutSectionLabel(text){
+  return `<div class="about-section-label">${text}</div>`;
+}
+function aboutTableRow(key,val){
+  return `<div class="about-table-row"><span class="about-table-key">${key}</span><span class="about-table-val">${val}</span></div>`;
+}
+function aboutFormula(label,math,note){
+  return `<div class="about-formula">
+    <div class="about-formula-label">${label}</div>
+    <div class="about-formula-math">${math}</div>
+    ${note?`<div class="about-formula-note">${note}</div>`:''}
+  </div>`;
+}
+function aboutCode(lang,code){
+  const id='cb-'+Math.random().toString(36).slice(2);
+  return `<div class="about-code-wrap">
+    <div class="about-code-bar">
+      <span class="about-code-lang">${lang}</span>
+      <button class="about-code-copy" onclick="
+        navigator.clipboard&&navigator.clipboard.writeText(document.getElementById('${id}').textContent);
+        this.textContent='copied!';setTimeout(()=>this.textContent='copy',1500);">copy</button>
+    </div>
+    <pre class="about-code-pre" id="${id}">${code}</pre>
+  </div>`;
+}
+
+const ABOUT_SECTIONS={
+  sources:`
+    ${aboutSectionLabel('Supabase database tables')}
+    ${aboutTableRow('model_snapshots','Audit trail of every locked save — stores locked_by, notes, and full TWM/SRI model state as JSONB.')}
+    ${aboutTableRow('snapshot_changes','Per-field diff records for each snapshot, enabling granular change history.')}
+    ${aboutTableRow('model_versions','Named quarterly snapshots with version_name, creator, DOW YTD, and full model allocations.')}
+    ${aboutTableRow('fund_geo','Geographic exposure per ticker: us_pct, intl_pct, other_pct. Used to render the geo exposure bars.')}
+    ${aboutTableRow('price_cache','Daily price cache keyed by (ticker, trade_date). Stores prev_close, change_amt, change_pct, ytd_return.')}
+    <div style="margin-bottom:20px;"></div>
+    ${aboutSectionLabel('API endpoints')}
+    ${aboutTableRow('Yahoo Finance v8','Chart endpoint for OHLCV and previous close. Used for daily price, YTD return, and DOW benchmark.')}
+    ${aboutTableRow('Yahoo Finance v10','quoteSummary endpoint for fund metadata: name, Morningstar category, expense ratio, top holdings.')}
+    ${aboutTableRow('Supabase REST','PostgREST auto-generated API. All calls use the anon key with RLS enforcing auth.role() = authenticated.')}
+    ${aboutTableRow('CORS proxies','Three-proxy fallback chain: codetabs.com → corsproxy.io → allorigins.win for browser-side Yahoo fetches.')}
+    <div style="margin-bottom:4px;"></div>
+    ${aboutSectionLabel('Example query')}
+    ${aboutCode('sql',`-- Fetch the latest price snapshot for all tickers
+SELECT
+  ticker,
+  prev_close,
+  change_pct,
+  ytd_return,
+  trade_date
+FROM price_cache
+WHERE trade_date = (
+  SELECT MAX(trade_date) FROM price_cache
+)
+ORDER BY ticker;`)}
+    ${aboutCode('sql',`-- Load a named version's full model state
+SELECT
+  version_name,
+  created_by,
+  created_at,
+  twm_models,
+  sri_models,
+  twm_summary,
+  sri_summary
+FROM model_versions
+WHERE id = $1;`)}`,
+
+  methodology:`
+    ${aboutSectionLabel('Portfolio beta')}
+    ${aboutFormula('Weighted portfolio beta','β_portfolio = Σ ( wᵢ × βᵢ )','Where wᵢ is the decimal allocation weight of fund i and βᵢ is that fund\'s 3-year beta vs the S&P 500. Cash is assigned β = 0. The sum runs over all funds in the selected model.')}
+    ${aboutFormula('Beta differential','Δβ = β_portfolio − β_S&P500    where β_S&P500 = 1.00','A negative Δβ means the portfolio is less sensitive to market swings than the index — generally desirable for conservative mandates.')}
+    ${aboutSectionLabel('Weighted expense ratio')}
+    ${aboutFormula('Blended expense ratio','ER_wtd = Σ ( wᵢ × ERᵢ )','Each fund\'s annual expense ratio (ERᵢ, as a decimal) is multiplied by its weight wᵢ. Compared against SPY\'s ER of 0.09%. Every additional 0.10% costs ~$100/yr per $100k invested.')}
+    ${aboutSectionLabel('YTD return')}
+    ${aboutFormula('Weighted portfolio YTD','YTD_portfolio = Σ ( wᵢ × YTDᵢ )','YTD return for each fund is pulled from the price_cache table (ytd_return column), populated from Yahoo Finance\'s YTD range query. Funds without cached YTD data are excluded from the weighted average.')}
+    ${aboutFormula('YTD vs DOW differential','Δ_YTD = YTD_portfolio − YTD_DOW','DOW YTD is fetched from Yahoo Finance using the ^DJI ticker with range=ytd. A positive Δ_YTD means the portfolio is outperforming the Dow Jones Industrial Average year-to-date.')}
+    ${aboutSectionLabel('Allocation normalisation')}
+    ${aboutFormula('Category totals','Cat_k = Σᵢ wᵢ   ∀ fund i where category(i) = k','Allocations are stored as decimal fractions (0.0–1.0). The Sum Pill turns green when |Σ wᵢ − 1.00| < 0.005, indicating the model is fully allocated.')}
+    ${aboutCode('javascript',`// Weighted beta calculation (from index.html)
+function calcPortfolioBeta(data, model) {
+  const alloc = data.models[model];
+  let totalWeight = 0, weightedBeta = 0;
+
+  data.funds.forEach(f => {
+    const w = alloc[f.ticker] || 0;
+    const b = betaMap[f.ticker];   // loaded from Yahoo quoteSummary
+    if (b != null) {
+      weightedBeta += w * b;
+      totalWeight  += w;
+    }
+  });
+
+  const cashW = alloc['cash'] || 0; // cash contributes zero beta
+  totalWeight += cashW;
+
+  return totalWeight > 0.05 ? weightedBeta : 0;
+}`)}`,
+
+  stack:`
+    ${aboutSectionLabel('Runtime stack')}
+    <div class="about-stack-grid">
+      ${[['Vanilla JS','ES2023','#f59e0b'],['D3.js','v7.8.5','#f97316'],['Supabase','PostgREST','#3ecf8e'],
+         ['GitHub Pages','Static CDN','#94a3b8'],['Yahoo API','v8 / v10','#7c3aed'],['HTML2PDF','v0.10.1','#38bdf8']]
+        .map(([n,v,c])=>`<div class="about-stack-badge" style="background:${c}10;border:1px solid ${c}28;">
+          <div class="about-stack-name">${n}</div>
+          <div class="about-stack-ver" style="color:${c};">${v}</div>
+        </div>`).join('')}
+    </div>
+    ${aboutSectionLabel('Architecture overview')}
+    <div style="padding:13px 16px;border-radius:12px;margin-bottom:16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);">
+      ${[['Single HTML file','The entire dashboard ships as one index.html — no build step, no bundler, no Node.js runtime. Deployed directly to GitHub Pages.'],
+         ['D3 charts','Donut and bar charts are pure SVG rendered by D3 scaleBand / scaleLinear. Fully resolution-independent and theme-aware via isDark().'],
+         ['Supabase auth','Email/password via Supabase Auth. JWT stored in sessionStorage (cleared on tab close). All API calls include the Bearer token with RLS.'],
+         ['CSS custom properties','Light/dark theming via data-theme attribute on &lt;html&gt;. No CSS frameworks — all styles are scoped custom properties.']]
+        .map(([t,d])=>`<div class="about-arch-item">
+          <span class="about-arch-arrow">›</span>
+          <div><div class="about-arch-title">${t}</div><div class="about-arch-desc">${d}</div></div>
+        </div>`).join('')}
+    </div>
+    ${aboutSectionLabel('File layout')}
+    ${aboutCode('text',['jgriffin187.github.io/TWM/',
+      'index.html    (entire app - single file)',
+      '  style       CSS custom properties + theming',
+      '  body        Topbar, tabs, chart cards, modals',
+      '  script      ~2900 lines vanilla JS',
+      '    Data      TWM / SRI model objects',
+      '    Supabase  auth, CRUD, price cache',
+      '    Charts    drawCyberDonut(), drawCyberBar()',
+      '    Tiles     renderCyberTile(), renderCmpTile()',
+      '    Table     renderAllocTable(), catDot()',
+      '    Modals    lock/save, add fund, versions, about',
+    ].join('\n'))}`,
+
+  cache:`
+    ${aboutSectionLabel('Price cache lifecycle')}
+    <div class="about-timeline">
+      ${[['1','Determine last trading date','lastTradingDate() computes the most recent completed session. Saturdays, Sundays, and Mondays before market open resolve to the previous Friday.'],
+         ['2','Query price_cache','On load, the dashboard fetches all rows WHERE trade_date = lastTradingDate(). Tickers found in the cache are served immediately with no network call.'],
+         ['3','Fetch missing tickers','Any ticker not in the cache is fetched from Yahoo Finance v8/chart via the three-proxy fallback chain. FGTXX is hardcoded at $1.00 and never fetched.'],
+         ['4','Write back to cache','Newly fetched prices are upserted into price_cache with resolution=merge-duplicates. Subsequent loads within the same trading day hit the cache instantly.'],
+         ['5','YTD return pass','After all prices load, a second pass retrieves ytd_return for each ticker (range=ytd). These are also cached and displayed in the allocation table.']]
+        .map(([n,t,d])=>`<div class="about-timeline-item">
+          <div class="about-timeline-dot">${n}</div>
+          <div><div class="about-timeline-title">${t}</div><div class="about-timeline-desc">${d}</div></div>
+        </div>`).join('')}
+    </div>
+    ${aboutSectionLabel('Refresh prices flow')}
+    ${aboutCode('javascript',`// Triggered by '↻ Refresh prices' button
+async function fetchPrices() {
+  const tickers = [...new Set(
+    [...TWM.funds, ...SRI.funds].map(f => f.ticker)
+  )];
+
+  // 1. Check Supabase cache for today's date
+  const cached = await fetchCachedPrices(tickers, CACHE_DATE);
+  const missing = tickers.filter(t =>
+    t !== 'FGTXX' && !cached[t]
+  );
+
+  // 2. Fetch only what's missing from Yahoo
+  for (const ticker of missing) {
+    const quote = await fetchOneTicker(ticker);
+    if (quote) {
+      priceMap[ticker] = quote;
+      await upsertPriceCache(ticker, quote, CACHE_DATE);
+    }
+  }
+
+  // 3. Re-render all price cells + metrics
+  renderAllocTable(TWM, curTWM, 'twm');
+  renderAllocTable(SRI, curSRI, 'sri');
+  renderMetrics(TWM, curTWM, 'twm');
+  renderMetrics(SRI, curSRI, 'sri');
+}`)}
+    <div style="margin-bottom:14px;"></div>
+    ${aboutSectionLabel('Version system')}
+    <div class="about-note-box">
+      Named versions (e.g. <span class="about-mono">Q1 2026 Final</span>) are stored in
+      <span class="about-mono">model_versions</span> and are read-only snapshots.
+      Loading a version enters a red-banner read-only mode — no edits, no Lock &amp; Save.
+      Exiting restores the live model state from memory. The
+      <span class="about-mono">Lock &amp; Save</span> action writes to
+      <span class="about-mono">model_snapshots</span> (audit log) and optionally creates
+      a new named version in <span class="about-mono">model_versions</span>.
+    </div>`
+};
+
 </script>
+
+<!-- About this Dashboard modal -->
+<div class="about-overlay" id="about-overlay" onclick="if(event.target===this)closeAboutModal()">
+  <div class="about-panel">
+    <div class="about-header">
+      <div>
+        <p class="about-header-label">Trailhead Wealth Management</p>
+        <h2 class="about-header-title">About this dashboard</h2>
+      </div>
+      <button class="about-close" onclick="closeAboutModal()" title="Close">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="about-body">
+      <nav class="about-nav" id="about-nav">
+        <button class="about-nav-item active" data-section="sources" onclick="switchAboutSection('sources')">
+          <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+          Data sources
+        </button>
+        <button class="about-nav-item" data-section="methodology" onclick="switchAboutSection('methodology')">
+          <svg viewBox="0 0 24 24"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/></svg>
+          Methodology
+        </button>
+        <button class="about-nav-item" data-section="stack" onclick="switchAboutSection('stack')">
+          <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+          Technical stack
+        </button>
+        <button class="about-nav-item" data-section="cache" onclick="switchAboutSection('cache')">
+          <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Update logic
+        </button>
+        <div class="about-nav-footer">TWM Dashboard<br>v2026.Q2<br>jgriffin187</div>
+      </nav>
+      <div class="about-content" id="about-content"></div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
