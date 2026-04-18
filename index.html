@@ -99,7 +99,8 @@
     .tab.active{background:var(--bg);color:var(--text);font-weight:500;box-shadow:var(--shadow);}
     .tab:hover:not(.active){color:var(--text);}
 
-    .metrics{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px;margin-bottom:1.5rem;}
+    .metrics-top{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:10px;}
+    .metrics-cmp{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:1.5rem;}
     .metric{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;transition:background .2s,border-color .2s;}
     .metric-label{font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
     .metric.vs-sp{border-left:3px solid var(--blue);padding-left:13px;position:relative;}
@@ -230,7 +231,8 @@
     .toast.show{opacity:1;}
 
     @media(max-width:700px){
-      .metrics{grid-template-columns:1fr 1fr 1fr;}
+      .metrics-top{grid-template-columns:1fr 1fr;}
+      .metrics-cmp{grid-template-columns:1fr 1fr 1fr;}
       .grid2{grid-template-columns:1fr;}
       .topbar{padding:0 1rem;}
       .main{padding:1.25rem 1rem;}
@@ -287,7 +289,8 @@
         <option value="Taxable Aggressive">Taxable Aggressive</option>
       </select>
     </div>
-    <div class="metrics" id="twm-metrics"></div>
+    <div class="metrics-top" id="twm-metrics-top"></div>
+    <div class="metrics-cmp" id="twm-metrics-cmp"></div>
     <div class="grid2">
       <div class="card">
         <div class="card-title">Asset class breakdown</div>
@@ -327,7 +330,8 @@
         <option value="SRI Ultra Aggressive">SRI Ultra Aggressive</option>
       </select>
     </div>
-    <div class="metrics" id="sri-metrics"></div>
+    <div class="metrics-top" id="sri-metrics-top"></div>
+    <div class="metrics-cmp" id="sri-metrics-cmp"></div>
     <div class="grid2">
       <div class="card">
         <div class="card-title">Asset class breakdown</div>
@@ -901,7 +905,7 @@ function renderMetrics(data,model,pfx){
     ?(dowYtd!=null?'DOW YTD: '+dowStr+' (portfolio loading…)':'Fetching DOW data…')
     :(ytdVsDow>=0?'+':'')+ytdVsDow.toFixed(2)+'% vs DOW ('+dowStr+')';
 
-  document.getElementById(pfx+'-metrics').innerHTML=`
+  document.getElementById(pfx+'-metrics-top').innerHTML=`
     <div class="metric">
       <div class="metric-label">Equities</div>
       <div class="metric-value">${pct(s.equities)}</div>
@@ -922,6 +926,9 @@ function renderMetrics(data,model,pfx){
       <div class="metric-value">${pct(s.alternatives)}</div>
       <div class="metric-sub">Alt exposure</div>
     </div>
+`;
+
+  document.getElementById(pfx+'-metrics-cmp').innerHTML=`
     <div class="metric vs-sp">
       <div class="metric-header">
         <div class="metric-label">Portfolio beta</div>
@@ -947,6 +954,7 @@ function renderMetrics(data,model,pfx){
       <div class="metric-vs">
         <span class="${expCls}">${expDiffStr}</span>
       </div>
+    </div>
     <div class="metric vs-sp">
       <div class="metric-header">
         <div class="metric-label">YTD vs DOW</div>
@@ -959,8 +967,7 @@ function renderMetrics(data,model,pfx){
       <div class="metric-vs">
         <span class="${ytdCls}">${ytdDiffStr}</span>
       </div>
-    </div>
-    </div>`;
+  `;
 }
 
 function renderAllocTable(data,model,pfx){
