@@ -2802,7 +2802,7 @@ function drawCyberDonut(containerId, data, model){
   const slices=Object.keys(ct).filter(k=>ct[k]>0).map(k=>({name:k,value:ct[k]}));
   if(!slices.length) return;
 
-  const W=el.offsetWidth;
+  const W=el.offsetWidth, H=260;
   if(!W){ requestAnimationFrame(()=>drawCyberDonut(containerId,data,model)); return; }
   const cx=W/2, cy=H/2-10, OR=Math.min(W,H)*0.42, IR=OR*0.72;
   const PAD=0.12, CR=8; // padding angle in radians, corner radius px
@@ -2967,7 +2967,7 @@ function drawCyberBar(containerId, data, modelNames){
   el.innerHTML='';
 
   const BAR_SERIES=getBAR_SERIES(); // theme-aware: BAR_DARK or BAR_LIGHT
-  const W=el.offsetWidth;
+  const W=el.offsetWidth, H=260;
   if(!W){ requestAnimationFrame(()=>drawCyberBar(containerId,data,modelNames)); return; }
   const margin={top:16,right:16,bottom:48,left:36};
   const iW=W-margin.left-margin.right, iH=H-margin.top-margin.bottom;
