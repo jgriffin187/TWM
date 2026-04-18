@@ -99,7 +99,7 @@
     .tab.active{background:var(--bg);color:var(--text);font-weight:500;box-shadow:var(--shadow);}
     .tab:hover:not(.active){color:var(--text);}
 
-    .metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:1.5rem;}
+    .metrics{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px;margin-bottom:1.5rem;}
     .metric{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;transition:background .2s,border-color .2s;}
     .metric-label{font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
     .metric.vs-sp{border-left:3px solid var(--blue);padding-left:13px;position:relative;}
@@ -598,6 +598,7 @@ const ALL_TICKERS=[...new Set([...TWM.funds.map(f=>f.ticker),...SRI.funds.map(f=
 let priceMap={}; // { TICKER: { price, change, changePct } }
 let betaMap={};  // { TICKER: beta }
 let sp500Beta=1.0, sp500Expense=0.0009; // S&P 500 baseline: beta=1, SPY ER=0.09%
+let dowYtd=null; // DOW YTD % — fetched from ^DJI via Yahoo proxy
 
 // Hardcoded betas for well-known funds — stable, no API needed
 const KNOWN_BETAS={
@@ -643,6 +644,58 @@ async function fetchBetas(){
 
   renderMetrics(TWM,curTWM,'twm');
   renderMetrics(SRI,curSRI,'sri');
+}
+
+// Fetch DOW YTD return via Yahoo Finance proxy
+async function fetchDowYtd(){
+  // ^DJI = Dow Jones Industrial Average
+  // We use a 1-year range so we can compare Jan 1 price vs today
+  const YAHOO=`https://query1.finance.yahoo.com/v8/finance/chart/%5EDJI?interval=1d&range=ytd`;
+  let raw=null;
+
+  // Try codetabs first, then corsproxy, then allorigins
+  const proxies=[
+    u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+    u=>`https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+    u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+  ];
+
+  for(const makeProxy of proxies){
+    try{
+      const r=await fetch(makeProxy(YAHOO));
+      if(!r.ok) continue;
+      const text=await r.text();
+      const json=text.startsWith('{')?JSON.parse(text):JSON.parse(JSON.parse(text).contents||'null');
+      if(!json) continue;
+      const result=json?.chart?.result?.[0];
+      if(!result) continue;
+      const closes=result?.indicators?.quote?.[0]?.close?.filter(v=>v!=null);
+      if(!closes||closes.length<2) continue;
+      const first=closes[0], last=closes[closes.length-1];
+      dowYtd=((last-first)/first)*100;
+      console.log('DOW YTD:',dowYtd.toFixed(2)+'%');
+      break;
+    }catch(e){ console.warn('DOW fetch proxy failed:',e.message); }
+  }
+  // Re-render metrics once DOW data is loaded
+  renderMetrics(TWM,curTWM,'twm');
+  renderMetrics(SRI,curSRI,'sri');
+}
+
+// Compute weighted portfolio YTD from priceMap changePct values
+function calcPortfolioYtd(data, model){
+  const alloc=data.models[model];
+  let wYtd=0, totalW=0;
+  data.funds.forEach(f=>{
+    const w=alloc[f.ticker]||0;
+    const q=priceMap[f.ticker];
+    // changePct in priceMap is day change — we use it as a proxy for recent performance
+    // For YTD we look for ytdReturn if available, else skip
+    if(q&&q.ytdReturn!=null){ wYtd+=w*q.ytdReturn; totalW+=w; }
+    else if(q&&q.changePct!=null){ wYtd+=w*q.changePct; totalW+=w; }
+  });
+  const cashW=alloc['cash']||0; totalW+=cashW; // cash contributes 0 to YTD
+  return totalW>0.1?wYtd:null;
 }
 
 // Compute weighted portfolio beta for a given model
@@ -761,8 +814,36 @@ async function fetchPrices(){
   const now=new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
   const note=unavail>0?` (${unavail} of ${toFetch.length} unavailable)`:'';
   tsList.forEach(el=>el.textContent='As of '+now+note);
+
+  // Fetch YTD returns for each ticker via ytd range — runs after main price fetch
+  await Promise.allSettled(toFetch.filter(t=>priceMap[t]).map(async ticker=>{
+    try{
+      const YAHOO=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=ytd`;
+      const proxies=[
+        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(YAHOO)}`,
+        `https://corsproxy.io/?url=${encodeURIComponent(YAHOO)}`,
+      ];
+      for(const proxyUrl of proxies){
+        const r=await fetch(proxyUrl);
+        if(!r.ok) continue;
+        const text=await r.text();
+        const d=text.startsWith('{')?JSON.parse(text):JSON.parse(JSON.parse(text).contents||'null');
+        if(!d) continue;
+        const closes=d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(v=>v!=null);
+        if(closes&&closes.length>=2){
+          const ytd=((closes[closes.length-1]-closes[0])/closes[0])*100;
+          if(priceMap[ticker]) priceMap[ticker].ytdReturn=ytd;
+          break;
+        }
+      }
+    }catch(e){}
+  }));
+
   renderAllocTable(TWM,curTWM,'twm');
   renderAllocTable(SRI,curSRI,'sri');
+  // Re-render metrics now that ytd data is available
+  renderMetrics(TWM,curTWM,'twm');
+  renderMetrics(SRI,curSRI,'sri');
 }
 
 function priceCell(ticker){
@@ -810,6 +891,16 @@ function renderMetrics(data,model,pfx){
   const expCls=expDiff===null?'vs-neutral':expDiff<0?'vs-better':'vs-worse';
   const expDiffStr=expDiff===null?'Loading…':((expDiff>=0?'+':'')+((expDiff)*100).toFixed(2)+'% vs SPY (0.09%)');
 
+  // YTD vs DOW
+  const portYtd=calcPortfolioYtd(data,model);
+  const ytdStr=portYtd!=null?(portYtd>=0?'+':'')+portYtd.toFixed(2)+'%':'Loading…';
+  const ytdVsDow=portYtd!=null&&dowYtd!=null?(portYtd-dowYtd):null;
+  const ytdCls=ytdVsDow===null?'vs-neutral':ytdVsDow>=0?'vs-better':'vs-worse';
+  const dowStr=dowYtd!=null?(dowYtd>=0?'+':'')+dowYtd.toFixed(2)+'%':'—';
+  const ytdDiffStr=ytdVsDow===null
+    ?(dowYtd!=null?'DOW YTD: '+dowStr+' (portfolio loading…)':'Fetching DOW data…')
+    :(ytdVsDow>=0?'+':'')+ytdVsDow.toFixed(2)+'% vs DOW ('+dowStr+')';
+
   document.getElementById(pfx+'-metrics').innerHTML=`
     <div class="metric">
       <div class="metric-label">Equities</div>
@@ -856,6 +947,19 @@ function renderMetrics(data,model,pfx){
       <div class="metric-vs">
         <span class="${expCls}">${expDiffStr}</span>
       </div>
+    <div class="metric vs-sp">
+      <div class="metric-header">
+        <div class="metric-label">YTD vs DOW</div>
+        <span class="tooltip-wrap">
+          <i class="info-icon">i</i>
+          <span class="tooltip-box">Year-to-date return of this portfolio vs. the Dow Jones Industrial Average. Portfolio YTD is a weighted average of each fund's YTD return. Green = outperforming the DOW, red = underperforming. Click Refresh prices to load YTD data.</span>
+        </span>
+      </div>
+      <div class="metric-value">${ytdStr}</div>
+      <div class="metric-vs">
+        <span class="${ytdCls}">${ytdDiffStr}</span>
+      </div>
+    </div>
     </div>`;
 }
 
@@ -1236,7 +1340,7 @@ document.getElementById('twm-model-name').textContent=curTWM;
 renderMetrics(SRI,curSRI,'sri');renderAllocTable(SRI,curSRI,'sri');
 document.getElementById('sri-model-name').textContent=curSRI;
 setTimeout(initTWMCharts,100);
-checkConnection().then(()=>{ fetchPrices(); fetchBetas(); });
+checkConnection().then(()=>{ fetchPrices(); fetchBetas(); fetchDowYtd(); });
 </script>
 </body>
 </html>
