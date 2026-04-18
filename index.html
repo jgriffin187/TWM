@@ -66,6 +66,32 @@
     .logo-mark svg{width:18px;height:18px;fill:white;}
     .topbar-title{font-size:16px;font-weight:600;letter-spacing:-.02em;}
     .topbar-sub{font-size:13px;color:var(--text-2);margin-top:2px;font-weight:500;}
+    .version-label-wrap{display:flex;align-items:center;gap:8px;}
+    .version-label{font-size:18px;font-weight:700;color:var(--text);letter-spacing:-.02em;cursor:pointer;padding:2px 6px;border-radius:6px;border:1.5px solid transparent;min-width:80px;transition:border-color .15s,background .15s;white-space:nowrap;}
+    .version-label:hover{border-color:var(--border-mid);background:var(--surface2);}
+    .version-label:focus{outline:none;border-color:var(--blue);background:var(--surface2);}
+    .version-pill{font-size:11px;font-weight:600;padding:3px 8px;border-radius:10px;background:var(--blue-bg);color:var(--blue-text);font-family:'IBM Plex Mono',monospace;cursor:pointer;border:none;transition:opacity .15s;}
+    .version-pill:hover{opacity:.8;}
+    .readonly-banner{display:none;background:var(--red-bg);border-bottom:2px solid var(--red-text);padding:10px 2rem;color:var(--red-text);font-size:13px;font-weight:600;align-items:center;justify-content:space-between;gap:12px;}
+    .readonly-banner.show{display:flex;}
+    .readonly-return{font-size:13px;font-weight:600;color:var(--red-text);background:transparent;border:1.5px solid var(--red-text);border-radius:8px;padding:5px 14px;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s;}
+    .readonly-return:hover{background:var(--red-bg);}
+    .ver-modal-wrap{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:120;align-items:center;justify-content:center;backdrop-filter:blur(3px);}
+    .ver-modal-wrap.open{display:flex;}
+    .ver-modal{background:var(--surface);border-radius:14px;border:1px solid var(--border-mid);padding:1.75rem;width:460px;max-width:94vw;box-shadow:var(--shadow-lg);animation:modal-in .18s ease-out;}
+    .ver-modal h2{font-size:17px;font-weight:600;color:var(--text);margin-bottom:6px;}
+    .ver-modal p{font-size:13px;color:var(--text-2);margin-bottom:1.25rem;line-height:1.6;}
+    .ver-modal label{font-size:13px;font-weight:600;color:var(--text);display:block;margin-bottom:5px;}
+    .ver-modal input{width:100%;font-size:15px;padding:9px 12px;border:1px solid var(--border-mid);border-radius:10px;background:var(--bg);color:var(--text);margin-bottom:14px;font-family:'Inter',sans-serif;transition:border-color .15s;}
+    .ver-modal input:focus{outline:none;border-color:var(--blue);}
+    .ver-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:14px;}
+    .ver-table th{font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;text-align:left;padding:6px 10px;border-bottom:2px solid var(--border-mid);}
+    .ver-table td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--text);}
+    .ver-table tr:last-child td{border-bottom:none;}
+    .ver-table tr:hover td{background:var(--surface2);}
+    .ver-load-btn{font-size:12px;font-weight:600;color:var(--blue);background:var(--blue-bg);border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-family:'Inter',sans-serif;}
+    .ver-load-btn:hover{opacity:.8;}
+    .ver-active-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--green-bg);color:var(--green-text);font-family:'IBM Plex Mono',monospace;margin-left:4px;}
     .topbar-right{display:flex;align-items:center;gap:10px;}
 
     .conn-badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:4px 11px;border-radius:20px;border:1px solid transparent;font-family:'IBM Plex Mono',monospace;}
@@ -248,7 +274,14 @@
       <svg viewBox="0 0 24 24"><path d="M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 3h2v-2h2v2h2v2h-2v2h-2v-2h-2z"/></svg>
     </div>
     <div>
-      <div class="topbar-title">Model Allocations</div>
+      <div class="version-label-wrap">
+        <div class="topbar-title">Model Allocations</div>
+        <div class="version-label" id="version-label" contenteditable="true"
+          title="Click to rename — this will save a new version"
+          onblur="onVersionLabelBlur(this)"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">—</div>
+        <button class="version-pill" onclick="openVersionsPanel()" title="View all saved versions">⏱ Versions</button>
+      </div>
       <div class="topbar-sub" id="last-snap-info">Connecting to database…</div>
     </div>
   </div>
@@ -268,11 +301,17 @@
   </div>
 </header>
 
+<div class="readonly-banner" id="readonly-banner">
+  <span id="readonly-label">Viewing read-only version</span>
+  <button class="readonly-return" onclick="exitReadOnly()">← Return to live model</button>
+</div>
+
 <main class="main">
   <div class="tab-row">
     <button class="tab active" onclick="switchTab('twm')">TWM Model</button>
     <button class="tab" onclick="switchTab('sri')">SRI Model</button>
     <button class="tab" onclick="switchTab('history')">Change History</button>
+    <button class="tab" onclick="switchTab('versions')">Versions</button>
   </div>
 
   <!-- TWM -->
@@ -370,6 +409,17 @@
       <div id="history-container"><div class="empty-state">Loading history…</div></div>
     </div>
   </div>
+
+  <!-- Versions tab -->
+  <div id="tab-versions" style="display:none;">
+    <div class="card">
+      <div class="hist-header">
+        <div class="card-title" style="margin-bottom:0;">Saved versions — quarterly snapshots</div>
+        <button class="refresh-btn" onclick="loadVersionsList()">↻ Refresh</button>
+      </div>
+      <div id="versions-list-container"><div class="empty-state">Loading versions…</div></div>
+    </div>
+  </div>
 </main>
 
 <!-- Modal -->
@@ -396,6 +446,35 @@
       <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
       <button class="btn-save" id="add-modal-save" onclick="confirmAddFund()">Add fund</button>
     </div>
+  </div>
+</div>
+
+<!-- VERSION CONFIRMATION MODAL -->
+<div class="ver-modal-wrap" id="ver-confirm-modal">
+  <div class="ver-modal">
+    <h2>Save new version?</h2>
+    <p>Renaming the label will save the current model state as a named version that you can load later. The audit trail continues recording changes independently.</p>
+    <label for="ver-name-input">Version name</label>
+    <input type="text" id="ver-name-input" placeholder="e.g. Q2 2026" />
+    <label for="ver-creator-input">Your name <span style="color:var(--red-text);">*</span></label>
+    <input type="text" id="ver-creator-input" placeholder="e.g. Jane Smith" autocomplete="name" />
+    <div class="error-msg" id="ver-name-error">Please enter your name.</div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="cancelVersionSave()">Cancel</button>
+      <button class="btn-save" id="ver-confirm-btn" onclick="confirmVersionSave()">Save version</button>
+    </div>
+  </div>
+</div>
+
+<!-- VERSIONS PANEL MODAL -->
+<div class="ver-modal-wrap" id="ver-panel-modal">
+  <div class="ver-modal" style="width:600px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h2 style="margin-bottom:0;">Saved versions</h2>
+      <button class="btn-cancel" onclick="closeVersionsPanel()" style="padding:6px 14px;">Close</button>
+    </div>
+    <p style="margin-bottom:0;">Click Load to restore a version in read-only mode. The live model is unaffected.</p>
+    <div id="ver-panel-list"><div class="empty-state">Loading…</div></div>
   </div>
 </div>
 
@@ -865,9 +944,10 @@ function priceCell(ticker){
 }
 
 function switchTab(tab){
-  ['twm','sri','history'].forEach(t=>document.getElementById('tab-'+t).style.display=t===tab?'':'none');
-  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['twm','sri','history'][i]===tab));
+  ['twm','sri','history','versions'].forEach(t=>document.getElementById('tab-'+t).style.display=t===tab?'':'none');
+  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['twm','sri','history','versions'][i]===tab));
   if(tab==='history') loadHistory();
+  if(tab==='versions') loadVersionsList();
   if(tab==='twm'&&!twmDonut) setTimeout(initTWMCharts,50);
   if(tab==='sri'&&!sriDonut) setTimeout(initSRICharts,50);
 }
@@ -1311,6 +1391,224 @@ async function loadHistory(){
   }catch(e){el.innerHTML='<div class="empty-state" style="color:var(--red-text);">Error: '+e.message+'</div>';}
 }
 
+/* ── Version management ── */
+let currentVersionId=null;   // UUID of the active live version (null = unsaved)
+let currentVersionName='—';  // Display name shown in header
+let pendingVersionLabel='';  // The label the user typed before confirmation
+let isReadOnly=false;        // True when viewing a past version
+
+function setVersionLabel(name){
+  currentVersionName=name||'—';
+  const el=document.getElementById('version-label');
+  if(el) el.textContent=currentVersionName;
+}
+
+function onVersionLabelBlur(el){
+  const newName=el.textContent.trim();
+  // If unchanged or blank, revert
+  if(!newName||newName===currentVersionName){
+    el.textContent=currentVersionName;
+    return;
+  }
+  // If in read-only, prevent editing
+  if(isReadOnly){
+    el.textContent=currentVersionName;
+    toast('Cannot rename while in read-only mode.','err');
+    return;
+  }
+  pendingVersionLabel=newName;
+  // Pre-fill the version name input in the confirmation modal
+  document.getElementById('ver-name-input').value=newName;
+  document.getElementById('ver-name-error').style.display='none';
+  document.getElementById('ver-confirm-btn').disabled=false;
+  document.getElementById('ver-confirm-btn').textContent='Save version';
+  document.getElementById('ver-confirm-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('ver-creator-input').focus(),60);
+}
+
+function cancelVersionSave(){
+  // Revert label to previous name
+  document.getElementById('version-label').textContent=currentVersionName;
+  document.getElementById('ver-confirm-modal').classList.remove('open');
+  pendingVersionLabel='';
+}
+
+async function confirmVersionSave(){
+  const creator=document.getElementById('ver-creator-input').value.trim();
+  if(!creator){
+    document.getElementById('ver-name-error').style.display='block';
+    return;
+  }
+  document.getElementById('ver-name-error').style.display='none';
+  const versionName=document.getElementById('ver-name-input').value.trim()||pendingVersionLabel;
+  const btn=document.getElementById('ver-confirm-btn');
+  btn.disabled=true; btn.textContent='Saving…';
+
+  // Capture computed metrics at this moment
+  const twmMeta={}, sriMeta={};
+  TWM_MODEL_NAMES.forEach(m=>{
+    twmMeta[m]={
+      beta:parseFloat(calcPortfolioBeta(TWM,m).toFixed(4)),
+      expense:parseFloat(calcWeightedExpense(TWM,m).toFixed(6)),
+      ytd:calcPortfolioYtd(TWM,m)!=null?parseFloat(calcPortfolioYtd(TWM,m).toFixed(4)):null,
+      geo:calcGeo(TWM,m),
+    };
+  });
+  SRI_MODEL_NAMES.forEach(m=>{
+    sriMeta[m]={
+      beta:parseFloat(calcPortfolioBeta(SRI,m).toFixed(4)),
+      expense:parseFloat(calcWeightedExpense(SRI,m).toFixed(6)),
+      ytd:calcPortfolioYtd(SRI,m)!=null?parseFloat(calcPortfolioYtd(SRI,m).toFixed(4)):null,
+      geo:calcGeo(SRI,m),
+    };
+  });
+
+  try{
+    const body={
+      version_name: versionName,
+      created_by:   creator,
+      dow_ytd:      dowYtd!=null?parseFloat(dowYtd.toFixed(4)):null,
+      twm_funds:    TWM.funds,
+      twm_models:   TWM.models,
+      twm_summary:  TWM.summary,
+      twm_meta:     twmMeta,
+      sri_funds:    SRI.funds,
+      sri_models:   SRI.models,
+      sri_summary:  SRI.summary,
+      sri_meta:     sriMeta,
+    };
+    const result=await sbPost('/rest/v1/model_versions',body);
+    currentVersionId=result[0].id;
+    currentVersionName=versionName;
+    document.getElementById('version-label').textContent=currentVersionName;
+    document.getElementById('ver-confirm-modal').classList.remove('open');
+    toast('Version "'+versionName+'" saved successfully');
+    pendingVersionLabel='';
+  }catch(e){
+    toast('Failed to save version: '+e.message,'err');
+    document.getElementById('version-label').textContent=currentVersionName;
+  }finally{
+    btn.disabled=false; btn.textContent='Save version';
+  }
+}
+
+function openVersionsPanel(){
+  document.getElementById('ver-panel-modal').classList.add('open');
+  loadVersionsList(true); // true = load into panel
+}
+function closeVersionsPanel(){
+  document.getElementById('ver-panel-modal').classList.remove('open');
+}
+
+async function loadVersionsList(forPanel=false){
+  const listEl=forPanel
+    ?document.getElementById('ver-panel-list')
+    :document.getElementById('versions-list-container');
+  if(!listEl) return;
+  listEl.innerHTML='<div class="empty-state">Loading…</div>';
+  try{
+    const versions=await sbGet('/rest/v1/model_versions?select=id,version_name,created_by,created_at,dow_ytd&order=created_at.desc');
+    if(!versions.length){listEl.innerHTML='<div class="empty-state">No versions saved yet. Edit the version label in the header to create one.</div>';return;}
+    let html=`<table class="ver-table"><thead><tr>
+      <th>Version</th><th>Created by</th><th>Date</th><th>DOW YTD</th><th></th>
+    </tr></thead><tbody>`;
+    versions.forEach(v=>{
+      const dt=new Date(v.created_at).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+      const isActive=v.id===currentVersionId;
+      const dowStr=v.dow_ytd!=null?(v.dow_ytd>=0?'+':'')+v.dow_ytd.toFixed(2)+'%':'—';
+      html+=`<tr>
+        <td><strong>${v.version_name}</strong>${isActive?'<span class="ver-active-badge">active</span>':''}</td>
+        <td style="color:var(--text-2);">${v.created_by}</td>
+        <td style="font-size:12px;font-family:'IBM Plex Mono',monospace;color:var(--text-2);">${dt}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;">${dowStr}</td>
+        <td><button class="ver-load-btn" onclick="loadVersion('${v.id}','${v.version_name.replace(/'/g,"\\'")}',${forPanel})">Load</button></td>
+      </tr>`;
+    });
+    html+='</tbody></table>';
+    listEl.innerHTML=html;
+  }catch(e){
+    listEl.innerHTML='<div class="empty-state" style="color:var(--red-text);">Error: '+e.message+'</div>';
+  }
+}
+
+async function loadVersion(id, name, closePanel=false){
+  if(closePanel) closeVersionsPanel();
+  try{
+    const rows=await sbGet('/rest/v1/model_versions?id=eq.'+id+'&select=*');
+    if(!rows.length) throw new Error('Version not found');
+    const v=rows[0];
+
+    // Store live state before switching to read-only
+    if(!isReadOnly){
+      window._liveTWM=JSON.parse(JSON.stringify(TWM));
+      window._liveSRI=JSON.parse(JSON.stringify(SRI));
+      window._liveVersionName=currentVersionName;
+    }
+
+    // Load version data into dashboard (read-only)
+    if(v.twm_funds) TWM.funds=v.twm_funds;
+    if(v.twm_models){
+      TWM_MODEL_NAMES.forEach(m=>{ if(v.twm_models[m]) TWM.models[m]=v.twm_models[m]; });
+    }
+    if(v.twm_summary){
+      TWM_MODEL_NAMES.forEach(m=>{ if(v.twm_summary[m]) TWM.summary[m]=v.twm_summary[m]; });
+    }
+    if(v.sri_funds) SRI.funds=v.sri_funds;
+    if(v.sri_models){
+      SRI_MODEL_NAMES.forEach(m=>{ if(v.sri_models[m]) SRI.models[m]=v.sri_models[m]; });
+    }
+    if(v.sri_summary){
+      SRI_MODEL_NAMES.forEach(m=>{ if(v.sri_summary[m]) SRI.summary[m]=v.sri_summary[m]; });
+    }
+
+    // Enter read-only mode
+    isReadOnly=true;
+    document.getElementById('version-label').contentEditable='false';
+    document.getElementById('lock-btn').disabled=true;
+    document.getElementById('readonly-banner').classList.add('show');
+    const dt=new Date(v.created_at).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    document.getElementById('readonly-label').textContent=
+      'Viewing "'+name+'" ('+dt+' by '+v.created_by+') — read-only';
+    setVersionLabel(name);
+
+    // Re-render everything with version data
+    renderMetrics(TWM,curTWM,'twm'); renderAllocTable(TWM,curTWM,'twm');
+    renderMetrics(SRI,curSRI,'sri'); renderAllocTable(SRI,curSRI,'sri');
+    if(twmDonut){twmDonut.destroy();twmDonut=null;}
+    if(twmBar){twmBar.destroy();twmBar=null;}
+    if(sriDonut){sriDonut.destroy();sriDonut=null;}
+    if(sriBar){sriBar.destroy();sriBar=null;}
+    setTimeout(()=>{initTWMCharts();initSRICharts();},80);
+    switchTab('twm');
+    toast('Loaded "'+name+'" in read-only mode');
+  }catch(e){
+    toast('Failed to load version: '+e.message,'err');
+  }
+}
+
+function exitReadOnly(){
+  if(!window._liveTWM) return;
+  // Restore live model state
+  Object.assign(TWM,JSON.parse(JSON.stringify(window._liveTWM)));
+  Object.assign(SRI,JSON.parse(JSON.stringify(window._liveSRI)));
+  setVersionLabel(window._liveVersionName);
+  isReadOnly=false;
+  document.getElementById('version-label').contentEditable='true';
+  document.getElementById('lock-btn').disabled=false;
+  document.getElementById('readonly-banner').classList.remove('show');
+
+  // Re-render live state
+  renderMetrics(TWM,curTWM,'twm'); renderAllocTable(TWM,curTWM,'twm');
+  renderMetrics(SRI,curSRI,'sri'); renderAllocTable(SRI,curSRI,'sri');
+  if(twmDonut){twmDonut.destroy();twmDonut=null;}
+  if(twmBar){twmBar.destroy();twmBar=null;}
+  if(sriDonut){sriDonut.destroy();sriDonut=null;}
+  if(sriBar){sriBar.destroy();sriBar=null;}
+  setTimeout(()=>{initTWMCharts();initSRICharts();},80);
+  switchTab('twm');
+  toast('Returned to live model');
+}
+
 async function checkConnection(){
   const badge=document.getElementById('conn-badge'),label=document.getElementById('conn-label'),btn=document.getElementById('lock-btn');
   try{
@@ -1329,11 +1627,21 @@ async function checkConnection(){
       });
       const dt=new Date(snaps[0].created_at).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
       document.getElementById('last-snap-info').textContent='Last snapshot: '+dt+' by '+snaps[0].locked_by;
+      // Load latest version label
+      try{
+        const vers=await sbGet('/rest/v1/model_versions?select=id,version_name&order=created_at.desc&limit=1');
+        if(vers.length){ currentVersionId=vers[0].id; setVersionLabel(vers[0].version_name); }
+      }catch(e){}
       renderMetrics(TWM,curTWM,'twm');renderAllocTable(TWM,curTWM,'twm');
       renderMetrics(SRI,curSRI,'sri');renderAllocTable(SRI,curSRI,'sri');
       setTimeout(initTWMCharts,60);
     } else {
       document.getElementById('last-snap-info').textContent='Connected — no snapshots yet';
+      // Try to load latest version name
+      try{
+        const vers=await sbGet('/rest/v1/model_versions?select=id,version_name&order=created_at.desc&limit=1');
+        if(vers.length){ currentVersionId=vers[0].id; setVersionLabel(vers[0].version_name); }
+      }catch(e){}
     }
   }catch(e){
     badge.className='conn-badge conn-err';label.textContent='Connection failed';btn.disabled=true;
