@@ -2341,7 +2341,6 @@ function drawCyberDonut(containerId, data, model){
       </div>`,e);
     });
     path._tipData={name:s.name,value:s.value};
-    path.addEventListener('mousemove',e=>showTip(path._tipHtml,e));
     path.addEventListener('mouseleave',()=>{
       paths.forEach(p2=>p2.style.opacity='1');
       path.removeAttribute('filter');
