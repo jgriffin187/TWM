@@ -2093,7 +2093,7 @@ async function saveGeoData(){
     if(Math.abs(us+intl+other-100)>=0.5) invalid.push(f.ticker);
   });
   if(invalid.length){
-    toast('Fix rows that don't sum to 100%: '+invalid.join(', '),'err');
+    toast('Fix rows that don\'t sum to 100%: '+invalid.join(', '),'err');
     btn.disabled=false; btn.textContent='Save changes';
     return;
   }
