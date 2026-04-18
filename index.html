@@ -2816,116 +2816,101 @@ function makeSvgDefs(svg, series){
 function drawCyberDonut(containerId, data, model){
   const el=document.getElementById(containerId);
   if(!el) return;
-
-  // Check width BEFORE clearing — if 0 the container is hidden; retry after layout
   const W=el.offsetWidth, H=260;
   if(!W){
     requestAnimationFrame(()=>requestAnimationFrame(()=>drawCyberDonut(containerId,data,model)));
     return;
   }
-
   el.innerHTML='';
 
   const ct=getCatTotals(data,model);
   const slices=Object.keys(ct).filter(k=>ct[k]>0).map(k=>({name:k,value:ct[k]}));
   if(!slices.length) return;
-  const cx=W/2, cy=H/2-10, OR=Math.min(W,H)*0.42, IR=OR*0.72;
-  const PAD=0.12, CR=8; // padding angle in radians, corner radius px
+
+  const pfx=containerId.replace(/[^a-z0-9]/gi,'_');
+  const cx=W/2, cy=H/2-10;
+  const OR=Math.min(W,H)*0.42, IR=OR*0.72;
 
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
-  svg.setAttribute('width','100%');svg.setAttribute('height',H);
+  svg.setAttribute('width','100%');
+  svg.setAttribute('height',H);
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
 
-  // defs with gradients + glow filter
+  // ── defs: gradients + glow filter ──────────────────────────
   const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
-  const glowFilter=document.createElementNS('http://www.w3.org/2000/svg','filter');
-  glowFilter.id=containerId.replace(/[^a-z0-9]/gi,'_')+'_glow';
-  const glowFilterId=glowFilter.id;glowFilter.setAttribute('x','-40%');glowFilter.setAttribute('y','-40%');
-  glowFilter.setAttribute('width','180%');glowFilter.setAttribute('height','180%');
-  const blur=document.createElementNS('http://www.w3.org/2000/svg','feGaussianBlur');
-  blur.setAttribute('stdDeviation','6');blur.setAttribute('result','blur');
-  const merge=document.createElementNS('http://www.w3.org/2000/svg','feMerge');
-  const mn1=document.createElementNS('http://www.w3.org/2000/svg','feMergeNode');mn1.setAttribute('in','blur');
-  const mn2=document.createElementNS('http://www.w3.org/2000/svg','feMergeNode');mn2.setAttribute('in','SourceGraphic');
-  merge.appendChild(mn1);merge.appendChild(mn2);
-  glowFilter.appendChild(blur);glowFilter.appendChild(merge);
-  defs.appendChild(glowFilter);
 
+  // Glow filter
+  const filt=document.createElementNS('http://www.w3.org/2000/svg','filter');
+  const filtId=pfx+'_glow';
+  filt.id=filtId;
+  filt.setAttribute('x','-40%');filt.setAttribute('y','-40%');
+  filt.setAttribute('width','180%');filt.setAttribute('height','180%');
+  const feB=document.createElementNS('http://www.w3.org/2000/svg','feGaussianBlur');
+  feB.setAttribute('stdDeviation','6');feB.setAttribute('result','blur');
+  const feM=document.createElementNS('http://www.w3.org/2000/svg','feMerge');
+  const feN1=document.createElementNS('http://www.w3.org/2000/svg','feMergeNode');feN1.setAttribute('in','blur');
+  const feN2=document.createElementNS('http://www.w3.org/2000/svg','feMergeNode');feN2.setAttribute('in','SourceGraphic');
+  feM.appendChild(feN1);feM.appendChild(feN2);
+  filt.appendChild(feB);filt.appendChild(feM);
+  defs.appendChild(filt);
+
+  // Per-slice gradients
   const total=slices.reduce((a,s)=>a+s.value,0);
-  let startAngle=-Math.PI/2;
   slices.forEach((s,i)=>{
     const g=getCYBER(s.name);
-    const gradId=containerId.replace(/[^a-z0-9]/gi,'_')+'_dg_'+i;
+    const gid=pfx+'_grad'+i;
     const lg=document.createElementNS('http://www.w3.org/2000/svg','linearGradient');
-    lg.id=gradId;lg.setAttribute('x1','0%');lg.setAttribute('y1','0%');lg.setAttribute('x2','100%');lg.setAttribute('y2','100%');
-    const st1=document.createElementNS('http://www.w3.org/2000/svg','stop');
-    st1.setAttribute('offset','0%');st1.setAttribute('stop-color',g.c1);
-    const st2=document.createElementNS('http://www.w3.org/2000/svg','stop');
-    st2.setAttribute('offset','100%');st2.setAttribute('stop-color',g.c2);
-    lg.appendChild(st1);lg.appendChild(st2);
+    lg.id=gid;
+    lg.setAttribute('x1','0%');lg.setAttribute('y1','0%');
+    lg.setAttribute('x2','100%');lg.setAttribute('y2','100%');
+    const s1=document.createElementNS('http://www.w3.org/2000/svg','stop');
+    s1.setAttribute('offset','0%');s1.setAttribute('stop-color',g.c1);
+    const s2=document.createElementNS('http://www.w3.org/2000/svg','stop');
+    s2.setAttribute('offset','100%');s2.setAttribute('stop-color',g.c2);
+    lg.appendChild(s1);lg.appendChild(s2);
     defs.appendChild(lg);
-    s._gradId=gradId;
-    s._start=startAngle;
-    const sweep=(s.value/total)*(2*Math.PI)-PAD;
-    s._end=startAngle+sweep;
-    startAngle+=sweep+PAD;
+    s._gid=gid;
   });
   svg.appendChild(defs);
 
-  function arcPath(sa,ea,ir,or,cr){
-    const sweep=ea-sa;
-    if(sweep<=0) return '';
-    // Clamp corner radius so it never goes negative on thin slices
-    const crOr=Math.max(0,Math.min(cr,(sweep*or)/2-1));
-    const crIr=Math.max(0,Math.min(cr,(sweep*ir)/2-1));
-    const orOuter=or, irInner=ir;
-    const aOr=crOr>0?crOr/or:0, aIr=crIr>0?crIr/ir:0;
-    const p=([r,a])=>[cx+r*Math.cos(a),cy+r*Math.sin(a)];
-    const pts={
-      outerStart: p([orOuter, sa+aOr]),
-      outerEnd:   p([orOuter, ea-aOr]),
-      innerEnd:   p([irInner, ea-aIr]),
-      innerStart: p([irInner, sa+aIr]),
-      outerStartCorner: p([orOuter-crOr, sa+aOr]),
-      outerEndCorner:   p([orOuter-crOr, ea-aOr]),
-      innerEndCorner:   p([irInner+crIr, ea-aIr]),
-      innerStartCorner: p([irInner+crIr, sa+aIr]),
-    };
-    const laf=sweep>Math.PI?1:0;
-    return [
-      `M ${pts.outerStart}`,
-      `A ${orOuter} ${orOuter} 0 ${laf} 1 ${pts.outerEnd}`,
-      `Q ${p([orOuter,ea])} ${pts.outerEndCorner}`,
-      `L ${pts.innerEndCorner}`,
-      `Q ${p([irInner,ea])} ${pts.innerEnd}`,
-      `A ${irInner} ${irInner} 0 ${laf} 0 ${pts.innerStart}`,
-      `Q ${p([irInner,sa])} ${pts.innerStartCorner}`,
-      `L ${pts.outerStartCorner}`,
-      `Q ${p([orOuter,sa])} ${pts.outerStart}`,
-      'Z'
-    ].join(' ');
-  }
+  // ── D3 arc generator ────────────────────────────────────────
+  const arc=d3.arc()
+    .innerRadius(IR)
+    .outerRadius(OR)
+    .padAngle(0.06)
+    .cornerRadius(8);
 
-  const paths=slices.map((s,i)=>{
+  const pie=d3.pie()
+    .value(d=>d.value)
+    .sort(null);
+
+  const arcs=pie(slices);
+
+  // Group centered
+  const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+  g.setAttribute('transform',`translate(${cx},${cy})`);
+
+  const pathEls=arcs.map((a,i)=>{
+    const s=a.data;
     const path=document.createElementNS('http://www.w3.org/2000/svg','path');
-    path.setAttribute('d', arcPath(s._start,s._end,IR,OR,CR));
-    path.setAttribute('fill',`url(#${s._gradId})`);
+    path.setAttribute('d',arc(a));
+    path.setAttribute('fill',`url(#${s._gid})`);
     path.style.cursor='pointer';
     path.style.transition='opacity 0.2s';
+    path._tipData={name:s.name,value:s.value};
+
     path.addEventListener('mouseenter',e=>{
-      paths.forEach((p2,j)=>p2.style.opacity=j===i?'1':'0.45');
-      path.setAttribute('filter',`url(#${glowFilterId})`);
+      pathEls.forEach((p2,j)=>p2.style.opacity=j===i?'1':'0.45');
+      path.setAttribute('filter',`url(#${filtId})`);
       const _t=T(),_g=getCYBER(s.name);
       const _glow=_t.useGlow?`box-shadow:0 0 6px ${_g.dot};`:`box-shadow:0 2px 6px ${_g.shadow};`;
-      const tipHtml=`<div style="display:flex;align-items:center;gap:8px;">
+      showTip(`<div style="display:flex;align-items:center;gap:8px;">
         <span style="width:7px;height:7px;border-radius:50%;background:${_g.dot};${_glow}flex-shrink:0;"></span>
         <span style="color:${_t.textSecondary};font-size:12px;">${s.name}</span>
         <span style="color:${_t.textPrimary};font-size:14px;font-weight:700;font-family:'Courier New',monospace;margin-left:4px;">${(s.value*100).toFixed(1)}%</span>
-      </div>`;
-      showTip(tipHtml,e);
-      // Update center label
+      </div>`,e);
       centerLabel.textContent=s.name;
-      centerLabel.style.fill=getCYBER(s.name).dot;
+      centerLabel.style.fill=_g.dot;
       centerValue.textContent=(s.value*100).toFixed(1)+'%';
     });
     path.addEventListener('mousemove',e=>{
@@ -2937,48 +2922,51 @@ function drawCyberDonut(containerId, data, model){
         <span style="color:${_t.textPrimary};font-size:14px;font-weight:700;font-family:'Courier New',monospace;margin-left:4px;">${(path._tipData.value*100).toFixed(1)}%</span>
       </div>`,e);
     });
-    path._tipData={name:s.name,value:s.value};
     path.addEventListener('mouseleave',()=>{
-      paths.forEach(p2=>p2.style.opacity='1');
+      pathEls.forEach(p2=>p2.style.opacity='1');
       path.removeAttribute('filter');
       hideTip();
       centerLabel.textContent='Total assets';
       centerLabel.style.fill=T().centerLabelFill;
       centerValue.textContent='100%';
     });
-    svg.appendChild(path);
+    g.appendChild(path);
     return path;
   });
 
-  // Center text
+  // Center text (relative to group center = 0,0)
   const centerLabel=document.createElementNS('http://www.w3.org/2000/svg','text');
-  centerLabel.setAttribute('x',cx);centerLabel.setAttribute('y',cy-10);
-  centerLabel.setAttribute('text-anchor','middle');centerLabel.setAttribute('dominant-baseline','middle');
+  centerLabel.setAttribute('x',0);centerLabel.setAttribute('y',-12);
+  centerLabel.setAttribute('text-anchor','middle');
   centerLabel.setAttribute('font-size','10');centerLabel.setAttribute('font-weight','600');
-  centerLabel.setAttribute('letter-spacing','0.08em');centerLabel.setAttribute('font-family','Courier New,monospace');
-  centerLabel.style.fill=T().centerLabelFill;centerLabel.style.textTransform='uppercase';
+  centerLabel.setAttribute('letter-spacing','0.08em');
+  centerLabel.setAttribute('font-family','Courier New,monospace');
+  centerLabel.style.fill=T().centerLabelFill;
   centerLabel.textContent='Total assets';
 
   const centerValue=document.createElementNS('http://www.w3.org/2000/svg','text');
-  centerValue.setAttribute('x',cx);centerValue.setAttribute('y',cy+16);
-  centerValue.setAttribute('text-anchor','middle');centerValue.setAttribute('dominant-baseline','middle');
+  centerValue.setAttribute('x',0);centerValue.setAttribute('y',18);
+  centerValue.setAttribute('text-anchor','middle');
   centerValue.setAttribute('font-size','28');centerValue.setAttribute('font-weight','700');
-  centerValue.setAttribute('letter-spacing','-0.02em');centerValue.setAttribute('font-family','Courier New,monospace');
+  centerValue.setAttribute('letter-spacing','-0.02em');
+  centerValue.setAttribute('font-family','Courier New,monospace');
   centerValue.style.fill=T().textPrimary;
   centerValue.textContent='100%';
 
-  svg.appendChild(centerLabel);svg.appendChild(centerValue);
+  g.appendChild(centerLabel);
+  g.appendChild(centerValue);
+  svg.appendChild(g);
   el.appendChild(svg);
 
-  // Legend below
+  // Legend
   const leg=document.createElement('div');
   leg.style.cssText='display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;';
   const _tLeg=T();
   slices.forEach(s=>{
     const _g=getCYBER(s.name);
-    const _glow=_tLeg.useGlow?`box-shadow:0 0 5px ${_g.dot}60;`:`box-shadow:0 2px 4px ${_g.shadow};`;
+    const _glow=_tLeg.useGlow?`box-shadow:0 0 5px ${_g.dot}60;`:`box-shadow:0 1px 3px ${_g.shadow};`;
     leg.innerHTML+=`<span style="display:flex;align-items:center;gap:5px;font-size:12px;color:${_tLeg.textSecondary};font-family:system-ui;">
-      <span style="width:7px;height:7px;border-radius:50%;background:${_g.dot};${_glow}flex-shrink:0;"></span>
+      <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${_g.dot};${_glow}flex-shrink:0;"></span>
       ${s.name}: ${(s.value*100).toFixed(1)}%
     </span>`;
   });
