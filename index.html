@@ -173,9 +173,27 @@
 
     .main{max-width:1180px;margin:0 auto;padding:2rem 1.5rem;}
 
-    .tab-row{display:flex;gap:2px;margin-bottom:1.75rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:3px;width:fit-content;transition:background .2s,border-color .2s;}
-    .tab{padding:7px 20px;border-radius:8px;font-size:14px;font-weight:500;color:var(--text-2);cursor:pointer;border:none;background:transparent;transition:all .15s;white-space:nowrap;font-family:'Inter',sans-serif;}
-    .tab.active{background:var(--bg);color:var(--text);font-weight:500;box-shadow:var(--shadow);}
+    /* ── Cyber-glass tabs ── */
+    .tab-row{display:flex;gap:4px;margin-bottom:1.75rem;padding:4px;width:fit-content;
+      border-radius:16px;
+      background:rgba(241,245,249,0.80);border:1px solid rgba(203,213,225,0.70);
+      backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+      transition:background .2s,border-color .2s;}
+    [data-theme="dark"] .tab-row{background:rgba(15,23,42,0.55);border:1px solid rgba(255,255,255,0.07);}
+    .tab{padding:6px 18px;border-radius:12px;font-size:13px;font-weight:500;color:var(--text-2);
+      cursor:pointer;border:none;background:transparent;
+      transition:all .18s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;
+      font-family:'Inter',sans-serif;position:relative;}
+    .tab:hover:not(.active){color:var(--text);}
+    .tab.active{color:var(--text);font-weight:600;
+      background:rgba(255,255,255,0.95);
+      box-shadow:0 2px 8px rgba(15,23,42,0.10),0 1px 2px rgba(15,23,42,0.06);}
+    [data-theme="dark"] .tab.active{
+      background:rgba(56,189,248,0.10);
+      box-shadow:0 0 14px rgba(56,189,248,0.12),0 1px 3px rgba(0,0,0,0.3);}
+    .tab.active::after{content:'';position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
+      width:18px;height:2px;border-radius:99px;background:#2563eb;}
+    [data-theme="dark"] .tab.active::after{background:#38bdf8;box-shadow:0 0 8px rgba(56,189,248,0.70);}
     .tab:hover:not(.active){color:var(--text);}
 
     /* metrics-top: cyber tile row */
@@ -232,6 +250,17 @@
     .metric-sub{font-size:12px;color:var(--text-2);margin-top:4px;font-weight:500;}
 
     .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.5rem;transition:background .2s,border-color .2s;}
+    .card-cyber{
+      border-radius:20px !important;
+      background:rgba(255,255,255,0.80) !important;
+      backdrop-filter:blur(24px) !important;-webkit-backdrop-filter:blur(24px) !important;
+      border:1px solid rgba(203,213,225,0.65) !important;
+      box-shadow:0 4px 24px rgba(15,23,42,0.07),0 1px 4px rgba(15,23,42,0.04) !important;
+      overflow:hidden;}
+    [data-theme="dark"] .card-cyber{
+      background:rgba(15,23,42,0.52) !important;
+      border:1px solid rgba(255,255,255,0.08) !important;
+      box-shadow:0 2px 12px rgba(0,0,0,0.35),inset 0 1px 0 rgba(255,255,255,0.04) !important;}
     .chart-card-cyber{padding:0 !important;overflow:hidden;
       background:rgba(255,255,255,0.75) !important;
       backdrop-filter:blur(32px) !important;
@@ -251,30 +280,47 @@
     .model-selector label{font-size:14px;color:var(--text);font-weight:600;}
     .model-selector select{font-size:14px;padding:8px 32px 8px 12px;border:1px solid var(--border-mid);border-radius:10px;background:var(--surface);color:var(--text);cursor:pointer;font-family:'Inter',sans-serif;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B6A65' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;transition:background .2s,border-color .2s,color .2s;}
 
-    .alloc-table{width:100%;border-collapse:collapse;font-size:15px;}
-    .alloc-table th{font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;text-align:right;padding:11px 14px;border-bottom:2px solid var(--border-mid);}
-    .alloc-table td{padding:12px 14px;border-bottom:1px solid var(--border);color:var(--text);text-align:right;vertical-align:middle;transition:color .2s;}
-    .alloc-table tr:hover td{background:var(--surface2);}
-    .alloc-table tr.subtotal:hover td{background:var(--surface2);}
-    .alloc-table tr:last-child td{border-bottom:none;}
-    .alloc-table tr.subtotal td{background:var(--surface2);font-weight:700;font-size:14px;color:var(--text);transition:background .2s;}
-    .ticker-cell{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;text-align:left;white-space:nowrap;width:80px;color:var(--text);}
+    /* ── Cyber-glass table ── */
+    .alloc-table{width:100%;border-collapse:collapse;font-size:14px;}
+    .alloc-table th{font-size:10px;font-weight:700;color:var(--text-2);text-transform:uppercase;
+      letter-spacing:.08em;text-align:right;padding:9px 14px;font-family:'IBM Plex Mono',monospace;
+      border-bottom:1px solid rgba(203,213,225,0.55);}
+    [data-theme="dark"] .alloc-table th{border-bottom:1px solid rgba(255,255,255,0.05);}
+    .alloc-table td{padding:11px 14px;border-bottom:none;color:var(--text);text-align:right;
+      vertical-align:middle;transition:background .15s;}
+    .alloc-table tbody tr:nth-child(even) td{background:rgba(15,23,42,0.018);}
+    [data-theme="dark"] .alloc-table tbody tr:nth-child(even) td{background:rgba(255,255,255,0.015);}
+    .alloc-table tr:hover td{background:rgba(37,99,235,0.05) !important;}
+    [data-theme="dark"] .alloc-table tr:hover td{background:rgba(56,189,248,0.07) !important;}
+    .alloc-table tr.subtotal td{background:transparent !important;
+      border-top:1px solid rgba(203,213,225,0.40);
+      font-weight:700;font-size:13px;color:var(--text-2);font-family:'IBM Plex Mono',monospace;}
+    [data-theme="dark"] .alloc-table tr.subtotal td{border-top:1px solid rgba(255,255,255,0.05);}
+    .alloc-table tr.subtotal:hover td{background:transparent !important;}
+    .ticker-cell{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;text-align:left;white-space:nowrap;letter-spacing:0.04em;color:var(--text);}
     .fund-name{color:var(--text);font-size:15px;text-align:left;font-weight:500;}
-    .expense-cell{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--text-2);white-space:nowrap;font-weight:500;}
+    .expense-cell{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text-2);white-space:nowrap;font-weight:500;}
 
-    .price-cell{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500;color:var(--text);display:inline-block;text-align:right;}
+    .price-cell{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--text);display:inline-block;text-align:right;}
+    .price-up{color:#16a34a !important;}
+    [data-theme="dark"] .price-up{color:#4ade80 !important;}
+    .price-dn{color:#dc2626 !important;}
+    [data-theme="dark"] .price-dn{color:#f87171 !important;}
     .price-up{color:var(--green-text);}
     .price-dn{color:var(--red-text);}
     .price-na{color:var(--text-2);}
-    .prices-bar{display:flex;align-items:center;gap:10px;padding:6px 0 12px;font-size:13px;color:var(--text-2);}
-    .refresh-prices{font-size:13px;color:var(--blue);cursor:pointer;border:none;background:none;padding:3px 8px;border-radius:6px;font-family:'Inter',sans-serif;font-weight:500;}
+    .prices-bar{display:flex;align-items:center;gap:10px;padding:6px 0 10px;font-size:11px;font-family:'IBM Plex Mono',monospace;letter-spacing:0.04em;color:var(--text-2);}
+    .refresh-prices{font-size:12px;color:var(--blue);cursor:pointer;font-weight:600;
+      border:1px solid rgba(203,213,225,0.70);background:transparent;
+      padding:5px 12px;border-radius:10px;font-family:'Inter',sans-serif;transition:all .15s;}
+    [data-theme="dark"] .refresh-prices{border:1px solid rgba(255,255,255,0.10);}
     .refresh-prices:hover{background:var(--blue-bg);}
     .price-ts{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--text-2);}
-    .editable{cursor:text;padding:4px 8px;border-radius:5px;min-width:66px;display:inline-block;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500;transition:background .1s;}
+    .editable{cursor:text;padding:4px 8px;border-radius:8px;min-width:60px;display:inline-block;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;transition:background .12s,outline .12s;color:var(--text);}
     .editable:hover{background:var(--surface2);outline:1px solid var(--border-mid);}
     .editable:focus{background:var(--surface2);outline:2px solid var(--blue);outline-offset:0;}
 
-    .bar-bg{background:var(--surface2);border-radius:3px;height:5px;overflow:hidden;min-width:60px;transition:background .2s;}
+    .bar-bg{background:var(--surface2);border-radius:99px;height:3px;overflow:hidden;min-width:50px;transition:background .2s;}
     .geo-bar-wrap{margin-top:14px;padding-top:12px;border-top:1px solid var(--border);}
     .geo-edit-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:14px;}
     .geo-edit-table th{font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;text-align:left;padding:7px 12px;border-bottom:2px solid var(--border-mid);}
@@ -289,10 +335,15 @@
     .geo-source-badge{font-size:10px;font-weight:600;padding:2px 6px;border-radius:5px;font-family:'IBM Plex Mono',monospace;}
     .geo-source-db{background:var(--green-bg);color:var(--green-text);}
     .geo-source-est{background:var(--surface2);color:var(--text-3);}
-    .del-btn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:5px;border:none;background:transparent;color:var(--text-3);cursor:pointer;font-size:14px;line-height:1;transition:background .12s,color .12s;flex-shrink:0;}
+    .del-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;border:none;background:transparent;color:var(--text-3);cursor:pointer;font-size:13px;line-height:1;transition:background .12s,color .12s;flex-shrink:0;}
     .del-btn:hover{background:var(--red-bg);color:var(--red-text);}
     .add-fund-row td{padding:6px 14px;border-bottom:none;}
-    .add-fund-btn{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--blue);background:var(--blue-bg);border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-family:'Inter',sans-serif;transition:opacity .15s;}
+    .add-fund-btn{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;
+      color:var(--blue);border:none;border-radius:10px;padding:6px 12px;cursor:pointer;
+      font-family:'Inter',sans-serif;transition:opacity .15s;
+      background:rgba(37,99,235,0.08);}
+    [data-theme="dark"] .add-fund-btn{background:rgba(56,189,248,0.10);
+      box-shadow:0 0 10px rgba(56,189,248,0.12);}
     .add-fund-btn:hover{opacity:.8;}
     .add-modal-wrap{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:110;align-items:center;justify-content:center;backdrop-filter:blur(3px);}
     .add-modal-wrap.open{display:flex;}
@@ -335,9 +386,23 @@
     .geo-dot{width:9px;height:9px;border-radius:2px;display:inline-block;flex-shrink:0;}
     .bar-fill{height:100%;border-radius:3px;transition:width .35s;}
 
-    .sum-display{font-size:15px;font-weight:600;padding:11px 16px;border-radius:10px;margin-top:12px;display:flex;justify-content:space-between;align-items:center;font-family:'IBM Plex Mono',monospace;transition:background .2s,color .2s;}
-    .sum-ok{background:var(--green-bg);color:var(--green-text);}
-    .sum-warn{background:var(--red-bg);color:var(--red-text);}
+    .sum-display{font-size:13px;font-weight:700;padding:7px 20px;border-radius:99px;
+      margin-top:12px;display:inline-flex;align-items:center;gap:8px;
+      font-family:'IBM Plex Mono',monospace;transition:all .2s;
+      position:relative;left:50%;transform:translateX(-50%);}
+    .sum-display::before{content:'';width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+    .sum-ok{background:rgba(220,252,231,0.90);color:#15803d;border:1px solid rgba(134,239,172,0.80);
+      box-shadow:0 2px 8px rgba(21,128,61,0.12);}
+    .sum-ok::before{background:#15803d;}
+    [data-theme="dark"] .sum-ok{background:rgba(52,211,153,0.12);color:#4ade80;
+      border:1px solid rgba(52,211,153,0.30);box-shadow:0 0 16px rgba(52,211,153,0.20);}
+    [data-theme="dark"] .sum-ok::before{background:#4ade80;box-shadow:0 0 8px #4ade80;}
+    .sum-warn{background:rgba(254,226,226,0.90);color:#dc2626;border:1px solid rgba(252,165,165,0.80);
+      box-shadow:0 2px 8px rgba(220,38,38,0.10);}
+    .sum-warn::before{background:#dc2626;}
+    [data-theme="dark"] .sum-warn{background:rgba(248,113,113,0.12);color:#f87171;
+      border:1px solid rgba(248,113,113,0.30);box-shadow:0 0 16px rgba(248,113,113,0.20);}
+    [data-theme="dark"] .sum-warn::before{background:#f87171;box-shadow:0 0 8px #f87171;}
 
     .legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:12px;}
     .legend-item{display:flex;align-items:center;gap:5px;font-size:13px;color:var(--text);font-weight:500;}
@@ -510,8 +575,8 @@
         <div id="twm-bar-root" style="width:100%;"></div>
       </div>
     </div>
-    <div class="card" style="margin-bottom:14px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
+    <div class="card card-cyber" style="margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px;padding-top:4px;">
         <div class="card-title" style="margin-bottom:0;">Fund allocations — <span id="twm-model-name">IRA Moderate</span> <span style="font-size:10px;font-weight:400;color:var(--text-3);text-transform:none;letter-spacing:0;">(click any value to edit)</span></div>
         <div style="display:flex;gap:8px;">
           <button class="add-fund-btn" onclick="openAddModal(TWM,curTWM,'twm')">+ Add fund</button>
@@ -520,7 +585,9 @@
       </div>
       <div class="prices-bar" id="twm-prices-bar"><span class="price-ts" id="prices-ts">Prices not loaded</span></div>
       <table class="alloc-table" id="twm-alloc-table"></table>
-      <div class="sum-display sum-ok" id="twm-sum-display">100.00%</div>
+      <div style="display:flex;justify-content:center;padding:4px 0 0;">
+        <div class="sum-display sum-ok" id="twm-sum-display">Total: 100.00%  ✓ balanced</div>
+      </div>
     </div>
   </div>
 
@@ -546,8 +613,8 @@
         <div id="sri-bar-root" style="width:100%;"></div>
       </div>
     </div>
-    <div class="card" style="margin-bottom:14px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
+    <div class="card card-cyber" style="margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px;padding-top:4px;">
         <div class="card-title" style="margin-bottom:0;">Fund allocations — <span id="sri-model-name">SRI Moderate</span> <span style="font-size:10px;font-weight:400;color:var(--text-3);text-transform:none;letter-spacing:0;">(click any value to edit)</span></div>
         <div style="display:flex;gap:8px;">
           <button class="add-fund-btn" onclick="openAddModal(SRI,curSRI,'sri')">+ Add fund</button>
@@ -556,7 +623,9 @@
       </div>
       <div class="prices-bar" id="sri-prices-bar"><span class="price-ts" id="sri-prices-ts">Prices not loaded</span></div>
       <table class="alloc-table" id="sri-alloc-table"></table>
-      <div class="sum-display sum-ok" id="sri-sum-display">100.00%</div>
+      <div style="display:flex;justify-content:center;padding:4px 0 0;">
+        <div class="sum-display sum-ok" id="sri-sum-display">Total: 100.00%  ✓ balanced</div>
+      </div>
     </div>
   </div>
 
@@ -1558,18 +1627,32 @@ function renderMetrics(data,model,pfx){
   `;
 }
 
+function catDot(cat){
+  const dk=isDark();
+  const DOTS={
+    Equities:      {l:'#2563eb',d:'#38bdf8'},
+    'Fixed Income':{l:'#059669',d:'#34d399'},
+    Cash:          {l:'#475569',d:'#94a3b8'},
+    Blended:       {l:'#d97706',d:'#fbbf24'},
+    Alternatives:  {l:'#7c3aed',d:'#a78bfa'},
+  };
+  const c=(DOTS[cat]||{l:'#64748b',d:'#94a3b8'});
+  const col=dk?c.d:c.l;
+  const glow=dk?`box-shadow:0 0 6px ${col};`:`box-shadow:0 1px 3px ${col}60;`;
+  return `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${col};${glow}margin-right:6px;flex-shrink:0;vertical-align:middle;"></span>`;
+}
+
 function renderAllocTable(data,model,pfx){
   const alloc=data.models[model],cats={};
   data.funds.forEach(f=>{if(!cats[f.category])cats[f.category]=[];cats[f.category].push(f);});
-  const thL='style="text-align:left;padding:10px 14px;"';
-  const thR='style="text-align:right;padding:10px 14px;"';
+  const thSt='font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;font-family:IBM Plex Mono,monospace;padding:9px 14px;';
   let html=`<thead><tr>
-    <th ${thL}>Ticker</th>
-    <th ${thL}>Fund name</th>
-    <th ${thR}>Expense</th>
-    <th ${thR}>Last price</th>
-    <th ${thR}>Allocation</th>
-    <th style="width:120px;padding:10px 14px;"></th>
+    <th style="${thSt}text-align:left;">Ticker</th>
+    <th style="${thSt}text-align:left;">Fund name</th>
+    <th style="${thSt}text-align:right;">Expense</th>
+    <th style="${thSt}text-align:right;">Last price</th>
+    <th style="${thSt}text-align:right;">Allocation</th>
+    <th style="${thSt}width:110px;"></th>
   </tr></thead><tbody>`;
 
   const catKeys=Object.keys(cats);
@@ -1577,14 +1660,18 @@ function renderAllocTable(data,model,pfx){
     const funds=cats[cat],catTotal=funds.reduce((a,f)=>a+(alloc[f.ticker]||0),0);
     funds.forEach(f=>{
       const v=alloc[f.ticker]||0,bw=Math.min(100,(v/0.30)*100).toFixed(1);
-      // Escape ticker for inline onclick safety
       const safeTicker=f.ticker.replace(/'/g,"\\'");
       const safePfx=pfx.replace(/'/g,"\\'");
+      const cyberCat=isDark()?(CYBER_DARK[cat]||CYBER_DARK.Cash):(CYBER_LIGHT[cat]||CYBER_LIGHT.Cash);
+      const barColor=cyberCat.c1;
+      const barGlow=isDark()?`box-shadow:0 0 5px ${barColor}80;`:`box-shadow:0 1px 3px ${barColor}50;`;
       html+=`<tr>
         <td style="text-align:left;padding:10px 14px;white-space:nowrap;">
-          <span class="ticker-cell">${f.ticker}</span>
+          <span style="display:inline-flex;align-items:center;">
+            ${catDot(cat)}<span class="ticker-cell">${f.ticker}</span>
+          </span>
         </td>
-        <td style="text-align:left;padding:10px 14px;color:var(--text);font-size:14px;">
+        <td style="text-align:left;padding:10px 14px;font-size:13px;color:var(--text-2);">
           ${f.name}
         </td>
         <td style="text-align:right;padding:10px 14px;">
@@ -1595,19 +1682,21 @@ function renderAllocTable(data,model,pfx){
         </td>
         <td style="text-align:right;padding:10px 14px;white-space:nowrap;">
           <span class="editable" contenteditable="true" data-prefix="${pfx}" data-model="${model}" data-ticker="${f.ticker}"
-            onblur="onEditBlur(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">${num(v)}%</span>
+            onblur="onEditBlur(this)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}">${num(v)}%</span>
         </td>
-        <td style="padding:10px 14px;width:120px;text-align:right;">
+        <td style="padding:10px 14px;width:110px;text-align:right;">
           <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;">
-            <div class="bar-bg" style="flex:1;"><div class="bar-fill" style="width:${bw}%;background:${CAT_COLORS[cat]||'#888'};"></div></div>
-            <button class="del-btn" title="Remove ${f.ticker}" onclick="deleteFund('${safePfx}','${safeTicker}')">✕</button>
+            <div class="bar-bg" style="flex:1;">
+              <div class="bar-fill" style="width:${bw}%;background:${barColor};${barGlow}"></div>
+            </div>
+            <button class="del-btn" title="Remove ${f.ticker}" onclick="deleteFund(\'${safePfx}\',\'${safeTicker}\')">✕</button>
           </div>
         </td>
       </tr>`;
     });
     html+=`<tr class="subtotal">
-      <td colspan="4" style="text-align:right;padding:10px 14px;font-size:13px;font-weight:600;color:var(--text-2);">${cat} subtotal</td>
-      <td style="text-align:right;padding:10px 14px;" class="mono">${pct(catTotal)}</td>
+      <td colspan="4" style="text-align:right;padding:8px 14px;">${cat} subtotal</td>
+      <td style="text-align:right;padding:8px 14px;">${pct(catTotal)}</td>
       <td style="padding:8px 14px;"></td>
     </tr>`;
   });
@@ -1615,11 +1704,12 @@ function renderAllocTable(data,model,pfx){
   updateSum(data,model,pfx);
 }
 
+
 function updateSum(data,model,pfx){
   const s=Object.values(data.models[model]).reduce((a,b)=>a+b,0);
   const el=document.getElementById(pfx+'-sum-display'),ok=Math.abs(s-1)<0.005;
   el.className='sum-display '+(ok?'sum-ok':'sum-warn');
-  el.textContent='Total: '+(s*100).toFixed(2)+'%'+(ok?'  ✓ balanced':'  ⚠ does not sum to 100%');
+  el.textContent='Total: '+(s*100).toFixed(2)+'%  '+(ok?'✓ balanced':'⚠ does not sum to 100%');
 }
 
 function onEditBlur(el){
@@ -2402,10 +2492,12 @@ function initSRICharts(){
   renderGeoBar(SRI,curSRI,'sri');
 }
 function refreshChartTheme(){
-  // Redraw charts with new theme palette
-  _tip=null; // reset tooltip so it picks up new colors
+  _tip=null;
   initTWMCharts();
   initSRICharts();
+  // Re-render tables so category dots and bar colors update
+  renderAllocTable(TWM,curTWM,'twm');
+  renderAllocTable(SRI,curSRI,'sri');
 }
 
 function updateTWMView(m){curTWM=m;document.getElementById('twm-model-name').textContent=m;renderMetrics(TWM,m,'twm');renderAllocTable(TWM,m,'twm');drawCyberDonut('twm-donut-root',TWM,m);}
