@@ -1611,26 +1611,65 @@ async function lookupFund(){
   statusEl.textContent='Looking up '+ticker+'…';
   lookupBtn.disabled=true;
 
-  const YAHOO=`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=quoteType,summaryProfile,defaultKeyStatistics,topHoldings,fundProfile`;
-  let result=null;
-  for(const makeProxy of [
+  // We try multiple Yahoo endpoints and proxy combinations.
+  // v10/quoteSummary gives the richest data but is sometimes blocked.
+  // v8/chart gives price + meta as a reliable fallback.
+  const proxyFns=[
     u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
     u=>`https://corsproxy.io/?url=${encodeURIComponent(u)}`,
-  ]){
-    try{
-      const r=await fetch(makeProxy(YAHOO));
-      if(!r.ok) continue;
-      const text=await r.text();
-      const d=JSON.parse(text);
-      if(d?.quoteSummary?.result?.[0]){result=d.quoteSummary.result[0];break;}
-    }catch(e){}
+    u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+  ];
+
+  // Helper: fetch through proxies, unwrap allorigins wrapper if needed
+  async function proxyFetch(targetUrl){
+    for(const makeProxy of proxyFns){
+      try{
+        const r=await fetch(makeProxy(targetUrl));
+        if(!r.ok) continue;
+        const text=await r.text();
+        if(!text||text.trim()==='') continue;
+        // allorigins wraps in {contents:"..."}
+        const parsed=text.trim().startsWith('{')?JSON.parse(text):null;
+        if(!parsed) continue;
+        if(parsed.contents) return JSON.parse(parsed.contents); // allorigins unwrap
+        return parsed;
+      }catch(e){}
+    }
+    return null;
+  }
+
+  let result=null;
+
+  // Strategy 1: v10 quoteSummary — full data including fundProfile, topHoldings
+  const v10url=`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=quoteType%2CsummaryProfile%2CdefaultKeyStatistics%2CtopHoldings%2CfundProfile`;
+  const v10data=await proxyFetch(v10url);
+  if(v10data?.quoteSummary?.result?.[0]){
+    result=v10data.quoteSummary.result[0];
+  }
+
+  // Strategy 2: v8 chart — always returns name + meta, use as fallback
+  let chartMeta=null;
+  if(!result){
+    const v8url=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=5d`;
+    const v8data=await proxyFetch(v8url);
+    chartMeta=v8data?.chart?.result?.[0]?.meta||null;
+    if(chartMeta){
+      // Synthesise a minimal result object from chart meta
+      result={
+        _fromChart:true,
+        quoteType:{longName:chartMeta.longName||chartMeta.shortName||ticker, shortName:chartMeta.shortName||ticker},
+        fundProfile:null,
+        defaultKeyStatistics:null,
+        topHoldings:null,
+      };
+    }
   }
 
   lookupBtn.disabled=false;
 
   if(!result){
     statusEl.className='add-modal-status err';
-    statusEl.textContent='Could not find ticker "'+ticker+'". Check the symbol and try again.';
+    statusEl.textContent='Could not find "'+ticker+'". Check the symbol and try again.';
     return;
   }
 
