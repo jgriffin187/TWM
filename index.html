@@ -1794,20 +1794,18 @@ async function loadVersionsList(forPanel=false){
   if(!listEl) return;
   listEl.innerHTML='<div class="empty-state">Loading…</div>';
   try{
-    const versions=await sbGet('/rest/v1/model_versions?select=id,version_name,created_by,created_at,dow_ytd&order=created_at.desc');
+    const versions=await sbGet('/rest/v1/model_versions?select=id,version_name,created_by,created_at&order=created_at.desc');
     if(!versions.length){listEl.innerHTML='<div class="empty-state">No versions saved yet. Edit the version label in the header to create one.</div>';return;}
     let html=`<table class="ver-table"><thead><tr>
-      <th>Version</th><th>Created by</th><th>Date</th><th>DOW YTD</th><th></th>
+      <th>Version</th><th>Created by</th><th>Date</th><th></th>
     </tr></thead><tbody>`;
     versions.forEach(v=>{
       const dt=new Date(v.created_at).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
       const isActive=v.id===currentVersionId;
-      const dowStr=v.dow_ytd!=null?(v.dow_ytd>=0?'+':'')+v.dow_ytd.toFixed(2)+'%':'—';
       html+=`<tr>
         <td><strong>${v.version_name}</strong>${isActive?'<span class="ver-active-badge">active</span>':''}</td>
         <td style="color:var(--text-2);">${v.created_by}</td>
         <td style="font-size:12px;font-family:'IBM Plex Mono',monospace;color:var(--text-2);">${dt}</td>
-        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;">${dowStr}</td>
         <td><button class="ver-load-btn" onclick="loadVersion('${v.id}','${v.version_name.replace(/'/g,"\\'")}',${forPanel})">Load</button></td>
       </tr>`;
     });
