@@ -1590,10 +1590,10 @@ const SRI={
     'SRI Ultra Aggressive':{cash:0.01,FGTXX:0.02,LMRNX:0.20,SUSB:0.03,TSBIX:0.08,PFPLX:0,   DSI:0.19,PFPWX:0.15,PXWIX:0.17,PGINX:0.15},
   },
   summary:{
-    'SRI Conservative':    {equities:0.44095,fixedIncome:0.49905,alternatives:0,cash:0.06},
-    'SRI Moderate':        {equities:0.57768,fixedIncome:0.37232,alternatives:0,cash:0.05},
-    'SRI Aggressive':      {equities:0.66441,fixedIncome:0.29559,alternatives:0,cash:0.04},
-    'SRI Ultra Aggressive':{equities:0.7946, fixedIncome:0.1754, alternatives:0,cash:0.03},
+    'SRI Conservative':    {equities:0.34,fixedIncome:0.45,alternatives:0,blended:0.15,cash:0.06},
+    'SRI Moderate':        {equities:0.47,fixedIncome:0.32,alternatives:0,blended:0.16,cash:0.05},
+    'SRI Aggressive':      {equities:0.55,fixedIncome:0.24,alternatives:0,blended:0.17,cash:0.04},
+    'SRI Ultra Aggressive':{equities:0.66,fixedIncome:0.11,alternatives:0,blended:0.20,cash:0.03},
   }
 };
 
@@ -2413,13 +2413,14 @@ function onEditBlur(el){
 }
 
 function updateMetricsFromAlloc(data,model,pfx){
-  const a=data.models[model],s={equities:0,fixedIncome:0,alternatives:0,cash:0};
+  const a=data.models[model],s={equities:0,fixedIncome:0,alternatives:0,cash:0,blended:0};
   data.funds.forEach(f=>{
     const v=a[f.ticker]||0;
     if(f.category==='Equities')s.equities+=v;
     else if(f.category==='Fixed Income')s.fixedIncome+=v;
     else if(f.category==='Alternatives')s.alternatives+=v;
     else if(f.category==='Cash')s.cash+=v;
+    else if(f.category==='Blended')s.blended+=v;
   });
   data.summary[model]=s;
   renderMetrics(data,model,pfx);
@@ -2748,12 +2749,14 @@ const CYBER_LIGHT = {
 const BAR_DARK=[
   {key:'equities',label:'Equities',    c1:'#38bdf8',c2:'#3730a3',dot:'#38bdf8',shadow:'rgba(56,189,248,0.20)'},
   {key:'fixed',   label:'Fixed Income',c1:'#34d399',c2:'#065f46',dot:'#34d399',shadow:'rgba(52,211,153,0.20)'},
-  {key:'cash',    label:'Cash / Alt',  c1:'#64748b',c2:'#1e293b',dot:'#94a3b8',shadow:'rgba(148,163,184,0.15)'},
+  {key:'blended', label:'Blended',          c1:'#fb923c',c2:'#7f1d1d',dot:'#fb923c',shadow:'rgba(251,146,60,0.20)'},
+  {key:'cash',    label:'Cash / Alt',       c1:'#64748b',c2:'#1e293b',dot:'#94a3b8',shadow:'rgba(148,163,184,0.15)'},
 ];
 const BAR_LIGHT=[
   {key:'equities',label:'Equities',    c1:'#3b82f6',c2:'#1e40af',dot:'#2563eb',shadow:'rgba(59,130,246,0.15)'},
   {key:'fixed',   label:'Fixed Income',c1:'#10b981',c2:'#065f46',dot:'#059669',shadow:'rgba(16,185,129,0.15)'},
-  {key:'cash',    label:'Cash / Alt',  c1:'#94a3b8',c2:'#475569',dot:'#64748b',shadow:'rgba(100,116,139,0.10)'},
+  {key:'blended', label:'Blended',          c1:'#f97316',c2:'#c2410c',dot:'#ea580c',shadow:'rgba(249,115,22,0.15)'},
+  {key:'cash',    label:'Cash / Alt',       c1:'#94a3b8',c2:'#475569',dot:'#64748b',shadow:'rgba(100,116,139,0.10)'},
 ];
 
 function getCYBER(name){ return isDark()?(CYBER_DARK[name]||CYBER_DARK.Cash):(CYBER_LIGHT[name]||CYBER_LIGHT.Cash); }
@@ -3006,6 +3009,7 @@ function drawCyberBar(containerId, data, modelNames){
     model:shorts[i],
     equities:parseFloat(((data.summary[m]?.equities||0)*100).toFixed(1)),
     fixed:parseFloat(((data.summary[m]?.fixedIncome||0)*100).toFixed(1)),
+    blended:parseFloat(((data.summary[m]?.blended||0)*100).toFixed(1)),
     cash:parseFloat((((data.summary[m]?.cash||0)+(data.summary[m]?.alternatives||0))*100).toFixed(1)),
   }));
 
