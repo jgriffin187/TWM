@@ -2,6 +2,7 @@
 <html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8" />
+  <link rel="icon" type="image/png" href="favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Trailhead Model Allocations</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -922,9 +923,7 @@ async function fetchPrices() {
     .geo-num-input:focus{outline:none;border-color:var(--blue);}
     .geo-sum-ok{color:var(--green-text);font-weight:700;font-family:'IBM Plex Mono',monospace;font-size:12px;}
     .geo-sum-warn{color:var(--red-text);font-weight:700;font-family:'IBM Plex Mono',monospace;font-size:12px;}
-    .geo-source-badge{font-size:10px;font-weight:600;padding:2px 6px;border-radius:5px;font-family:'IBM Plex Mono',monospace;}
-    .geo-source-db{background:var(--green-bg);color:var(--green-text);}
-    .geo-source-est{background:var(--surface2);color:var(--text-3);}
+
     .del-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;border:none;background:transparent;color:var(--text-3);cursor:pointer;font-size:13px;line-height:1;transition:background .12s,color .12s;flex-shrink:0;}
     .del-btn:hover{background:var(--red-bg);color:var(--red-text);}
     .add-fund-row td{padding:6px 14px;border-bottom:none;}
@@ -3680,7 +3679,6 @@ function renderGeoTable(){
       <th class="num">Non-U.S. %</th>
       <th class="num">Other %</th>
       <th class="num">Sum</th>
-      <th>Source</th>
     </tr></thead><tbody>`;
 
   allFunds.forEach(f=>{
@@ -3716,9 +3714,6 @@ function renderGeoTable(){
       </td>
       <td style="text-align:right;">
         <span id="geo-sum-${f.ticker}" class="${sumOk?'geo-sum-ok':'geo-sum-warn'}">${sum.toFixed(1)}%</span>
-      </td>
-      <td>
-        <span class="geo-source-badge ${fromDb?'geo-source-db':'geo-source-est'}">${fromDb?'database':'estimate'}</span>
       </td>
     </tr>`;
   });
@@ -3789,14 +3784,7 @@ async function saveGeoData(){
       geoDbTickers.add(row.ticker);
     });
 
-    // Update source badges to 'database'
-    allFunds.forEach(f=>{
-      const row=document.getElementById('geo-row-'+f.ticker);
-      if(row){
-        const badge=row.querySelector('.geo-source-badge');
-        if(badge){badge.className='geo-source-badge geo-source-db';badge.textContent='database';}
-      }
-    });
+
 
     const now=new Date().toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
     const el=document.getElementById('geo-last-updated');
