@@ -6,7 +6,7 @@
   <title>Trailhead Model Allocations</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
     /* ── Login screen ── */
@@ -199,6 +199,8 @@
     .metric-sub{font-size:12px;color:var(--text-2);margin-top:4px;font-weight:500;}
 
     .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.5rem;transition:background .2s,border-color .2s;}
+    .chart-card-cyber{padding:0 !important;overflow:hidden;background:rgba(15,23,42,0.85) !important;border:1px solid rgba(255,255,255,0.08) !important;}
+    [data-theme="light"] .chart-card-cyber{background:rgba(20,30,55,0.92) !important;}
     .card-title{font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;}
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
 
@@ -455,20 +457,12 @@
     <div class="metrics-top" id="twm-metrics-top"></div>
     <div class="metrics-cmp" id="twm-metrics-cmp"></div>
     <div class="grid2">
-      <div class="card">
-        <div class="card-title">Asset class breakdown</div>
-        <div style="position:relative;height:200px;"><canvas id="twm-donut" role="img" aria-label="Asset class allocation donut chart"></canvas></div>
-        <div class="legend" id="twm-donut-legend"></div>
+      <div class="card chart-card-cyber">
+        <div id="twm-donut-root" style="width:100%;"></div>
         <div class="geo-bar-wrap" id="twm-geo-bar"></div>
       </div>
-      <div class="card">
-        <div class="card-title">Equity vs. fixed income — all models</div>
-        <div style="position:relative;height:200px;"><canvas id="twm-bar" role="img" aria-label="Stacked bar comparing all TWM models"></canvas></div>
-        <div class="legend" style="margin-top:10px;">
-          <span class="legend-item"><span class="legend-dot" style="background:#7F77DD;"></span>Equities</span>
-          <span class="legend-item"><span class="legend-dot" style="background:#378ADD;"></span>Fixed income</span>
-          <span class="legend-item"><span class="legend-dot" style="background:#888780;"></span>Cash / Alt</span>
-        </div>
+      <div class="card chart-card-cyber">
+        <div id="twm-bar-root" style="width:100%;"></div>
       </div>
     </div>
     <div class="card" style="margin-bottom:14px;">
@@ -499,20 +493,12 @@
     <div class="metrics-top" id="sri-metrics-top"></div>
     <div class="metrics-cmp" id="sri-metrics-cmp"></div>
     <div class="grid2">
-      <div class="card">
-        <div class="card-title">Asset class breakdown</div>
-        <div style="position:relative;height:200px;"><canvas id="sri-donut" role="img" aria-label="Asset class allocation donut chart"></canvas></div>
-        <div class="legend" id="sri-donut-legend"></div>
+      <div class="card chart-card-cyber">
+        <div id="sri-donut-root" style="width:100%;"></div>
         <div class="geo-bar-wrap" id="sri-geo-bar"></div>
       </div>
-      <div class="card">
-        <div class="card-title">Equity vs. fixed income — all models</div>
-        <div style="position:relative;height:200px;"><canvas id="sri-bar" role="img" aria-label="Stacked bar comparing all SRI models"></canvas></div>
-        <div class="legend" style="margin-top:10px;">
-          <span class="legend-item"><span class="legend-dot" style="background:#7F77DD;"></span>Equities</span>
-          <span class="legend-item"><span class="legend-dot" style="background:#378ADD;"></span>Fixed income</span>
-          <span class="legend-item"><span class="legend-dot" style="background:#888780;"></span>Cash</span>
-        </div>
+      <div class="card chart-card-cyber">
+        <div id="sri-bar-root" style="width:100%;"></div>
       </div>
     </div>
     <div class="card" style="margin-bottom:14px;">
@@ -723,18 +709,14 @@ function toggleTheme(){
   refreshChartTheme();
 }
 function isDark(){ return document.documentElement.getAttribute('data-theme')==='dark'; }
-function chartColors(){ return { grid: isDark()?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.06)', tick: isDark()?'#5C5B56':'#A8A79F' }; }
+
 
 function refreshChartTheme(){
-  const c = chartColors();
-  [twmBar, sriBar].forEach(chart=>{
-    if(!chart) return;
-    ['x','y'].forEach(ax=>{
-      chart.options.scales[ax].grid.color = c.grid;
-      chart.options.scales[ax].ticks.color = c.tick;
-    });
-    chart.update();
-  });
+  // React charts auto-adapt — re-render on theme toggle
+  if(twmDonutRoot) twmDonutRoot.render(R.createElement(CyberDonut,{data:TWM,model:curTWM,pfx:'twm',modelName:curTWM}));
+  if(twmBarRoot)   twmBarRoot.render(R.createElement(CyberBar,{data:TWM,modelNames:TWM_MODEL_NAMES,pfx:'twm'}));
+  if(sriDonutRoot) sriDonutRoot.render(R.createElement(CyberDonut,{data:SRI,model:curSRI,pfx:'sri',modelName:curSRI}));
+  if(sriBarRoot)   sriBarRoot.render(R.createElement(CyberBar,{data:SRI,modelNames:SRI_MODEL_NAMES,pfx:'sri'}));
 }
 
 /* ── Supabase ── */
@@ -1854,72 +1836,405 @@ function deleteFund(pfx, ticker){
 }
 
 /* Charts */
-function makeDonut(id,data,model){
-  const ct=getCatTotals(data,model),labels=Object.keys(ct).filter(k=>ct[k]>0);
-  return new Chart(document.getElementById(id).getContext('2d'),{
-    type:'doughnut',
-    data:{labels,datasets:[{data:labels.map(k=>parseFloat((ct[k]*100).toFixed(2))),backgroundColor:labels.map(k=>CAT_COLORS[k]||'#aaa'),borderWidth:3,borderColor:'transparent'}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.label+': '+c.parsed.toFixed(1)+'%'}}}}
-  });
+/* ── Cyber charts (pure SVG / D3) ── */
+// Gradient palette — matches the React artifact exactly
+const CYBER = {
+  Equities:      {c1:'#38bdf8', c2:'#3730a3', dot:'#38bdf8'},
+  'Fixed Income':{c1:'#34d399', c2:'#065f46', dot:'#34d399'},
+  Cash:          {c1:'#64748b', c2:'#1e293b', dot:'#94a3b8'},
+  Blended:       {c1:'#fb923c', c2:'#7f1d1d', dot:'#fb923c'},
+  Alternatives:  {c1:'#a78bfa', c2:'#1e1b4b', dot:'#a78bfa'},
+};
+const BAR_SERIES=[
+  {key:'equities',label:'Equities',    c1:'#38bdf8',c2:'#3730a3',dot:'#38bdf8'},
+  {key:'fixed',   label:'Fixed Income',c1:'#34d399',c2:'#065f46',dot:'#34d399'},
+  {key:'cash',    label:'Cash / Alt',  c1:'#64748b',c2:'#1e293b',dot:'#94a3b8'},
+];
+
+// Shared tooltip element
+let _tip=null;
+function getTip(){
+  if(!_tip){
+    _tip=document.createElement('div');
+    _tip.style.cssText='position:fixed;pointer-events:none;display:none;z-index:9999;background:rgba(15,23,42,0.92);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.10);border-radius:12px;padding:10px 14px;box-shadow:0 8px 32px rgba(0,0,0,0.5);font-family:system-ui,sans-serif;min-width:140px;';
+    document.body.appendChild(_tip);
+  }
+  return _tip;
+}
+function hideTip(){const t=getTip();t.style.display='none';}
+function showTip(html,e){
+  const t=getTip();t.innerHTML=html;t.style.display='block';
+  const x=e.clientX,y=e.clientY,w=t.offsetWidth,h=t.offsetHeight;
+  t.style.left=(x+12+w>window.innerWidth?x-w-8:x+12)+'px';
+  t.style.top=(y+h+8>window.innerHeight?y-h-8:y+8)+'px';
 }
 
+function makeSvgDefs(svg, series){
+  const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
+  series.forEach(s=>{
+    const lg=document.createElementNS('http://www.w3.org/2000/svg','linearGradient');
+    lg.id='cg-'+s.key||s.label.replace(/ /g,'');
+    lg.setAttribute('x1','0%');lg.setAttribute('y1','0%');
+    lg.setAttribute('x2','100%');lg.setAttribute('y2','100%');
+    const s1=document.createElementNS('http://www.w3.org/2000/svg','stop');
+    s1.setAttribute('offset','0%');s1.setAttribute('stop-color',s.c1);s1.setAttribute('stop-opacity','1');
+    const s2=document.createElementNS('http://www.w3.org/2000/svg','stop');
+    s2.setAttribute('offset','100%');s2.setAttribute('stop-color',s.c2);s2.setAttribute('stop-opacity','1');
+    lg.appendChild(s1);lg.appendChild(s2);
+    defs.appendChild(lg);
+  });
+  svg.appendChild(defs);
+  return defs;
+}
+
+/* ─── DONUT ─── */
+function drawCyberDonut(containerId, data, model){
+  const el=document.getElementById(containerId);
+  if(!el) return;
+  el.innerHTML='';
+
+  const ct=getCatTotals(data,model);
+  const slices=Object.keys(ct).filter(k=>ct[k]>0).map(k=>({name:k,value:ct[k]}));
+  if(!slices.length) return;
+
+  const W=el.offsetWidth||320, H=260;
+  const cx=W/2, cy=H/2-10, OR=Math.min(W,H)*0.42, IR=OR*0.72;
+  const PAD=0.12, CR=8; // padding angle in radians, corner radius px
+
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('width','100%');svg.setAttribute('height',H);
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+
+  // defs with gradients + glow filter
+  const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
+  const glowFilter=document.createElementNS('http://www.w3.org/2000/svg','filter');
+  glowFilter.id='donut-glow';glowFilter.setAttribute('x','-40%');glowFilter.setAttribute('y','-40%');
+  glowFilter.setAttribute('width','180%');glowFilter.setAttribute('height','180%');
+  const blur=document.createElementNS('http://www.w3.org/2000/svg','feGaussianBlur');
+  blur.setAttribute('stdDeviation','6');blur.setAttribute('result','blur');
+  const merge=document.createElementNS('http://www.w3.org/2000/svg','feMerge');
+  const mn1=document.createElementNS('http://www.w3.org/2000/svg','feMergeNode');mn1.setAttribute('in','blur');
+  const mn2=document.createElementNS('http://www.w3.org/2000/svg','feMergeNode');mn2.setAttribute('in','SourceGraphic');
+  merge.appendChild(mn1);merge.appendChild(mn2);
+  glowFilter.appendChild(blur);glowFilter.appendChild(merge);
+  defs.appendChild(glowFilter);
+
+  const total=slices.reduce((a,s)=>a+s.value,0);
+  let startAngle=-Math.PI/2;
+  slices.forEach((s,i)=>{
+    const g=CYBER[s.name]||{c1:'#64748b',c2:'#1e293b'};
+    const gradId='dg-'+i;
+    const lg=document.createElementNS('http://www.w3.org/2000/svg','linearGradient');
+    lg.id=gradId;lg.setAttribute('x1','0%');lg.setAttribute('y1','0%');lg.setAttribute('x2','100%');lg.setAttribute('y2','100%');
+    const st1=document.createElementNS('http://www.w3.org/2000/svg','stop');
+    st1.setAttribute('offset','0%');st1.setAttribute('stop-color',g.c1);
+    const st2=document.createElementNS('http://www.w3.org/2000/svg','stop');
+    st2.setAttribute('offset','100%');st2.setAttribute('stop-color',g.c2);
+    lg.appendChild(st1);lg.appendChild(st2);
+    defs.appendChild(lg);
+    s._gradId=gradId;
+    s._start=startAngle;
+    const sweep=(s.value/total)*(2*Math.PI)-PAD;
+    s._end=startAngle+sweep;
+    startAngle+=sweep+PAD;
+  });
+  svg.appendChild(defs);
+
+  function arcPath(sa,ea,ir,or,cr){
+    // Rounded arc path
+    const cosS=Math.cos(sa),sinS=Math.sin(sa),cosE=Math.cos(ea),sinE=Math.sin(ea);
+    const crOr=Math.min(cr,((ea-sa)*or)/2-1);
+    const crIr=Math.min(cr,((ea-sa)*ir)/2-1);
+    const orOuter=or, irInner=ir;
+    // Angle offsets for corner radius
+    const aOr=crOr/or, aIr=crIr/ir;
+    const p=([r,a])=>[cx+r*Math.cos(a),cy+r*Math.sin(a)];
+    const pts={
+      outerStart: p([orOuter, sa+aOr]),
+      outerEnd:   p([orOuter, ea-aOr]),
+      innerEnd:   p([irInner, ea-aIr]),
+      innerStart: p([irInner, sa+aIr]),
+      // corner tangent points
+      outerStartCorner: p([orOuter-crOr, sa+aOr]),
+      outerEndCorner:   p([orOuter-crOr, ea-aOr]),
+      innerEndCorner:   p([irInner+crIr, ea-aIr]),
+      innerStartCorner: p([irInner+crIr, sa+aIr]),
+    };
+    const laf=(ea-sa)>Math.PI?1:0;
+    return [
+      `M ${pts.outerStart}`,
+      `A ${orOuter} ${orOuter} 0 ${laf} 1 ${pts.outerEnd}`,
+      `Q ${p([orOuter,ea])} ${pts.outerEndCorner}`,
+      `L ${pts.innerEndCorner}`,
+      `Q ${p([irInner,ea])} ${pts.innerEnd}`,
+      `A ${irInner} ${irInner} 0 ${laf} 0 ${pts.innerStart}`,
+      `Q ${p([irInner,sa])} ${pts.innerStartCorner}`,
+      `L ${pts.outerStartCorner}`,
+      `Q ${p([orOuter,sa])} ${pts.outerStart}`,
+      'Z'
+    ].join(' ');
+  }
+
+  const paths=slices.map((s,i)=>{
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', arcPath(s._start,s._end,IR,OR,CR));
+    path.setAttribute('fill',`url(#${s._gradId})`);
+    path.style.cursor='pointer';
+    path.style.transition='opacity 0.2s';
+    path.addEventListener('mouseenter',e=>{
+      paths.forEach((p2,j)=>p2.style.opacity=j===i?'1':'0.45');
+      path.setAttribute('filter','url(#donut-glow)');
+      const tipHtml=`<div style="display:flex;align-items:center;gap:8px;">
+        <span style="width:7px;height:7px;border-radius:50%;background:${(CYBER[s.name]||{dot:'#fff'}).dot};box-shadow:0 0 6px ${(CYBER[s.name]||{dot:'#fff'}).dot};flex-shrink:0;"></span>
+        <span style="color:rgba(148,163,184,1);font-size:12px;">${s.name}</span>
+        <span style="color:#f1f5f9;font-size:14px;font-weight:700;font-family:'Courier New',monospace;margin-left:4px;">${(s.value*100).toFixed(1)}%</span>
+      </div>`;
+      showTip(tipHtml,e);
+      // Update center label
+      centerLabel.textContent=s.name;
+      centerLabel.style.fill=(CYBER[s.name]||{dot:'#94a3b8'}).dot;
+      centerValue.textContent=(s.value*100).toFixed(1)+'%';
+    });
+    path.addEventListener('mousemove',e=>showTip(path._tipHtml,e));
+    path._tipHtml=`<div style="display:flex;align-items:center;gap:8px;">
+      <span style="width:7px;height:7px;border-radius:50%;background:${(CYBER[s.name]||{dot:'#fff'}).dot};box-shadow:0 0 6px ${(CYBER[s.name]||{dot:'#fff'}).dot};flex-shrink:0;"></span>
+      <span style="color:rgba(148,163,184,1);font-size:12px;">${s.name}</span>
+      <span style="color:#f1f5f9;font-size:14px;font-weight:700;font-family:'Courier New',monospace;margin-left:4px;">${(s.value*100).toFixed(1)}%</span>
+    </div>`;
+    path.addEventListener('mousemove',e=>showTip(path._tipHtml,e));
+    path.addEventListener('mouseleave',()=>{
+      paths.forEach(p2=>p2.style.opacity='1');
+      path.removeAttribute('filter');
+      hideTip();
+      centerLabel.textContent='Total assets';
+      centerLabel.style.fill='rgba(100,116,139,1)';
+      centerValue.textContent='100%';
+    });
+    svg.appendChild(path);
+    return path;
+  });
+
+  // Center text
+  const centerLabel=document.createElementNS('http://www.w3.org/2000/svg','text');
+  centerLabel.setAttribute('x',cx);centerLabel.setAttribute('y',cy-10);
+  centerLabel.setAttribute('text-anchor','middle');centerLabel.setAttribute('dominant-baseline','middle');
+  centerLabel.setAttribute('font-size','10');centerLabel.setAttribute('font-weight','600');
+  centerLabel.setAttribute('letter-spacing','0.08em');centerLabel.setAttribute('font-family','Courier New,monospace');
+  centerLabel.style.fill='rgba(100,116,139,1)';centerLabel.style.textTransform='uppercase';
+  centerLabel.textContent='Total assets';
+
+  const centerValue=document.createElementNS('http://www.w3.org/2000/svg','text');
+  centerValue.setAttribute('x',cx);centerValue.setAttribute('y',cy+16);
+  centerValue.setAttribute('text-anchor','middle');centerValue.setAttribute('dominant-baseline','middle');
+  centerValue.setAttribute('font-size','28');centerValue.setAttribute('font-weight','700');
+  centerValue.setAttribute('letter-spacing','-0.02em');centerValue.setAttribute('font-family','Courier New,monospace');
+  centerValue.style.fill='#f1f5f9';
+  centerValue.textContent='100%';
+
+  svg.appendChild(centerLabel);svg.appendChild(centerValue);
+  el.appendChild(svg);
+
+  // Legend below
+  const leg=document.createElement('div');
+  leg.style.cssText='display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;';
+  slices.forEach(s=>{
+    const dot=(CYBER[s.name]||{dot:'#94a3b8'}).dot;
+    leg.innerHTML+=`<span style="display:flex;align-items:center;gap:5px;font-size:12px;color:rgba(148,163,184,0.85);font-family:system-ui;">
+      <span style="width:7px;height:7px;border-radius:50%;background:${dot};box-shadow:0 0 5px ${dot}60;flex-shrink:0;"></span>
+      ${s.name}: ${(s.value*100).toFixed(1)}%
+    </span>`;
+  });
+  el.appendChild(leg);
+}
+
+/* ─── BAR CHART ─── */
+function drawCyberBar(containerId, data, modelNames){
+  const el=document.getElementById(containerId);
+  if(!el) return;
+  el.innerHTML='';
+
+  const W=el.offsetWidth||420, H=260;
+  const margin={top:16,right:16,bottom:48,left:36};
+  const iW=W-margin.left-margin.right, iH=H-margin.top-margin.bottom;
+
+  const shorts=modelNames.map(m=>m.replace('IRA ','').replace('Taxable ','Tax. ').replace('SRI ',''));
+  const chartData=modelNames.map((m,i)=>({
+    model:shorts[i],
+    equities:parseFloat(((data.summary[m]?.equities||0)*100).toFixed(1)),
+    fixed:parseFloat(((data.summary[m]?.fixedIncome||0)*100).toFixed(1)),
+    cash:parseFloat((((data.summary[m]?.cash||0)+(data.summary[m]?.alternatives||0))*100).toFixed(1)),
+  }));
+
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('width','100%');svg.setAttribute('height',H);
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+
+  // defs
+  const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
+  BAR_SERIES.forEach(s=>{
+    const lg=document.createElementNS('http://www.w3.org/2000/svg','linearGradient');
+    lg.id='bg-'+s.key;lg.setAttribute('x1','0');lg.setAttribute('y1','0');lg.setAttribute('x2','0');lg.setAttribute('y2','1');
+    const st1=document.createElementNS('http://www.w3.org/2000/svg','stop');
+    st1.setAttribute('offset','0%');st1.setAttribute('stop-color',s.c1);st1.setAttribute('stop-opacity','0.95');
+    const st2=document.createElementNS('http://www.w3.org/2000/svg','stop');
+    st2.setAttribute('offset','100%');st2.setAttribute('stop-color',s.c2);st2.setAttribute('stop-opacity','0.85');
+    lg.appendChild(st1);lg.appendChild(st2);defs.appendChild(lg);
+  });
+  svg.appendChild(defs);
+
+  const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+  g.setAttribute('transform',`translate(${margin.left},${margin.top})`);
+
+  const xScale=d3.scaleBand().domain(shorts).range([0,iW]).padding(0.35);
+  const yScale=d3.scaleLinear().domain([0,100]).range([iH,0]);
+
+  // Grid lines
+  [25,50,75,100].forEach(v=>{
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',0);line.setAttribute('x2',iW);
+    line.setAttribute('y1',yScale(v));line.setAttribute('y2',yScale(v));
+    line.setAttribute('stroke','rgba(255,255,255,0.05)');line.setAttribute('stroke-dasharray','3 3');
+    g.appendChild(line);
+  });
+
+  // Y axis ticks
+  [0,25,50,75,100].forEach(v=>{
+    const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',-6);t.setAttribute('y',yScale(v)+4);
+    t.setAttribute('text-anchor','end');t.setAttribute('font-size','10');
+    t.setAttribute('font-family','Courier New,monospace');t.setAttribute('fill','rgba(71,85,105,1)');
+    t.textContent=v+'%';g.appendChild(t);
+  });
+
+  // Bars (stacked)
+  chartData.forEach((d,di)=>{
+    let stackY=iH;
+    const barX=xScale(d.model);
+    const bW=xScale.bandwidth();
+    const barR=5;
+    const colGroup=document.createElementNS('http://www.w3.org/2000/svg','g');
+    colGroup.style.cursor='pointer';
+
+    BAR_SERIES.forEach((s,si)=>{
+      const val=d[s.key]||0;
+      const bH=iH-yScale(val);
+      if(bH<=0) return;
+      stackY-=bH;
+      const isTop=si===BAR_SERIES.length-1||!chartData[di][BAR_SERIES[si+1]?.key];
+      const r=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      r.setAttribute('x',barX);r.setAttribute('y',stackY);
+      r.setAttribute('width',bW);r.setAttribute('height',bH);
+      r.setAttribute('fill',`url(#bg-${s.key})`);
+      if(isTop) r.setAttribute('rx',barR);
+      colGroup.appendChild(r);
+    });
+
+    // Tooltip on hover
+    colGroup.addEventListener('mouseenter',e=>{
+      colGroup.style.opacity='1';
+      // dim others
+      document.querySelectorAll(`#${containerId} .bar-col`).forEach((gc,gi)=>{
+        if(gi!==di) gc.style.opacity='0.45';
+      });
+      const tipHtml=`
+        <p style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(100,116,139,1);margin:0 0 8px;font-family:Courier New,monospace;">${d.model}</p>
+        ${[...BAR_SERIES].reverse().map(s=>`
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;">
+            <span style="width:7px;height:7px;border-radius:50%;background:${s.dot};box-shadow:0 0 5px ${s.dot};flex-shrink:0;"></span>
+            <span style="color:rgba(148,163,184,1);font-size:12px;font-family:system-ui;flex:1;">${s.label}</span>
+            <span style="color:#f1f5f9;font-size:12px;font-weight:700;font-family:Courier New,monospace;">${d[s.key]}%</span>
+          </div>`).join('')}
+        <div style="margin-top:7px;padding-top:7px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;">
+          <span style="font-size:10px;color:rgba(71,85,105,1);font-family:Courier New,monospace;">Total</span>
+          <span style="font-size:12px;font-weight:700;color:#f1f5f9;font-family:Courier New,monospace;">${d.equities+d.fixed+d.cash}%</span>
+        </div>`;
+      showTip(tipHtml,e);
+    });
+    colGroup.addEventListener('mousemove',e=>showTip(colGroup._tip,e));
+    colGroup.addEventListener('mouseleave',()=>{
+      document.querySelectorAll(`#${containerId} .bar-col`).forEach(gc=>gc.style.opacity='1');
+      hideTip();
+    });
+    colGroup._tip='placeholder';
+    colGroup.classList.add('bar-col');
+    g.appendChild(colGroup);
+
+    // X axis label (split on space)
+    const words=d.model.split(' ');
+    words.forEach((w,wi)=>{
+      const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+      t.setAttribute('x',barX+bW/2);
+      t.setAttribute('y',iH+14+wi*13);
+      t.setAttribute('text-anchor','middle');t.setAttribute('font-size','10');
+      t.setAttribute('font-family','Courier New,monospace');t.setAttribute('fill','rgba(100,116,139,1)');
+      t.textContent=w;g.appendChild(t);
+    });
+  });
+
+  svg.appendChild(g);
+  el.appendChild(svg);
+
+  // Legend
+  const leg=document.createElement('div');
+  leg.style.cssText='display:flex;justify-content:center;gap:18px;margin-top:8px;';
+  BAR_SERIES.forEach(s=>{
+    leg.innerHTML+=`<span style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(148,163,184,0.85);font-family:system-ui;">
+      <span style="width:8px;height:8px;border-radius:50%;background:${s.dot};box-shadow:0 0 5px ${s.dot}70;flex-shrink:0;"></span>${s.label}</span>`;
+  });
+  el.appendChild(leg);
+}
+
+/* ─── Section headers inside chart cards ─── */
+function chartHeader(label,title){
+  const wrap=document.createElement('div');
+  wrap.style.cssText='padding:1.25rem 1.5rem 0;';
+  wrap.innerHTML=`<p style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(100,116,139,1);margin:0 0 3px;font-family:Courier New,monospace;">${label}</p>
+    <h3 style="font-size:15px;font-weight:600;color:#f1f5f9;margin:0 0 1rem;font-family:system-ui;">${title}</h3>`;
+  return wrap;
+}
+function wrapChartEl(containerId,label,title){
+  const el=document.getElementById(containerId);
+  if(!el||el.dataset.wrapped) return;
+  el.dataset.wrapped='1';
+  const h=chartHeader(label,title);
+  el.parentNode.insertBefore(h,el);
+  el.style.padding='0 1.25rem 1.25rem';
+}
+
+// Stub old Chart.js fns (no-ops)
+function makeDonut(){}
+function makeBarChart(){}
+
 function updateDonut(data,model,pfx){
-  const chart=pfx==='twm'?twmDonut:sriDonut;if(!chart)return;
-  const ct=getCatTotals(data,model),labels=Object.keys(ct).filter(k=>ct[k]>0);
-  chart.data.labels=labels;
-  chart.data.datasets[0].data=labels.map(k=>parseFloat((ct[k]*100).toFixed(2)));
-  chart.data.datasets[0].backgroundColor=labels.map(k=>CAT_COLORS[k]||'#aaa');
-  chart.update();
   renderDonutLegend(data,model,pfx);
 }
 
 function renderDonutLegend(data,model,pfx){
-  const ct=getCatTotals(data,model);
-  document.getElementById(pfx+'-donut-legend').innerHTML=Object.keys(ct).filter(k=>ct[k]>0).map(k=>
-    `<span class="legend-item"><span class="legend-dot" style="background:${CAT_COLORS[k]};"></span>${k}: ${pct(ct[k])}</span>`
-  ).join('');
+  wrapChartEl(pfx+'-donut-root','Asset class breakdown',model);
+  drawCyberDonut(pfx+'-donut-root',data,model);
   renderGeoBar(data,model,pfx);
 }
 
-function makeBarChart(id,data,modelNames){
-  const mNames=modelNames;
-  const shorts=mNames.map(m=>m.replace('IRA ','').replace('Taxable ','Tax. ').replace('SRI ',''));
-  const c=chartColors();
-  return new Chart(document.getElementById(id).getContext('2d'),{
-    type:'bar',
-    data:{labels:shorts,datasets:[
-      {label:'Equities',    data:mNames.map(m=>parseFloat((data.summary[m].equities*100).toFixed(1))),   backgroundColor:'#7F77DD'},
-      {label:'Fixed Income',data:mNames.map(m=>parseFloat((data.summary[m].fixedIncome*100).toFixed(1))),backgroundColor:'#378ADD'},
-      {label:'Cash / Alt',  data:mNames.map(m=>parseFloat(((data.summary[m].cash+data.summary[m].alternatives)*100).toFixed(1))),backgroundColor:'#888780'},
-    ]},
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},
-      scales:{
-        x:{stacked:true,grid:{color:c.grid},ticks:{color:c.tick,font:{family:"'IBM Plex Mono',monospace",size:12},autoSkip:false,maxRotation:30}},
-        y:{stacked:true,max:100,grid:{color:c.grid},ticks:{color:c.tick,font:{family:"'IBM Plex Mono',monospace",size:12},callback:v=>v+'%'}},
-      }
-    }
-  });
-}
-
 function initTWMCharts(){
-  if(twmDonut){twmDonut.destroy();twmDonut=null;}
-  if(twmBar){twmBar.destroy();twmBar=null;}
-  twmDonut=makeDonut('twm-donut',TWM,curTWM);
-  renderDonutLegend(TWM,curTWM,'twm');
-  twmBar=makeBarChart('twm-bar',TWM,TWM_MODEL_NAMES);
+  wrapChartEl('twm-donut-root','Asset class breakdown',curTWM);
+  wrapChartEl('twm-bar-root','Model comparison','Equity vs. fixed income — all models');
+  drawCyberDonut('twm-donut-root',TWM,curTWM);
+  drawCyberBar('twm-bar-root',TWM,TWM_MODEL_NAMES);
+  renderGeoBar(TWM,curTWM,'twm');
 }
 function initSRICharts(){
-  if(sriDonut){sriDonut.destroy();sriDonut=null;}
-  if(sriBar){sriBar.destroy();sriBar=null;}
-  sriDonut=makeDonut('sri-donut',SRI,curSRI);
-  renderDonutLegend(SRI,curSRI,'sri');
-  sriBar=makeBarChart('sri-bar',SRI,SRI_MODEL_NAMES);
+  wrapChartEl('sri-donut-root','Asset class breakdown',curSRI);
+  wrapChartEl('sri-bar-root','Model comparison','Equity vs. fixed income — all models');
+  drawCyberDonut('sri-donut-root',SRI,curSRI);
+  drawCyberBar('sri-bar-root',SRI,SRI_MODEL_NAMES);
+  renderGeoBar(SRI,curSRI,'sri');
+}
+function refreshChartTheme(){
+  // SVG charts auto-adapt (dark glass bg is CSS on .chart-card-cyber)
 }
 
-function updateTWMView(m){curTWM=m;document.getElementById('twm-model-name').textContent=m;renderMetrics(TWM,m,'twm');renderAllocTable(TWM,m,'twm');updateDonut(TWM,m,'twm');}
-function updateSRIView(m){curSRI=m;document.getElementById('sri-model-name').textContent=m;renderMetrics(SRI,m,'sri');renderAllocTable(SRI,m,'sri');updateDonut(SRI,m,'sri');}
+function updateTWMView(m){curTWM=m;document.getElementById('twm-model-name').textContent=m;renderMetrics(TWM,m,'twm');renderAllocTable(TWM,m,'twm');drawCyberDonut('twm-donut-root',TWM,m);}
+function updateSRIView(m){curSRI=m;document.getElementById('sri-model-name').textContent=m;renderMetrics(SRI,m,'sri');renderAllocTable(SRI,m,'sri');drawCyberDonut('sri-donut-root',SRI,m);}
 
 /* Modal */
 function openModal(){
@@ -2322,10 +2637,10 @@ async function loadVersion(id, name, closePanel=false){
     // Re-render everything with version data
     renderMetrics(TWM,curTWM,'twm'); renderAllocTable(TWM,curTWM,'twm');
     renderMetrics(SRI,curSRI,'sri'); renderAllocTable(SRI,curSRI,'sri');
-    if(twmDonut){twmDonut.destroy();twmDonut=null;}
-    if(twmBar){twmBar.destroy();twmBar=null;}
-    if(sriDonut){sriDonut.destroy();sriDonut=null;}
-    if(sriBar){sriBar.destroy();sriBar=null;}
+    
+    
+    
+    
     setTimeout(()=>{initTWMCharts();initSRICharts();},80);
     switchTab('twm');
     toast('Loaded "'+name+'" in read-only mode');
@@ -2348,10 +2663,10 @@ function exitReadOnly(){
   // Re-render live state
   renderMetrics(TWM,curTWM,'twm'); renderAllocTable(TWM,curTWM,'twm');
   renderMetrics(SRI,curSRI,'sri'); renderAllocTable(SRI,curSRI,'sri');
-  if(twmDonut){twmDonut.destroy();twmDonut=null;}
-  if(twmBar){twmBar.destroy();twmBar=null;}
-  if(sriDonut){sriDonut.destroy();sriDonut=null;}
-  if(sriBar){sriBar.destroy();sriBar=null;}
+  
+  
+  
+  
   setTimeout(()=>{initTWMCharts();initSRICharts();},80);
   switchTab('twm');
   toast('Returned to live model');
