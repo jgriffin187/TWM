@@ -2061,6 +2061,9 @@ function drawWhenVisible(rootId, drawFn){
   const el=document.getElementById(rootId);
   if(!el) return;
   if(el.offsetWidth>0){ drawFn(); return; }
+  // Observe the parent card — it gets a real pixel width from CSS grid
+  // The root div is width:100% which stays zero if its parent is zero
+  const target=el.closest('.card')||el.parentElement||el;
   const ro=new ResizeObserver((entries,obs)=>{
     for(const e of entries){
       if(e.contentRect.width>0){
@@ -2070,7 +2073,7 @@ function drawWhenVisible(rootId, drawFn){
       }
     }
   });
-  ro.observe(el);
+  ro.observe(target);
 }
 
 function getCatTotals(data,model){
@@ -3181,10 +3184,16 @@ function initSRICharts(){
   drawCyberBar('sri-bar-root',SRI,SRI_MODEL_NAMES);
   renderGeoBar(SRI,curSRI,'sri');
 }
+function activeTab(){
+  if(document.getElementById('tab-twm').style.display!=='none') return 'twm';
+  if(document.getElementById('tab-sri').style.display!=='none') return 'sri';
+  return null;
+}
 function refreshChartTheme(){
   _tip=null;
-  initTWMCharts();
-  initSRICharts();
+  const tab=activeTab();
+  if(tab==='twm') initTWMCharts();
+  if(tab==='sri') initSRICharts();
   renderMetrics(TWM,curTWM,'twm');
   renderMetrics(SRI,curSRI,'sri');
   renderAllocTable(TWM,curTWM,'twm');
@@ -3599,8 +3608,8 @@ async function loadVersion(id, name, closePanel=false){
     
     
     
-    setTimeout(()=>{initTWMCharts();initSRICharts();},80);
     switchTab('twm');
+    setTimeout(initTWMCharts,80);
     toast('Loaded "'+name+'" in read-only mode');
   }catch(e){
     toast('Failed to load version: '+e.message,'err');
@@ -3625,8 +3634,8 @@ function exitReadOnly(){
   
   
   
-  setTimeout(()=>{initTWMCharts();initSRICharts();},80);
   switchTab('twm');
+  setTimeout(initTWMCharts,80);
   toast('Returned to live model');
 }
 
@@ -3876,7 +3885,6 @@ document.getElementById('twm-model-name').textContent=curTWM;
 renderMetrics(SRI,curSRI,'sri');renderAllocTable(SRI,curSRI,'sri');
 document.getElementById('sri-model-name').textContent=curSRI;
 setTimeout(initTWMCharts,100);
-setTimeout(initSRICharts,150); // pre-render SRI so it's ready when tab switches
 
 // Check for existing session — if found, skip login screen
 (function(){
