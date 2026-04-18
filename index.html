@@ -447,7 +447,7 @@ async function fetchPrices() {
     .login-submit:disabled{opacity:.5;cursor:not-allowed;}
     .login-error{font-size:13px;font-weight:500;color:var(--red-text);background:var(--red-bg);border-radius:8px;padding:9px 12px;margin-bottom:12px;display:none;}
     .logout-btn{font-size:12px;font-weight:600;color:var(--text-2);background:var(--surface2);border:1px solid var(--border-mid);border-radius:8px;padding:5px 12px;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s;}
-    .pdf-btn{display:flex;align-items:center;justify-content:center;width:32px;height:32px;color:var(--text-2);background:var(--surface2);border:1px solid var(--border-mid);border-radius:8px;padding:0;cursor:pointer;transition:background .15s,color .15s;}
+    .pdf-btn{display:flex;align-items:center;justify-content:center;gap:3px;height:32px;padding:0 10px;color:var(--text-2);background:var(--surface2);border:1px solid var(--border-mid);border-radius:8px;cursor:pointer;transition:background .15s,color .15s;}
     .pdf-btn:hover{background:var(--blue-bg);color:var(--blue-text);border-color:var(--blue);}
     .pdf-btn:disabled{opacity:.5;cursor:not-allowed;}
     .pdf-btn svg{width:13px;height:13px;fill:currentColor;}
@@ -1108,14 +1108,36 @@ async function fetchPrices() {
     <span class="conn-badge conn-ok" id="conn-badge" title="Supabase connected" style="padding:0;background:transparent;border:none;">
       <span class="conn-dot-only" id="conn-dot"></span>
     </span>
-    <!-- PDF icon button -->
-    <button class="pdf-btn" id="pdf-btn" onclick="exportPDF()" title="Export PDF" style="display:none;">
-      <svg viewBox="0 0 24 24" style="width:15px;height:15px;fill:currentColor;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM8 17h8v1H8v-1zm0-3h8v1H8v-1zm0-3h5v1H8v-1z"/></svg>
+    <!-- PDF export button -->
+    <button class="pdf-btn" id="pdf-btn" onclick="exportPDF()" title="Export as PDF" style="display:none;">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Page with fold -->
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <!-- Down arrow = export/download -->
+        <line x1="12" y1="11" x2="12" y2="17"/>
+        <polyline points="9 14 12 17 15 14"/>
+      </svg>
+      <span style="font-size:9px;font-weight:700;font-family:'IBM Plex Mono',monospace;letter-spacing:0.04em;line-height:1;margin-left:2px;">PDF</span>
     </button>
     <!-- Theme toggle -->
-    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode" aria-label="Toggle dark mode">
-      <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-      <svg class="icon-sun" viewBox="0 0 24 24"><path d="M12 3v1m0 16v1M4.22 4.22l.7.7m12.02 12.02.7.7M3 12h1m16 0h1M4.92 19.78l.7-.7M18.36 5.64l.7-.7M12 7a5 5 0 1 0 0 10A5 5 0 0 0 12 7z"/></svg>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Switch to light mode" id="theme-toggle-btn" aria-label="Toggle theme">
+      <!-- Moon icon: shown in light mode (click to go dark) -->
+      <svg class="icon-moon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="currentColor" stroke="none"/>
+      </svg>
+      <!-- Sun icon: shown in dark mode (click to go light) -->
+      <svg class="icon-sun" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/>
+        <line x1="12" y1="2" x2="12" y2="5"/>
+        <line x1="12" y1="19" x2="12" y2="22"/>
+        <line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/>
+        <line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/>
+        <line x1="2" y1="12" x2="5" y2="12"/>
+        <line x1="19" y1="12" x2="22" y2="12"/>
+        <line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/>
+        <line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/>
+      </svg>
     </button>
     <!-- User menu (email + sign out in dropdown) -->
     <div class="user-menu-wrap" id="user-menu-wrap">
@@ -1433,6 +1455,8 @@ function toggleTheme(){
   const next = cur==='dark'?'light':'dark';
   document.documentElement.setAttribute('data-theme',next);
   localStorage.setItem('theme',next);
+  const btn=document.getElementById('theme-toggle-btn');
+  if(btn) btn.title=next==='dark'?'Switch to light mode':'Switch to dark mode';
   refreshChartTheme();
 }
 function isDark(){ return document.documentElement.getAttribute('data-theme')==='dark'; }
