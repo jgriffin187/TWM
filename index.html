@@ -199,8 +199,18 @@
     .metric-sub{font-size:12px;color:var(--text-2);margin-top:4px;font-weight:500;}
 
     .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.5rem;transition:background .2s,border-color .2s;}
-    .chart-card-cyber{padding:0 !important;overflow:hidden;background:rgba(15,23,42,0.85) !important;border:1px solid rgba(255,255,255,0.08) !important;}
-    [data-theme="light"] .chart-card-cyber{background:rgba(20,30,55,0.92) !important;}
+    .chart-card-cyber{padding:0 !important;overflow:hidden;
+      background:rgba(255,255,255,0.75) !important;
+      backdrop-filter:blur(32px) !important;
+      -webkit-backdrop-filter:blur(32px) !important;
+      border:1px solid rgba(203,213,225,0.8) !important;
+      box-shadow:0 4px 24px rgba(15,23,42,0.06), 0 1px 4px rgba(15,23,42,0.04) !important;}
+    [data-theme="dark"] .chart-card-cyber{
+      background:rgba(15,23,42,0.85) !important;
+      backdrop-filter:blur(24px) !important;
+      -webkit-backdrop-filter:blur(24px) !important;
+      border:1px solid rgba(255,255,255,0.08) !important;
+      box-shadow:0 25px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05) !important;}
     .card-title{font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;}
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
 
@@ -1838,27 +1848,70 @@ function deleteFund(pfx, ticker){
 /* Charts */
 /* ── Cyber charts (pure SVG / D3) ── */
 // Gradient palette — matches the React artifact exactly
-const CYBER = {
-  Equities:      {c1:'#38bdf8', c2:'#3730a3', dot:'#38bdf8'},
-  'Fixed Income':{c1:'#34d399', c2:'#065f46', dot:'#34d399'},
-  Cash:          {c1:'#64748b', c2:'#1e293b', dot:'#94a3b8'},
-  Blended:       {c1:'#fb923c', c2:'#7f1d1d', dot:'#fb923c'},
-  Alternatives:  {c1:'#a78bfa', c2:'#1e1b4b', dot:'#a78bfa'},
+// Theme-aware color tokens
+// Dark: neon gradients with glow. Light: rich pastels with depth shadows, no neon.
+const CYBER_DARK = {
+  Equities:      {c1:'#38bdf8', c2:'#3730a3', dot:'#38bdf8', shadow:'rgba(56,189,248,0.25)'},
+  'Fixed Income':{c1:'#34d399', c2:'#065f46', dot:'#34d399', shadow:'rgba(52,211,153,0.25)'},
+  Cash:          {c1:'#64748b', c2:'#1e293b', dot:'#94a3b8', shadow:'rgba(148,163,184,0.20)'},
+  Blended:       {c1:'#fb923c', c2:'#7f1d1d', dot:'#fb923c', shadow:'rgba(251,146,60,0.25)'},
+  Alternatives:  {c1:'#a78bfa', c2:'#1e1b4b', dot:'#a78bfa', shadow:'rgba(167,139,250,0.25)'},
 };
-const BAR_SERIES=[
-  {key:'equities',label:'Equities',    c1:'#38bdf8',c2:'#3730a3',dot:'#38bdf8'},
-  {key:'fixed',   label:'Fixed Income',c1:'#34d399',c2:'#065f46',dot:'#34d399'},
-  {key:'cash',    label:'Cash / Alt',  c1:'#64748b',c2:'#1e293b',dot:'#94a3b8'},
+const CYBER_LIGHT = {
+  Equities:      {c1:'#3b82f6', c2:'#1e40af', dot:'#2563eb', shadow:'rgba(59,130,246,0.18)'},
+  'Fixed Income':{c1:'#10b981', c2:'#065f46', dot:'#059669', shadow:'rgba(16,185,129,0.18)'},
+  Cash:          {c1:'#94a3b8', c2:'#475569', dot:'#64748b', shadow:'rgba(100,116,139,0.15)'},
+  Blended:       {c1:'#f97316', c2:'#c2410c', dot:'#ea580c', shadow:'rgba(249,115,22,0.18)'},
+  Alternatives:  {c1:'#8b5cf6', c2:'#4c1d95', dot:'#7c3aed', shadow:'rgba(139,92,246,0.18)'},
+};
+const BAR_DARK=[
+  {key:'equities',label:'Equities',    c1:'#38bdf8',c2:'#3730a3',dot:'#38bdf8',shadow:'rgba(56,189,248,0.20)'},
+  {key:'fixed',   label:'Fixed Income',c1:'#34d399',c2:'#065f46',dot:'#34d399',shadow:'rgba(52,211,153,0.20)'},
+  {key:'cash',    label:'Cash / Alt',  c1:'#64748b',c2:'#1e293b',dot:'#94a3b8',shadow:'rgba(148,163,184,0.15)'},
 ];
+const BAR_LIGHT=[
+  {key:'equities',label:'Equities',    c1:'#3b82f6',c2:'#1e40af',dot:'#2563eb',shadow:'rgba(59,130,246,0.15)'},
+  {key:'fixed',   label:'Fixed Income',c1:'#10b981',c2:'#065f46',dot:'#059669',shadow:'rgba(16,185,129,0.15)'},
+  {key:'cash',    label:'Cash / Alt',  c1:'#94a3b8',c2:'#475569',dot:'#64748b',shadow:'rgba(100,116,139,0.10)'},
+];
+
+function getCYBER(name){ return isDark()?(CYBER_DARK[name]||CYBER_DARK.Cash):(CYBER_LIGHT[name]||CYBER_LIGHT.Cash); }
+function getBAR_SERIES(){ return isDark()?BAR_DARK:BAR_LIGHT; }
+
+// Theme token helpers — all hardcoded colors go through these
+function T(){ // returns a theme token object
+  const dk=isDark();
+  return {
+    // text
+    textPrimary:   dk?'#f1f5f9':'#0f172a',
+    textSecondary: dk?'rgba(148,163,184,1)':'rgba(51,65,85,0.9)',
+    textMuted:     dk?'rgba(100,116,139,1)':'rgba(100,116,139,0.9)',
+    textHint:      dk?'rgba(71,85,105,1)':'rgba(100,116,139,0.7)',
+    // backgrounds
+    tipBg:         dk?'rgba(15,23,42,0.92)':'rgba(255,255,255,0.95)',
+    tipBorder:     dk?'rgba(255,255,255,0.10)':'rgba(203,213,225,0.9)',
+    tipShadow:     dk?'0 8px 32px rgba(0,0,0,0.5)':'0 4px 20px rgba(15,23,42,0.12)',
+    gridStroke:    dk?'rgba(255,255,255,0.05)':'rgba(15,23,42,0.07)',
+    // center label defaults
+    centerLabelFill: dk?'rgba(100,116,139,1)':'rgba(100,116,139,0.85)',
+    // hover glow vs shadow
+    useGlow:       dk,
+  };
+}
 
 // Shared tooltip element
 let _tip=null;
 function getTip(){
   if(!_tip){
     _tip=document.createElement('div');
-    _tip.style.cssText='position:fixed;pointer-events:none;display:none;z-index:9999;background:rgba(15,23,42,0.92);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.10);border-radius:12px;padding:10px 14px;box-shadow:0 8px 32px rgba(0,0,0,0.5);font-family:system-ui,sans-serif;min-width:140px;';
+    _tip.style.cssText='position:fixed;pointer-events:none;display:none;z-index:9999;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:12px;padding:10px 14px;font-family:system-ui,sans-serif;min-width:140px;transition:none;';
     document.body.appendChild(_tip);
   }
+  // Refresh theme colors every show
+  const t=T();
+  _tip.style.background=t.tipBg;
+  _tip.style.border='1px solid '+t.tipBorder;
+  _tip.style.boxShadow=t.tipShadow;
   return _tip;
 }
 function hideTip(){const t=getTip();t.style.display='none';}
@@ -1922,7 +1975,7 @@ function drawCyberDonut(containerId, data, model){
   const total=slices.reduce((a,s)=>a+s.value,0);
   let startAngle=-Math.PI/2;
   slices.forEach((s,i)=>{
-    const g=CYBER[s.name]||{c1:'#64748b',c2:'#1e293b'};
+    const g=getCYBER(s.name);
     const gradId='dg-'+i;
     const lg=document.createElementNS('http://www.w3.org/2000/svg','linearGradient');
     lg.id=gradId;lg.setAttribute('x1','0%');lg.setAttribute('y1','0%');lg.setAttribute('x2','100%');lg.setAttribute('y2','100%');
@@ -1984,30 +2037,36 @@ function drawCyberDonut(containerId, data, model){
     path.addEventListener('mouseenter',e=>{
       paths.forEach((p2,j)=>p2.style.opacity=j===i?'1':'0.45');
       path.setAttribute('filter','url(#donut-glow)');
+      const _t=T(),_g=getCYBER(s.name);
+      const _glow=_t.useGlow?`box-shadow:0 0 6px ${_g.dot};`:`box-shadow:0 2px 6px ${_g.shadow};`;
       const tipHtml=`<div style="display:flex;align-items:center;gap:8px;">
-        <span style="width:7px;height:7px;border-radius:50%;background:${(CYBER[s.name]||{dot:'#fff'}).dot};box-shadow:0 0 6px ${(CYBER[s.name]||{dot:'#fff'}).dot};flex-shrink:0;"></span>
-        <span style="color:rgba(148,163,184,1);font-size:12px;">${s.name}</span>
-        <span style="color:#f1f5f9;font-size:14px;font-weight:700;font-family:'Courier New',monospace;margin-left:4px;">${(s.value*100).toFixed(1)}%</span>
+        <span style="width:7px;height:7px;border-radius:50%;background:${_g.dot};${_glow}flex-shrink:0;"></span>
+        <span style="color:${_t.textSecondary};font-size:12px;">${s.name}</span>
+        <span style="color:${_t.textPrimary};font-size:14px;font-weight:700;font-family:'Courier New',monospace;margin-left:4px;">${(s.value*100).toFixed(1)}%</span>
       </div>`;
       showTip(tipHtml,e);
       // Update center label
       centerLabel.textContent=s.name;
-      centerLabel.style.fill=(CYBER[s.name]||{dot:'#94a3b8'}).dot;
+      centerLabel.style.fill=getCYBER(s.name).dot;
       centerValue.textContent=(s.value*100).toFixed(1)+'%';
     });
-    path.addEventListener('mousemove',e=>showTip(path._tipHtml,e));
-    path._tipHtml=`<div style="display:flex;align-items:center;gap:8px;">
-      <span style="width:7px;height:7px;border-radius:50%;background:${(CYBER[s.name]||{dot:'#fff'}).dot};box-shadow:0 0 6px ${(CYBER[s.name]||{dot:'#fff'}).dot};flex-shrink:0;"></span>
-      <span style="color:rgba(148,163,184,1);font-size:12px;">${s.name}</span>
-      <span style="color:#f1f5f9;font-size:14px;font-weight:700;font-family:'Courier New',monospace;margin-left:4px;">${(s.value*100).toFixed(1)}%</span>
-    </div>`;
+    path.addEventListener('mousemove',e=>{
+      const _t=T(),_g=getCYBER(path._tipData.name);
+      const _glow=_t.useGlow?`box-shadow:0 0 6px ${_g.dot};`:`box-shadow:0 2px 6px ${_g.shadow};`;
+      showTip(`<div style="display:flex;align-items:center;gap:8px;">
+        <span style="width:7px;height:7px;border-radius:50%;background:${_g.dot};${_glow}flex-shrink:0;"></span>
+        <span style="color:${_t.textSecondary};font-size:12px;">${path._tipData.name}</span>
+        <span style="color:${_t.textPrimary};font-size:14px;font-weight:700;font-family:'Courier New',monospace;margin-left:4px;">${(path._tipData.value*100).toFixed(1)}%</span>
+      </div>`,e);
+    });
+    path._tipData={name:s.name,value:s.value};
     path.addEventListener('mousemove',e=>showTip(path._tipHtml,e));
     path.addEventListener('mouseleave',()=>{
       paths.forEach(p2=>p2.style.opacity='1');
       path.removeAttribute('filter');
       hideTip();
       centerLabel.textContent='Total assets';
-      centerLabel.style.fill='rgba(100,116,139,1)';
+      centerLabel.style.fill=T().centerLabelFill;
       centerValue.textContent='100%';
     });
     svg.appendChild(path);
@@ -2020,7 +2079,7 @@ function drawCyberDonut(containerId, data, model){
   centerLabel.setAttribute('text-anchor','middle');centerLabel.setAttribute('dominant-baseline','middle');
   centerLabel.setAttribute('font-size','10');centerLabel.setAttribute('font-weight','600');
   centerLabel.setAttribute('letter-spacing','0.08em');centerLabel.setAttribute('font-family','Courier New,monospace');
-  centerLabel.style.fill='rgba(100,116,139,1)';centerLabel.style.textTransform='uppercase';
+  centerLabel.style.fill=T().centerLabelFill;centerLabel.style.textTransform='uppercase';
   centerLabel.textContent='Total assets';
 
   const centerValue=document.createElementNS('http://www.w3.org/2000/svg','text');
@@ -2028,7 +2087,7 @@ function drawCyberDonut(containerId, data, model){
   centerValue.setAttribute('text-anchor','middle');centerValue.setAttribute('dominant-baseline','middle');
   centerValue.setAttribute('font-size','28');centerValue.setAttribute('font-weight','700');
   centerValue.setAttribute('letter-spacing','-0.02em');centerValue.setAttribute('font-family','Courier New,monospace');
-  centerValue.style.fill='#f1f5f9';
+  centerValue.style.fill=T().textPrimary;
   centerValue.textContent='100%';
 
   svg.appendChild(centerLabel);svg.appendChild(centerValue);
@@ -2037,10 +2096,12 @@ function drawCyberDonut(containerId, data, model){
   // Legend below
   const leg=document.createElement('div');
   leg.style.cssText='display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;';
+  const _tLeg=T();
   slices.forEach(s=>{
-    const dot=(CYBER[s.name]||{dot:'#94a3b8'}).dot;
-    leg.innerHTML+=`<span style="display:flex;align-items:center;gap:5px;font-size:12px;color:rgba(148,163,184,0.85);font-family:system-ui;">
-      <span style="width:7px;height:7px;border-radius:50%;background:${dot};box-shadow:0 0 5px ${dot}60;flex-shrink:0;"></span>
+    const _g=getCYBER(s.name);
+    const _glow=_tLeg.useGlow?`box-shadow:0 0 5px ${_g.dot}60;`:`box-shadow:0 2px 4px ${_g.shadow};`;
+    leg.innerHTML+=`<span style="display:flex;align-items:center;gap:5px;font-size:12px;color:${_tLeg.textSecondary};font-family:system-ui;">
+      <span style="width:7px;height:7px;border-radius:50%;background:${_g.dot};${_glow}flex-shrink:0;"></span>
       ${s.name}: ${(s.value*100).toFixed(1)}%
     </span>`;
   });
@@ -2093,7 +2154,7 @@ function drawCyberBar(containerId, data, modelNames){
     const line=document.createElementNS('http://www.w3.org/2000/svg','line');
     line.setAttribute('x1',0);line.setAttribute('x2',iW);
     line.setAttribute('y1',yScale(v));line.setAttribute('y2',yScale(v));
-    line.setAttribute('stroke','rgba(255,255,255,0.05)');line.setAttribute('stroke-dasharray','3 3');
+    line.setAttribute('stroke',T().gridStroke);line.setAttribute('stroke-dasharray','3 3');
     g.appendChild(line);
   });
 
@@ -2136,17 +2197,19 @@ function drawCyberBar(containerId, data, modelNames){
       document.querySelectorAll(`#${containerId} .bar-col`).forEach((gc,gi)=>{
         if(gi!==di) gc.style.opacity='0.45';
       });
+      const _bt=T();
       const tipHtml=`
-        <p style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(100,116,139,1);margin:0 0 8px;font-family:Courier New,monospace;">${d.model}</p>
-        ${[...BAR_SERIES].reverse().map(s=>`
-          <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;">
-            <span style="width:7px;height:7px;border-radius:50%;background:${s.dot};box-shadow:0 0 5px ${s.dot};flex-shrink:0;"></span>
-            <span style="color:rgba(148,163,184,1);font-size:12px;font-family:system-ui;flex:1;">${s.label}</span>
-            <span style="color:#f1f5f9;font-size:12px;font-weight:700;font-family:Courier New,monospace;">${d[s.key]}%</span>
-          </div>`).join('')}
-        <div style="margin-top:7px;padding-top:7px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;">
-          <span style="font-size:10px;color:rgba(71,85,105,1);font-family:Courier New,monospace;">Total</span>
-          <span style="font-size:12px;font-weight:700;color:#f1f5f9;font-family:Courier New,monospace;">${d.equities+d.fixed+d.cash}%</span>
+        <p style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${_bt.textMuted};margin:0 0 8px;font-family:Courier New,monospace;">${d.model}</p>
+        ${[...BAR_SERIES].reverse().map(s=>{
+          const _glow=_bt.useGlow?`box-shadow:0 0 5px ${s.dot};`:`box-shadow:0 2px 5px ${s.shadow};`;
+          return `<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;">
+            <span style="width:7px;height:7px;border-radius:50%;background:${s.dot};${_glow}flex-shrink:0;"></span>
+            <span style="color:${_bt.textSecondary};font-size:12px;font-family:system-ui;flex:1;">${s.label}</span>
+            <span style="color:${_bt.textPrimary};font-size:12px;font-weight:700;font-family:Courier New,monospace;">${d[s.key]}%</span>
+          </div>`;}).join('')}
+        <div style="margin-top:7px;padding-top:7px;border-top:1px solid ${_bt.useGlow?'rgba(255,255,255,0.07)':'rgba(15,23,42,0.08)'};display:flex;justify-content:space-between;">
+          <span style="font-size:10px;color:${_bt.textHint};font-family:Courier New,monospace;">Total</span>
+          <span style="font-size:12px;font-weight:700;color:${_bt.textPrimary};font-family:Courier New,monospace;">${d.equities+d.fixed+d.cash}%</span>
         </div>`;
       showTip(tipHtml,e);
     });
@@ -2177,9 +2240,11 @@ function drawCyberBar(containerId, data, modelNames){
   // Legend
   const leg=document.createElement('div');
   leg.style.cssText='display:flex;justify-content:center;gap:18px;margin-top:8px;';
+  const _tbl=T();
   BAR_SERIES.forEach(s=>{
-    leg.innerHTML+=`<span style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(148,163,184,0.85);font-family:system-ui;">
-      <span style="width:8px;height:8px;border-radius:50%;background:${s.dot};box-shadow:0 0 5px ${s.dot}70;flex-shrink:0;"></span>${s.label}</span>`;
+    const _glow=_tbl.useGlow?`box-shadow:0 0 5px ${s.dot}70;`:`box-shadow:0 2px 4px ${s.shadow};`;
+    leg.innerHTML+=`<span style="display:flex;align-items:center;gap:6px;font-size:12px;color:${_tbl.textSecondary};font-family:system-ui;">
+      <span style="width:8px;height:8px;border-radius:50%;background:${s.dot};${_glow}flex-shrink:0;"></span>${s.label}</span>`;
   });
   el.appendChild(leg);
 }
@@ -2188,15 +2253,19 @@ function drawCyberBar(containerId, data, modelNames){
 function chartHeader(label,title){
   const wrap=document.createElement('div');
   wrap.style.cssText='padding:1.25rem 1.5rem 0;';
-  wrap.innerHTML=`<p style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(100,116,139,1);margin:0 0 3px;font-family:Courier New,monospace;">${label}</p>
-    <h3 style="font-size:15px;font-weight:600;color:#f1f5f9;margin:0 0 1rem;font-family:system-ui;">${title}</h3>`;
+  const t=T();
+  wrap.innerHTML=`<p style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${t.textMuted};margin:0 0 3px;font-family:Courier New,monospace;">${label}</p>
+    <h3 style="font-size:15px;font-weight:600;color:${t.textPrimary};margin:0 0 1rem;font-family:system-ui;">${title}</h3>`;
   return wrap;
 }
 function wrapChartEl(containerId,label,title){
   const el=document.getElementById(containerId);
-  if(!el||el.dataset.wrapped) return;
-  el.dataset.wrapped='1';
+  if(!el) return;
+  // Remove existing header so it re-renders with correct theme colors
+  const prev=el.previousElementSibling;
+  if(prev&&prev.dataset.chartHeader) prev.remove();
   const h=chartHeader(label,title);
+  h.dataset.chartHeader='1';
   el.parentNode.insertBefore(h,el);
   el.style.padding='0 1.25rem 1.25rem';
 }
@@ -2230,7 +2299,10 @@ function initSRICharts(){
   renderGeoBar(SRI,curSRI,'sri');
 }
 function refreshChartTheme(){
-  // SVG charts auto-adapt (dark glass bg is CSS on .chart-card-cyber)
+  // Redraw charts with new theme palette
+  _tip=null; // reset tooltip so it picks up new colors
+  initTWMCharts();
+  initSRICharts();
 }
 
 function updateTWMView(m){curTWM=m;document.getElementById('twm-model-name').textContent=m;renderMetrics(TWM,m,'twm');renderAllocTable(TWM,m,'twm');drawCyberDonut('twm-donut-root',TWM,m);}
