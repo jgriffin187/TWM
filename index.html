@@ -855,11 +855,14 @@ function isDark(){ return document.documentElement.getAttribute('data-theme')===
 
 
 function refreshChartTheme(){
-  // React charts auto-adapt — re-render on theme toggle
-  if(twmDonutRoot) twmDonutRoot.render(R.createElement(CyberDonut,{data:TWM,model:curTWM,pfx:'twm',modelName:curTWM}));
-  if(twmBarRoot)   twmBarRoot.render(R.createElement(CyberBar,{data:TWM,modelNames:TWM_MODEL_NAMES,pfx:'twm'}));
-  if(sriDonutRoot) sriDonutRoot.render(R.createElement(CyberDonut,{data:SRI,model:curSRI,pfx:'sri',modelName:curSRI}));
-  if(sriBarRoot)   sriBarRoot.render(R.createElement(CyberBar,{data:SRI,modelNames:SRI_MODEL_NAMES,pfx:'sri'}));
+  _tip=null; // reset tooltip so it picks up new theme colors
+  // Re-render all theme-sensitive components
+  initTWMCharts();
+  initSRICharts();
+  renderMetrics(TWM,curTWM,'twm');
+  renderMetrics(SRI,curSRI,'sri');
+  renderAllocTable(TWM,curTWM,'twm');
+  renderAllocTable(SRI,curSRI,'sri');
 }
 
 /* ── Supabase ── */
