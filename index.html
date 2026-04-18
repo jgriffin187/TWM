@@ -2839,7 +2839,8 @@ function drawCyberDonut(containerId, data, model){
   // defs with gradients + glow filter
   const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
   const glowFilter=document.createElementNS('http://www.w3.org/2000/svg','filter');
-  glowFilter.id='donut-glow';glowFilter.setAttribute('x','-40%');glowFilter.setAttribute('y','-40%');
+  glowFilter.id=containerId.replace(/[^a-z0-9]/gi,'_')+'_glow';
+  const glowFilterId=glowFilter.id;glowFilter.setAttribute('x','-40%');glowFilter.setAttribute('y','-40%');
   glowFilter.setAttribute('width','180%');glowFilter.setAttribute('height','180%');
   const blur=document.createElementNS('http://www.w3.org/2000/svg','feGaussianBlur');
   blur.setAttribute('stdDeviation','6');blur.setAttribute('result','blur');
@@ -2854,7 +2855,7 @@ function drawCyberDonut(containerId, data, model){
   let startAngle=-Math.PI/2;
   slices.forEach((s,i)=>{
     const g=getCYBER(s.name);
-    const gradId='dg-'+i;
+    const gradId=containerId.replace(/[^a-z0-9]/gi,'_')+'_dg_'+i;
     const lg=document.createElementNS('http://www.w3.org/2000/svg','linearGradient');
     lg.id=gradId;lg.setAttribute('x1','0%');lg.setAttribute('y1','0%');lg.setAttribute('x2','100%');lg.setAttribute('y2','100%');
     const st1=document.createElementNS('http://www.w3.org/2000/svg','stop');
@@ -2913,7 +2914,7 @@ function drawCyberDonut(containerId, data, model){
     path.style.transition='opacity 0.2s';
     path.addEventListener('mouseenter',e=>{
       paths.forEach((p2,j)=>p2.style.opacity=j===i?'1':'0.45');
-      path.setAttribute('filter','url(#donut-glow)');
+      path.setAttribute('filter',`url(#${glowFilterId})`);
       const _t=T(),_g=getCYBER(s.name);
       const _glow=_t.useGlow?`box-shadow:0 0 6px ${_g.dot};`:`box-shadow:0 2px 6px ${_g.shadow};`;
       const tipHtml=`<div style="display:flex;align-items:center;gap:8px;">
