@@ -891,10 +891,35 @@ const SRI_MODEL_NAMES=['SRI Conservative','SRI Moderate','SRI Aggressive','SRI U
 
 // Price + beta data
 const ALL_TICKERS=[...new Set([...TWM.funds.map(f=>f.ticker),...SRI.funds.map(f=>f.ticker)])];
-let priceMap={}; // { TICKER: { price, change, changePct } }
+let priceMap={}; // { TICKER: { price, change, changePct, ytdReturn } }
 let betaMap={};  // { TICKER: beta }
 let sp500Beta=1.0, sp500Expense=0.0009; // S&P 500 baseline: beta=1, SPY ER=0.09%
 let dowYtd=null; // DOW YTD % — fetched from ^DJI via Yahoo proxy
+
+// ── Daily cache helpers ──
+// Returns the most recent trading date string (YYYY-MM-DD).
+// On Saturday → Friday, Sunday → Friday, Monday before open → Friday.
+// We always use previous-close data so we never need "today" — always the last closed session.
+function lastTradingDate(){
+  const now=new Date();
+  const day=now.getDay(); // 0=Sun,1=Mon,...,6=Sat
+  let d=new Date(now);
+  // If Sunday, go back 2 days; if Saturday, go back 1 day
+  if(day===0) d.setDate(d.getDate()-2);
+  else if(day===6) d.setDate(d.getDate()-1);
+  // For Monday we still use Friday's close (previous session)
+  // but only if it's very early Monday (before 8am ET) — simple heuristic:
+  // just always use "yesterday" for Mon-Fri since we want PREVIOUS close
+  else d.setDate(d.getDate()-1);
+  // Skip back over weekends for the "yesterday" case
+  const wd=d.getDay();
+  if(wd===0) d.setDate(d.getDate()-2); // Sun → Fri
+  else if(wd===6) d.setDate(d.getDate()-1); // Sat → Fri
+  return d.toISOString().slice(0,10);
+}
+
+let CACHE_DATE=lastTradingDate(); // e.g. "2026-04-17"
+console.log('Cache date (last trading day):',CACHE_DATE);
 
 // Hardcoded betas for well-known funds — stable, no API needed
 const KNOWN_BETAS={
@@ -942,14 +967,28 @@ async function fetchBetas(){
   renderMetrics(SRI,curSRI,'sri');
 }
 
-// Fetch DOW YTD return via Yahoo Finance proxy
+// Fetch DOW YTD return — checks cache first, writes to cache on fresh fetch
 async function fetchDowYtd(){
-  // ^DJI = Dow Jones Industrial Average
-  // We use a 1-year range so we can compare Jan 1 price vs today
-  const YAHOO=`https://query1.finance.yahoo.com/v8/finance/chart/%5EDJI?interval=1d&range=ytd`;
-  let raw=null;
+  // Check cache first
+  if(dowYtd!==null){
+    renderMetrics(TWM,curTWM,'twm');
+    renderMetrics(SRI,curSRI,'sri');
+    return; // Already loaded from price cache in fetchPrices
+  }
 
-  // Try codetabs first, then corsproxy, then allorigins
+  try{
+    const cached=await sbGet(`/rest/v1/price_cache?ticker=eq.%5EDJI&trade_date=eq.${CACHE_DATE}&select=ytd_return`);
+    if(cached.length&&cached[0].ytd_return!=null){
+      dowYtd=cached[0].ytd_return;
+      console.log('DOW YTD from cache:',dowYtd.toFixed(2)+'%');
+      renderMetrics(TWM,curTWM,'twm');
+      renderMetrics(SRI,curSRI,'sri');
+      return;
+    }
+  }catch(e){}
+
+  // Not in cache — fetch from Yahoo
+  const YAHOO=`https://query1.finance.yahoo.com/v8/finance/chart/%5EDJI?interval=1d&range=ytd`;
   const proxies=[
     u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
     u=>`https://corsproxy.io/?url=${encodeURIComponent(u)}`,
@@ -968,12 +1007,19 @@ async function fetchDowYtd(){
       const closes=result?.indicators?.quote?.[0]?.close?.filter(v=>v!=null);
       if(!closes||closes.length<2) continue;
       const first=closes[0], last=closes[closes.length-1];
-      dowYtd=((last-first)/first)*100;
-      console.log('DOW YTD:',dowYtd.toFixed(2)+'%');
+      dowYtd=parseFloat(((last-first)/first*100).toFixed(4));
+      console.log('DOW YTD fetched:',dowYtd.toFixed(2)+'%');
+      // Write to cache
+      try{
+        await fetch(SB_URL+'/rest/v1/price_cache',{
+          method:'POST',
+          headers:{...getHeaders(),'Prefer':'resolution=merge-duplicates'},
+          body:JSON.stringify([{ticker:'^DJI',trade_date:CACHE_DATE,prev_close:parseFloat(last.toFixed(2)),change_amt:0,change_pct:0,ytd_return:dowYtd,dow_ytd:dowYtd}])
+        });
+      }catch(e){}
       break;
     }catch(e){ console.warn('DOW fetch proxy failed:',e.message); }
   }
-  // Re-render metrics once DOW data is loaded
   renderMetrics(TWM,curTWM,'twm');
   renderMetrics(SRI,curSRI,'sri');
 }
@@ -1027,14 +1073,22 @@ function calcWeightedExpense(data, model){
 // Strategy order: (1) Tradier delayed, (2) allorigins proxy → Yahoo, (3) static fallback
 
 // Parse Yahoo Finance chart API response
+// We use previousClose as the canonical price — more stable for portfolio management
+// than intraday prices, and aligns with how beta/expense/YTD metrics are calculated.
+// Friday's close is used on weekends/Monday mornings automatically via Yahoo's data.
 function parseYahooChart(d){
   const meta=d?.chart?.result?.[0]?.meta;
-  if(!meta||meta.regularMarketPrice==null) return null;
-  const price=meta.regularMarketPrice;
-  const prevClose=meta.chartPreviousClose||meta.previousClose||price;
-  const change=price-prevClose;
-  const changePct=prevClose>0?(change/prevClose)*100:0;
-  return {price,change,changePct};
+  if(!meta) return null;
+  // Use previous close as the price. Fallback chain covers mutual funds (NAV) and ETFs.
+  const prevClose=meta.chartPreviousClose||meta.previousClose||meta.regularMarketPrice;
+  if(prevClose==null) return null;
+  // Day change: difference between prev close and the close before it
+  // For display purposes we show prev close as the price, change vs day-before
+  const closes=d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(v=>v!=null)||[];
+  const twoDaysAgo=closes.length>=2?closes[closes.length-2]:null;
+  const change=twoDaysAgo!=null?prevClose-twoDaysAgo:0;
+  const changePct=twoDaysAgo&&twoDaysAgo>0?(change/twoDaysAgo)*100:0;
+  return {price:prevClose, change, changePct, isClose:true};
 }
 
 async function fetchOneTicker(ticker){
@@ -1082,37 +1136,77 @@ async function fetchOneTicker(ticker){
 
 async function fetchPrices(){
   const tsList=document.querySelectorAll('#prices-ts,#sri-prices-ts');
-  tsList.forEach(el=>el.textContent='Fetching prices…');
+  tsList.forEach(el=>el.textContent='Checking price cache…');
   document.querySelectorAll('.price-cell').forEach(el=>{el.textContent='…';el.className='price-cell';});
   priceMap={};
 
-  // FGTXX — money market, always $1.00
-  priceMap['FGTXX']={price:1.00,change:0,changePct:0};
+  // FGTXX — money market, always $1.00, no fetch needed
+  priceMap['FGTXX']={price:1.00,change:0,changePct:0,ytdReturn:0};
 
   const toFetch=ALL_TICKERS.filter(t=>t!=='FGTXX');
 
-  // Fetch sequentially in small batches to avoid rate limiting on proxies
+  // ── Step 1: Load from Supabase cache ──
+  let cachedCount=0;
+  try{
+    const cached=await sbGet(
+      `/rest/v1/price_cache?trade_date=eq.${CACHE_DATE}&select=ticker,prev_close,change_amt,change_pct,ytd_return,dow_ytd`
+    );
+    cached.forEach(row=>{
+      if(row.ticker==='^DJI'){
+        dowYtd=row.ytd_return;
+        return;
+      }
+      priceMap[row.ticker]={
+        price:row.prev_close,
+        change:row.change_amt,
+        changePct:row.change_pct,
+        ytdReturn:row.ytd_return,
+        fromCache:true
+      };
+      cachedCount++;
+    });
+    console.log(`Loaded ${cachedCount} tickers from cache for ${CACHE_DATE}`);
+  }catch(e){
+    console.warn('Cache load failed, will fetch fresh:',e.message);
+  }
+
+  // ── Step 2: Fetch only tickers not in cache ──
+  const needFetch=toFetch.filter(t=>!priceMap[t]);
+  if(needFetch.length===0){
+    // Everything came from cache
+    const ts=new Date(CACHE_DATE+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    tsList.forEach(el=>el.textContent='Close: '+ts+' (cached)');
+    renderAllocTable(TWM,curTWM,'twm');
+    renderAllocTable(SRI,curSRI,'sri');
+    renderMetrics(TWM,curTWM,'twm');
+    renderMetrics(SRI,curSRI,'sri');
+    return;
+  }
+
+  tsList.forEach(el=>el.textContent='Fetching '+needFetch.length+' prices…');
+  console.log('Fetching from API:',needFetch);
+
+  // Fetch in batches of 4
   const BATCH=4;
-  for(let i=0;i<toFetch.length;i+=BATCH){
-    const batch=toFetch.slice(i,i+BATCH);
+  for(let i=0;i<needFetch.length;i+=BATCH){
+    const batch=needFetch.slice(i,i+BATCH);
     await Promise.allSettled(batch.map(async ticker=>{
       try{
         priceMap[ticker]=await fetchOneTicker(ticker);
       }catch(e){
-        console.warn(`No price for ${ticker}:`,e.message);
+        console.warn('No price for '+ticker+':',e.message);
       }
     }));
-    // Small delay between batches so we don't hammer the proxy
-    if(i+BATCH<toFetch.length) await new Promise(r=>setTimeout(r,300));
+    if(i+BATCH<needFetch.length) await new Promise(r=>setTimeout(r,300));
   }
 
-  const unavail=toFetch.filter(t=>!priceMap[t]).length;
-  const now=new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
-  const note=unavail>0?` (${unavail} of ${toFetch.length} unavailable)`:'';
-  tsList.forEach(el=>el.textContent='As of '+now+note);
+  const unavail=needFetch.filter(t=>!priceMap[t]).length;
+  const dateLabel=new Date(CACHE_DATE+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const note=unavail>0?` (${unavail} unavailable)`:'';
+  tsList.forEach(el=>el.textContent='Close: '+dateLabel+note);
 
-  // Fetch YTD returns for each ticker via ytd range — runs after main price fetch
-  await Promise.allSettled(toFetch.filter(t=>priceMap[t]).map(async ticker=>{
+  // ── Step 3: Fetch YTD for newly-fetched tickers ──
+  await Promise.allSettled(needFetch.filter(t=>priceMap[t]).map(async ticker=>{
     try{
       const YAHOO=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=ytd`;
       const proxies=[
@@ -1128,16 +1222,40 @@ async function fetchPrices(){
         const closes=d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(v=>v!=null);
         if(closes&&closes.length>=2){
           const ytd=((closes[closes.length-1]-closes[0])/closes[0])*100;
-          if(priceMap[ticker]) priceMap[ticker].ytdReturn=ytd;
+          if(priceMap[ticker]) priceMap[ticker].ytdReturn=parseFloat(ytd.toFixed(4));
           break;
         }
       }
     }catch(e){}
   }));
 
+  // ── Step 4: Write new data to Supabase cache ──
+  const newRows=needFetch
+    .filter(t=>priceMap[t])
+    .map(t=>({
+      ticker:t,
+      trade_date:CACHE_DATE,
+      prev_close:parseFloat((priceMap[t].price||0).toFixed(4)),
+      change_amt:parseFloat((priceMap[t].change||0).toFixed(4)),
+      change_pct:parseFloat((priceMap[t].changePct||0).toFixed(4)),
+      ytd_return:priceMap[t].ytdReturn!=null?parseFloat(priceMap[t].ytdReturn.toFixed(4)):null,
+      dow_ytd:null,
+    }));
+
+  // Also write DOW if it was fetched fresh (handled in fetchDowYtd)
+  if(newRows.length){
+    try{
+      await fetch(SB_URL+'/rest/v1/price_cache',{
+        method:'POST',
+        headers:{...getHeaders(),'Prefer':'resolution=merge-duplicates'},
+        body:JSON.stringify(newRows)
+      });
+      console.log('Cached '+newRows.length+' prices for '+CACHE_DATE);
+    }catch(e){ console.warn('Cache write failed:',e.message); }
+  }
+
   renderAllocTable(TWM,curTWM,'twm');
   renderAllocTable(SRI,curSRI,'sri');
-  // Re-render metrics now that ytd data is available
   renderMetrics(TWM,curTWM,'twm');
   renderMetrics(SRI,curSRI,'sri');
 }
