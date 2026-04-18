@@ -934,9 +934,12 @@ async function fetchPrices() {
     [data-theme="dark"] .add-fund-btn{background:rgba(56,189,248,0.10);
       box-shadow:0 0 10px rgba(56,189,248,0.12);}
     .add-fund-btn:hover{opacity:.8;}
-    .add-modal-wrap{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:110;align-items:center;justify-content:center;backdrop-filter:blur(3px);}
+    .add-modal-wrap{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:110;align-items:flex-start;justify-content:center;padding:2vh 0;overflow-y:auto;backdrop-filter:blur(3px);}
     .add-modal-wrap.open{display:flex;}
-    .add-modal{background:var(--surface);border-radius:14px;border:1px solid var(--border-mid);padding:1.75rem;width:520px;max-width:96vw;box-shadow:var(--shadow-lg);animation:modal-in .18s ease-out;}
+    .add-modal{background:var(--surface);border-radius:14px;border:1px solid var(--border-mid);padding:1.75rem;width:520px;max-width:96vw;max-height:88vh;overflow-y:auto;box-shadow:var(--shadow-lg);animation:modal-in .18s ease-out;}
+    .add-modal::-webkit-scrollbar{width:5px;}
+    .add-modal::-webkit-scrollbar-track{background:transparent;}
+    .add-modal::-webkit-scrollbar-thumb{background:rgba(148,163,184,0.25);border-radius:99px;}
     .add-modal h2{font-size:17px;font-weight:600;color:var(--text);margin-bottom:4px;}
     .add-modal p{font-size:13px;color:var(--text-2);margin-bottom:1.25rem;line-height:1.6;}
     .add-modal label{font-size:13px;font-weight:600;color:var(--text);display:block;margin-bottom:5px;}
