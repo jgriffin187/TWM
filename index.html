@@ -2051,9 +2051,26 @@ function switchTab(tab){
   if(tab==='history') loadHistory();
   if(tab==='versions') loadVersionsList();
   if(tab==='geo') loadGeoData();
-  // Always reinit charts when tab becomes visible — offsetWidth is 0 while hidden
-  if(tab==='twm') requestAnimationFrame(initTWMCharts);
-  if(tab==='sri') requestAnimationFrame(initSRICharts);
+  if(tab==='twm') drawWhenVisible('twm-donut-root',()=>initTWMCharts());
+  if(tab==='sri') drawWhenVisible('sri-donut-root',()=>initSRICharts());
+}
+
+// Draw charts only once the container has a real width.
+// Uses ResizeObserver so it fires the instant layout is complete — no guessing on timers.
+function drawWhenVisible(rootId, drawFn){
+  const el=document.getElementById(rootId);
+  if(!el) return;
+  if(el.offsetWidth>0){ drawFn(); return; }
+  const ro=new ResizeObserver((entries,obs)=>{
+    for(const e of entries){
+      if(e.contentRect.width>0){
+        obs.disconnect();
+        drawFn();
+        return;
+      }
+    }
+  });
+  ro.observe(el);
 }
 
 function getCatTotals(data,model){
