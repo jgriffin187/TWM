@@ -1669,6 +1669,7 @@ const SRI={
 
 let curTWM='IRA Moderate', curSRI='SRI Moderate';
 let pendingAdd={data:null,model:null,pfx:null}; // state for add-fund modal
+let isManualEntry=false; // true when user clicked 'Add manually' — skips price fetch
 let twmDonut,sriDonut,twmBar,sriBar,lastSnapshot=null;
 const CAT_COLORS={Cash:'#888780',Blended:'#5DCAA5','Fixed Income':'#378ADD',Equities:'#7F77DD',Alternatives:'#D85A30'};
 
@@ -2793,8 +2794,10 @@ async function lookupFund(){
   }
 
   lookupBtn.disabled=false;
+  isManualEntry=false; // successful lookup — not manual
 
   if(!result){
+    isManualEntry=true;
     // Lookup failed — open form in manual mode so user can fill in details
     statusEl.className='add-modal-status err';
     statusEl.textContent='Auto-fill failed for "'+ticker+'". Enter details manually below.';
@@ -2902,9 +2905,10 @@ function openAddModal(data, model, pfx){
   document.getElementById('add-modal').classList.add('open');
   setTimeout(()=>document.getElementById('add-ticker').focus(),60);
 }
-function closeAddModal(){ document.getElementById('add-modal').classList.remove('open'); }
+function closeAddModal(){ isManualEntry=false; document.getElementById('add-modal').classList.remove('open'); }
 
 function openManualEntry(){
+  isManualEntry=true;
   // Clear any previous status
   const statusEl=document.getElementById('add-modal-status');
   statusEl.className='add-modal-status';
@@ -2972,11 +2976,11 @@ async function confirmAddFund(){
   }
 
   document.getElementById('add-modal-save').disabled=true;
-  statusEl.className='add-modal-status loading';
-  statusEl.textContent='Fetching price…';
 
-  // Fetch price (use cache if available)
-  if(!priceMap[ticker]){
+  // Only fetch price for tickers that came from a successful lookup
+  if(!isManualEntry && !priceMap[ticker]){
+    statusEl.className='add-modal-status loading';
+    statusEl.textContent='Fetching price…';
     try{ priceMap[ticker]=await fetchOneTicker(ticker); }
     catch(e){ priceMap[ticker]=null; }
   }
@@ -3003,7 +3007,7 @@ async function confirmAddFund(){
   });
 
   statusEl.className='add-modal-status ok';
-  statusEl.textContent=(priceMap[ticker]?'✓ Price loaded':'Price unavailable')+' — '+ticker+' added to '+cat+'.';
+  statusEl.textContent=(isManualEntry?'✓ Added manually':priceMap[ticker]?'✓ Price loaded':'Price unavailable')+' — '+ticker+' added to '+cat+'.';
 
   renderAllocTable(data,model,pfx);
   updateMetricsFromAlloc(data,model,pfx);
