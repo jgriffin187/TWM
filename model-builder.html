@@ -7,33 +7,23 @@
 <title>TWM Model Builder</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
-:root {
-  --bg:       #080f1e;
-  --surface:  #0d1b2e;
-  --surface2: #112240;
-  --border:   rgba(56,189,248,0.12);
-  --border2:  rgba(56,189,248,0.22);
-  --text:     #e2e8f0;
-  --text2:    #94a3b8;
-  --text3:    #475569;
-  --blue:     #38bdf8;
-  --blue2:    #0ea5e9;
-  --green:    #4ade80;
-  --red:      #f87171;
-  --amber:    #fbbf24;
-  --purple:   #a78bfa;
-  --mono:     'IBM Plex Mono',monospace;
-  --sans:     'DM Sans',sans-serif;
+:root{
+  --bg:#080f1e;--surface:#0d1b2e;--surface2:#112240;
+  --border:rgba(56,189,248,0.12);--border2:rgba(56,189,248,0.22);
+  --text:#e2e8f0;--text2:#94a3b8;--text3:#475569;
+  --blue:#38bdf8;--blue2:#0ea5e9;--green:#4ade80;--red:#f87171;--amber:#fbbf24;--purple:#a78bfa;
+  --mono:'IBM Plex Mono',monospace;--sans:'DM Sans',sans-serif;
 }
 [data-theme="light"]{
-  --bg:#f0f4f8;--surface:#ffffff;--surface2:#f1f5f9;--border:rgba(37,99,235,0.12);
-  --border2:rgba(37,99,235,0.25);--text:#0f172a;--text2:#475569;--text3:#94a3b8;
+  --bg:#f0f4f8;--surface:#ffffff;--surface2:#f1f5f9;
+  --border:rgba(37,99,235,0.12);--border2:rgba(37,99,235,0.25);
+  --text:#0f172a;--text2:#475569;--text3:#94a3b8;
   --blue:#2563eb;--blue2:#1d4ed8;--green:#16a34a;--red:#dc2626;--amber:#d97706;--purple:#7c3aed;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;transition:background .2s,color .2s;}
 
-/* ── Login ── */
+/* Login */
 .login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:2rem;}
 .login-card{background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:2.5rem 2rem;width:380px;max-width:96vw;box-shadow:0 0 40px rgba(56,189,248,0.06);}
 .login-logo{display:flex;align-items:center;gap:10px;margin-bottom:2rem;}
@@ -53,7 +43,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .btn-primary:disabled{opacity:.5;cursor:not-allowed;}
 .err-msg{font-size:12px;color:var(--red);margin-top:8px;display:none;}
 
-/* ── App shell ── */
+/* App shell */
 .app{display:none;flex-direction:column;min-height:100vh;}
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;}
 .topbar-left{display:flex;align-items:center;gap:12px;}
@@ -68,9 +58,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .back-link:hover{color:var(--blue);border-color:var(--blue);}
 .user-chip{font-size:12px;color:var(--text2);font-family:var(--mono);}
 
-/* ── Main content ── */
-.main{flex:1;padding:2rem 2rem;max-width:1400px;margin:0 auto;width:100%;}
-.controls{display:flex;align-items:flex-end;gap:14px;margin-bottom:1.5rem;flex-wrap:wrap;}
+/* Main */
+.main{flex:1;padding:2rem;max-width:1400px;margin:0 auto;width:100%;}
+
+/* Controls */
+.controls{display:flex;align-items:flex-end;gap:12px;margin-bottom:1rem;flex-wrap:wrap;}
 .ctrl-group{display:flex;flex-direction:column;gap:5px;}
 .ctrl-label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;font-family:var(--mono);}
 .ctrl-select{padding:9px 32px 9px 12px;border:1px solid var(--border2);border-radius:10px;background:var(--surface);color:var(--text);font-size:14px;font-family:var(--sans);cursor:pointer;appearance:none;
@@ -78,11 +70,31 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
   background-repeat:no-repeat;background-position:right 10px center;min-width:200px;transition:border-color .15s;}
 [data-theme="light"] .ctrl-select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");}
 .ctrl-select:focus{outline:none;border-color:var(--blue);}
-.btn-add-row{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:10px;background:rgba(56,189,248,0.1);border:1px solid var(--border2);color:var(--blue);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans);transition:all .18s;}
-[data-theme="light"] .btn-add-row{background:rgba(37,99,235,0.08);color:var(--blue);}
-.btn-add-row:hover{background:rgba(56,189,248,0.18);border-color:var(--blue);}
+.controls-divider{width:1px;height:36px;background:var(--border2);align-self:flex-end;margin:0 4px;}
+.ctrl-row-actions{display:flex;align-items:flex-end;gap:8px;margin-left:auto;}
+.btn-icon{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans);transition:all .18s;border:1px solid var(--border2);background:var(--surface);color:var(--text2);}
+.btn-icon:hover{color:var(--blue);border-color:var(--blue);background:rgba(56,189,248,0.06);}
+.btn-icon.primary{background:rgba(56,189,248,0.1);color:var(--blue);border-color:var(--border2);}
+[data-theme="light"] .btn-icon.primary{background:rgba(37,99,235,0.08);color:var(--blue);}
+.btn-icon.primary:hover{background:rgba(56,189,248,0.18);border-color:var(--blue);}
+.copy-group{display:flex;align-items:flex-end;gap:6px;}
+.copy-label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;font-family:var(--mono);white-space:nowrap;}
+.copy-select{padding:9px 28px 9px 10px;border:1px solid var(--border2);border-radius:10px;background:var(--surface);color:var(--text);font-size:13px;font-family:var(--sans);cursor:pointer;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2338bdf8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 8px center;min-width:170px;transition:border-color .15s;}
+[data-theme="light"] .copy-select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");}
+.copy-select:focus{outline:none;border-color:var(--blue);}
 
-/* ── Table ── */
+/* Loading state banner */
+.db-status{display:flex;align-items:center;gap:8px;font-size:12px;font-family:var(--mono);color:var(--text3);margin-bottom:12px;min-height:20px;}
+.db-dot{width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0;}
+.db-dot.loading{background:var(--blue);animation:pulse 1s ease-in-out infinite;}
+.db-dot.ok{background:var(--green);}
+.db-dot.empty{background:var(--amber);}
+.db-dot.err{background:var(--red);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Table */
 .table-wrap{overflow-x:auto;border-radius:14px;border:1px solid var(--border);background:var(--surface);}
 .table-wrap::-webkit-scrollbar{height:5px;}
 .table-wrap::-webkit-scrollbar-thumb{background:rgba(56,189,248,0.2);border-radius:99px;}
@@ -92,40 +104,32 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .grid-table th.center{text-align:center;}
 .grid-table td{padding:0;border-bottom:1px solid var(--border);vertical-align:middle;}
 .grid-table tr:last-child td{border-bottom:none;}
-.grid-table tr:hover td{background:rgba(56,189,248,0.03);}
-[data-theme="light"] .grid-table tr:hover td{background:rgba(37,99,235,0.03);}
+.grid-table tr:hover td{background:rgba(56,189,248,0.025);}
+[data-theme="light"] .grid-table tr:hover td{background:rgba(37,99,235,0.025);}
+.grid-table tr.from-db td{background:rgba(74,222,128,0.025);}
+.grid-table tr.from-db:hover td{background:rgba(74,222,128,0.05);}
 
 /* cells */
 .cell-ticker{padding:8px 12px;white-space:nowrap;}
 .ticker-badge{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--blue);background:rgba(56,189,248,0.1);padding:3px 8px;border-radius:6px;display:inline-block;}
 [data-theme="light"] .ticker-badge{background:rgba(37,99,235,0.08);color:var(--blue2);}
+.db-badge{font-size:9px;font-family:var(--mono);font-weight:600;color:var(--green);background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.25);border-radius:4px;padding:1px 5px;margin-left:5px;vertical-align:middle;}
+[data-theme="light"] .db-badge{color:#16a34a;background:rgba(22,163,74,0.10);border-color:rgba(22,163,74,0.20);}
 .cell-name{padding:8px 12px;font-size:12px;color:var(--text);max-width:180px;}
 .cell-name.loading{color:var(--text3);font-style:italic;}
 .cell-cat{padding:6px 10px;}
-.cat-badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;white-space:nowrap;}
-.cat-Equities{background:rgba(56,189,248,0.12);color:#38bdf8;}
-.cat-FixedIncome,.cat-Fixed\ Income{background:rgba(52,211,153,0.12);color:#34d399;}
-.cat-Cash{background:rgba(148,163,184,0.12);color:#94a3b8;}
-.cat-Blended{background:rgba(251,146,60,0.12);color:#fb923c;}
-.cat-Alternatives{background:rgba(167,139,250,0.12);color:#a78bfa;}
-[data-theme="light"] .cat-Equities{background:rgba(37,99,235,0.10);color:#2563eb;}
-[data-theme="light"] .cat-FixedIncome,[data-theme="light"] .cat-Fixed\ Income{background:rgba(5,150,105,0.10);color:#059669;}
-[data-theme="light"] .cat-Cash{background:rgba(100,116,139,0.10);color:#475569;}
-[data-theme="light"] .cat-Blended{background:rgba(217,119,6,0.10);color:#d97706;}
-[data-theme="light"] .cat-Alternatives{background:rgba(124,58,237,0.10);color:#7c3aed;}
-.cell-input{padding:4px 8px;}
-.cell-num{padding:4px 8px;text-align:right;}
-.num-input{width:80px;padding:6px 9px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-size:13px;font-family:var(--mono);text-align:right;transition:border-color .15s;}
-.num-input:focus{outline:none;border-color:var(--blue);}
-.num-input.warn{border-color:var(--amber);}
-.num-input.err{border-color:var(--red);}
 .select-input{padding:6px 26px 6px 9px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-size:12px;font-family:var(--sans);cursor:pointer;appearance:none;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2338bdf8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right 7px center;transition:border-color .15s;}
 [data-theme="light"] .select-input{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");}
 .select-input:focus{outline:none;border-color:var(--blue);}
+.cell-num{padding:4px 8px;text-align:right;}
+.num-input{width:80px;padding:6px 9px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-size:13px;font-family:var(--mono);text-align:right;transition:border-color .15s;}
+.num-input:focus{outline:none;border-color:var(--blue);}
+.num-input.warn{border-color:var(--amber);}
+.num-input.err{border-color:var(--red);}
 .geo-cell{padding:4px 8px;display:flex;gap:4px;align-items:center;}
-.geo-input{width:60px;padding:6px 7px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-size:12px;font-family:var(--mono);text-align:right;transition:border-color .15s;}
+.geo-input{width:58px;padding:6px 7px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-size:12px;font-family:var(--mono);text-align:right;transition:border-color .15s;}
 .geo-input:focus{outline:none;border-color:var(--blue);}
 .geo-label{font-size:10px;color:var(--text3);font-family:var(--mono);}
 .geo-sum{font-size:11px;font-family:var(--mono);font-weight:600;padding:3px 6px;border-radius:5px;}
@@ -135,7 +139,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .del-btn{background:none;border:none;cursor:pointer;color:var(--text3);padding:4px 7px;border-radius:6px;font-size:14px;transition:all .15s;}
 .del-btn:hover{color:var(--red);background:rgba(248,113,113,0.10);}
 
-/* ticker lookup row */
+/* Add ticker row */
 .add-ticker-row{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:2px dashed var(--border2);}
 .add-ticker-input{flex:0 0 90px;padding:7px 10px;border:1.5px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;font-weight:600;text-transform:uppercase;transition:border-color .15s;}
 .add-ticker-input:focus{outline:none;border-color:var(--blue);}
@@ -147,9 +151,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .lookup-status.ok{color:var(--green);}
 .lookup-status.err{color:var(--red);}
 .lookup-status.loading{color:var(--blue);animation:pulse 1s ease-in-out infinite;}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
-/* ── Bottom bar ── */
+/* Bottom bar */
 .bottom-bar{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--border2);padding:14px 28px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;z-index:10;}
 .total-pills{display:flex;gap:8px;flex-wrap:wrap;flex:1;}
 .total-pill{font-size:11px;font-family:var(--mono);padding:4px 10px;border-radius:99px;border:1px solid var(--border);}
@@ -161,17 +164,17 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .save-btn:disabled{opacity:.45;cursor:not-allowed;transform:none;}
 .row-count{font-size:12px;color:var(--text3);font-family:var(--mono);}
 
-/* ── Toast ── */
-.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:10px 20px;border-radius:10px;font-size:13px;opacity:0;pointer-events:none;transition:all .25s;z-index:999;white-space:nowrap;}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-.toast.ok{border-color:var(--green);color:var(--green);}
-.toast.err{border-color:var(--red);color:var(--red);}
-
-/* ── Empty state ── */
+/* Empty state */
 .empty-state{text-align:center;padding:3rem 2rem;color:var(--text3);}
 .empty-state svg{opacity:.25;margin-bottom:12px;}
 .empty-state p{font-size:14px;margin-bottom:6px;color:var(--text2);}
 .empty-state small{font-size:12px;font-family:var(--mono);}
+
+/* Toast */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:10px 20px;border-radius:10px;font-size:13px;opacity:0;pointer-events:none;transition:all .25s;z-index:999;white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.ok{border-color:var(--green);color:var(--green);}
+.toast.err{border-color:var(--red);color:var(--red);}
 </style>
 </head>
 <body>
@@ -210,8 +213,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
   </div>
 
   <div class="main">
-    <!-- Controls -->
+    <!-- Controls row -->
     <div class="controls">
+      <!-- Family -->
       <div class="ctrl-group">
         <span class="ctrl-label">Model family</span>
         <select class="ctrl-select" id="sel-family" onchange="onFamilyChange()">
@@ -219,17 +223,40 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
           <option value="SRI">SRI Model</option>
         </select>
       </div>
+      <!-- Model -->
       <div class="ctrl-group">
         <span class="ctrl-label">Model</span>
         <select class="ctrl-select" id="sel-model" onchange="onModelChange()"></select>
       </div>
+
+      <div class="controls-divider"></div>
+
+      <!-- Copy from -->
+      <div class="ctrl-group">
+        <span class="ctrl-label">Copy from model</span>
+        <div class="copy-group">
+          <select class="copy-select" id="copy-from-sel"></select>
+          <button class="btn-icon" onclick="doCopyFrom()" title="Load that model's funds into the current grid, keeping your allocation %s editable">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy funds
+          </button>
+        </div>
+      </div>
+
+      <!-- Add fund button -->
       <div class="ctrl-group" style="margin-left:auto;">
         <span class="ctrl-label">&nbsp;</span>
-        <button class="btn-add-row" onclick="focusAddRow()">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <button class="btn-icon primary" onclick="focusAddRow()">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Add fund
         </button>
       </div>
+    </div>
+
+    <!-- DB status -->
+    <div class="db-status" id="db-status">
+      <span class="db-dot" id="db-dot"></span>
+      <span id="db-status-text">Select a model to load</span>
     </div>
 
     <!-- Table -->
@@ -252,164 +279,267 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 <div class="toast" id="toast"></div>
 
 <script>
-/* ────────────────────────────────────────────────
-   CONFIG — matches index.html exactly
-──────────────────────────────────────────────── */
-const SB_URL = 'https://xvcxguzonyebodsnodjw.supabase.co';
-const SB_KEY = 'sb_publishable_VgdPJZ9zZPBIn9fvwcOW5Q_4DriVNfI';
-let authToken = null, authUser = null;
+/* ── Config ── */
+const SB_URL='https://xvcxguzonyebodsnodjw.supabase.co';
+const SB_KEY='sb_publishable_VgdPJZ9zZPBIn9fvwcOW5Q_4DriVNfI';
+let authToken=null, authUser=null;
 
-const TWM_MODELS = [
-  'IRA Conservative','IRA Moderate','IRA Aggressive','IRA Ultra Aggressive',
-  'Taxable Conservative','Taxable Moderate','Taxable Aggressive'
-];
-const SRI_MODELS = [
-  'SRI Conservative','SRI Moderate','SRI Aggressive','SRI Ultra Aggressive'
-];
-const CATEGORIES = ['Alternatives','Blended','Cash','Equities','Fixed Income'];
+const TWM_MODELS=['IRA Conservative','IRA Moderate','IRA Aggressive','IRA Ultra Aggressive','Taxable Conservative','Taxable Moderate','Taxable Aggressive'];
+const SRI_MODELS=['SRI Conservative','SRI Moderate','SRI Aggressive','SRI Ultra Aggressive'];
+const CATEGORIES=['Alternatives','Blended','Cash','Equities','Fixed Income'];
 
-/* ────────────────────────────────────────────────
-   STATE — one row per fund entry
-   row = { ticker, name, expense, category, geo:{us,intl,other}, alloc }
-──────────────────────────────────────────────── */
-let rows = [];       // array of fund row objects
-let curFamily = 'TWM';
-let curModel  = 'IRA Conservative';
+/* ── State ── */
+let rows=[];
+let curFamily='TWM';
+let curModel='IRA Conservative';
+let lastSnapshot=null;  // full snapshot object from DB, kept in memory
 
-/* ────────────────────────────────────────────────
-   AUTH
-──────────────────────────────────────────────── */
-function headers(extra={}){
-  return {
-    'apikey': SB_KEY,
-    'Authorization': 'Bearer '+(authToken||SB_KEY),
-    'Content-Type': 'application/json',
-    'Prefer': 'return=representation',
-    ...extra
-  };
+/* ── Auth ── */
+function hdr(extra={}){
+  return{'apikey':SB_KEY,'Authorization':'Bearer '+(authToken||SB_KEY),'Content-Type':'application/json','Prefer':'return=representation',...extra};
 }
+async function sbGet(p){const r=await fetch(SB_URL+p,{headers:hdr()});if(!r.ok)throw new Error(await r.text());return r.json();}
 
 async function doLogin(){
-  const email    = document.getElementById('login-email').value.trim();
-  const password = document.getElementById('login-password').value;
-  const errEl    = document.getElementById('login-err');
-  const btn      = document.getElementById('login-btn');
+  const email=document.getElementById('login-email').value.trim();
+  const password=document.getElementById('login-password').value;
+  const errEl=document.getElementById('login-err');
+  const btn=document.getElementById('login-btn');
   errEl.style.display='none';
   if(!email||!password){errEl.textContent='Enter email and password.';errEl.style.display='block';return;}
-  btn.disabled=true; btn.textContent='Signing in…';
+  btn.disabled=true;btn.textContent='Signing in…';
   try{
-    const r = await fetch(SB_URL+'/auth/v1/token?grant_type=password',{
-      method:'POST',
-      headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
-      body:JSON.stringify({email,password})
-    });
-    const d = await r.json();
-    if(!r.ok) throw new Error(d.error_description||d.msg||'Invalid credentials');
-    authToken = d.access_token;
-    authUser  = d.user;
-    sessionStorage.setItem('mb_token', authToken);
-    sessionStorage.setItem('mb_user',  JSON.stringify(authUser));
+    const r=await fetch(SB_URL+'/auth/v1/token?grant_type=password',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error_description||d.msg||'Invalid credentials');
+    authToken=d.access_token;authUser=d.user;
+    sessionStorage.setItem('mb_token',authToken);
+    sessionStorage.setItem('mb_user',JSON.stringify(authUser));
     onLoginSuccess();
-  }catch(e){
-    errEl.textContent=e.message; errEl.style.display='block';
-    btn.disabled=false; btn.textContent='Sign in';
-  }
+  }catch(e){errEl.textContent=e.message;errEl.style.display='block';btn.disabled=false;btn.textContent='Sign in';}
 }
 
 function onLoginSuccess(){
   document.getElementById('login-wrap').style.display='none';
   document.getElementById('app').style.display='flex';
-  document.getElementById('user-chip').textContent = authUser?.email?.split('@')[0]||'';
+  document.getElementById('user-chip').textContent=authUser?.email?.split('@')[0]||'';
   initSelectors();
+  loadCurrentModel();
 }
 
-// Check for existing session
 (function(){
-  const t=sessionStorage.getItem('mb_token'), u=sessionStorage.getItem('mb_user');
-  if(t&&u){ authToken=t; authUser=JSON.parse(u); onLoginSuccess(); }
+  const t=sessionStorage.getItem('mb_token'),u=sessionStorage.getItem('mb_user');
+  if(t&&u){authToken=t;authUser=JSON.parse(u);onLoginSuccess();}
 })();
 
-/* ────────────────────────────────────────────────
-   SELECTORS
-──────────────────────────────────────────────── */
+/* ── Selectors ── */
 function initSelectors(){
-  onFamilyChange();
+  onFamilyChange(true);
 }
 
-function onFamilyChange(){
-  curFamily = document.getElementById('sel-family').value;
-  const models = curFamily==='TWM' ? TWM_MODELS : SRI_MODELS;
-  const sel = document.getElementById('sel-model');
-  sel.innerHTML = models.map(m=>`<option value="${m}">${m}</option>`).join('');
-  curModel = models[0];
-  rows = [];
+function onFamilyChange(skipLoad=false){
+  curFamily=document.getElementById('sel-family').value;
+  const models=curFamily==='TWM'?TWM_MODELS:SRI_MODELS;
+  const sel=document.getElementById('sel-model');
+  sel.innerHTML=models.map(m=>`<option value="${m}">${m}</option>`).join('');
+  curModel=models[0];
+  updateCopyFromOptions();
+  rows=[];
   renderTable();
+  if(!skipLoad) loadCurrentModel();
 }
 
 function onModelChange(){
-  curModel = document.getElementById('sel-model').value;
-  rows = [];
+  curModel=document.getElementById('sel-model').value;
+  updateCopyFromOptions();
+  rows=[];
   renderTable();
+  loadCurrentModel();
 }
 
-/* ────────────────────────────────────────────────
-   RENDER TABLE
-──────────────────────────────────────────────── */
+function updateCopyFromOptions(){
+  const models=(curFamily==='TWM'?TWM_MODELS:SRI_MODELS).filter(m=>m!==curModel);
+  const sel=document.getElementById('copy-from-sel');
+  sel.innerHTML=models.map(m=>`<option value="${m}">${m}</option>`).join('');
+}
+
+/* ── Load current model from DB ── */
+async function loadCurrentModel(){
+  setDBStatus('loading','Loading from database…');
+  try{
+    const snaps=await sbGet('/rest/v1/model_snapshots?select=*&order=created_at.desc&limit=1');
+    if(!snaps.length){
+      lastSnapshot=null;
+      setDBStatus('empty','No snapshots found — start adding funds below');
+      rows=[];renderTable();return;
+    }
+    lastSnapshot=snaps[0];
+    const isTWM=curFamily==='TWM';
+    const funds=isTWM?(snaps[0].twm_funds||[]):(snaps[0].sri_funds||[]);
+    const modelAlloc=isTWM?(snaps[0].twm_models||{}):(snaps[0].sri_models||{});
+    const thisModel=modelAlloc[curModel]||{};
+
+    // Also load geo data
+    let geoMap={};
+    try{
+      const geoRows=await sbGet('/rest/v1/fund_geo?select=ticker,us_pct,intl_pct,other_pct');
+      geoRows.forEach(g=>{geoMap[g.ticker]={us:g.us_pct,intl:g.intl_pct,other:g.other_pct};});
+    }catch(e){}
+
+    // Build rows from funds that have a non-zero allocation in this model
+    // Show ALL funds in the fund list (even 0%) so user sees the full picture
+    rows=funds
+      .filter(f=>f.ticker!=='cash'&&f.ticker)  // skip the bare 'cash' key — it's handled separately
+      .map(f=>{
+        const allocDecimal=thisModel[f.ticker]??0;
+        const geo=geoMap[f.ticker]||{us:85,intl:10,other:5};
+        return {
+          ticker:f.ticker,
+          name:f.name||f.ticker,
+          expense:f.expense!=null?parseFloat((f.expense*100).toFixed(3)):null,
+          category:f.category||'Equities',
+          geo:{us:geo.us??85,intl:geo.intl??10,other:geo.other??5},
+          alloc:parseFloat((allocDecimal*100).toFixed(4)),
+          fromDB:true
+        };
+      });
+
+    // Sort: non-zero alloc first, then zeros
+    rows.sort((a,b)=>(b.alloc||0)-(a.alloc||0));
+
+    const allocated=rows.filter(r=>r.alloc>0).length;
+    const dt=new Date(snaps[0].created_at).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+    setDBStatus(rows.length>0?'ok':'empty',
+      rows.length>0
+        ?`Loaded ${rows.length} fund${rows.length!==1?'s':''} (${allocated} with allocation) — snapshot ${dt}`
+        :'No funds found for this model — add them below'
+    );
+    renderTable();
+  }catch(e){
+    setDBStatus('err','DB error: '+e.message);
+    console.error(e);
+  }
+}
+
+/* ── Copy from another model ── */
+async function doCopyFrom(){
+  const fromModel=document.getElementById('copy-from-sel').value;
+  if(!fromModel){toast('Select a model to copy from','err');return;}
+  if(rows.length>0){
+    if(!confirm(`Replace the current ${rows.length} fund${rows.length!==1?'s':''} with funds from "${fromModel}"?\n\nAllocations will be copied as a starting point — you can edit them.`)) return;
+  }
+
+  setDBStatus('loading','Loading '+fromModel+'…');
+  try{
+    const snaps=lastSnapshot
+      ?[lastSnapshot]
+      :await sbGet('/rest/v1/model_snapshots?select=*&order=created_at.desc&limit=1');
+
+    if(!snaps.length){toast('No snapshot found','err');return;}
+    const snap=snaps[0];
+    lastSnapshot=snap;
+
+    const isTWM=curFamily==='TWM';
+    const funds=isTWM?(snap.twm_funds||[]):(snap.sri_funds||[]);
+    const modelAlloc=isTWM?(snap.twm_models||{}):(snap.sri_models||{});
+    const sourceAlloc=modelAlloc[fromModel]||{};
+
+    let geoMap={};
+    try{
+      const geoRows=await sbGet('/rest/v1/fund_geo?select=ticker,us_pct,intl_pct,other_pct');
+      geoRows.forEach(g=>{geoMap[g.ticker]={us:g.us_pct,intl:g.intl_pct,other:g.other_pct};});
+    }catch(e){}
+
+    rows=funds
+      .filter(f=>f.ticker!=='cash'&&f.ticker)
+      .map(f=>{
+        const allocDecimal=sourceAlloc[f.ticker]??0;
+        const geo=geoMap[f.ticker]||{us:85,intl:10,other:5};
+        return {
+          ticker:f.ticker,name:f.name||f.ticker,
+          expense:f.expense!=null?parseFloat((f.expense*100).toFixed(3)):null,
+          category:f.category||'Equities',
+          geo:{us:geo.us??85,intl:geo.intl??10,other:geo.other??5},
+          alloc:parseFloat((allocDecimal*100).toFixed(4)),
+          fromDB:false  // marked as copied — user should review allocations
+        };
+      });
+
+    rows.sort((a,b)=>(b.alloc||0)-(a.alloc||0));
+    const allocated=rows.filter(r=>r.alloc>0).length;
+    setDBStatus('ok',`Copied ${rows.length} funds from "${fromModel}" (${allocated} with allocation) — edit allocations below`);
+    renderTable();
+    toast('Copied from '+fromModel+' — adjust allocations then save','ok');
+  }catch(e){
+    setDBStatus('err','Error: '+e.message);
+    toast('Copy failed: '+e.message,'err');
+  }
+}
+
+/* ── DB Status ── */
+function setDBStatus(state,msg){
+  const dot=document.getElementById('db-dot');
+  const txt=document.getElementById('db-status-text');
+  dot.className='db-dot '+state;
+  txt.textContent=msg;
+}
+
+/* ── Render ── */
 function renderTable(){
-  renderHead();
-  renderBody();
-  renderTotals();
+  renderHead();renderBody();renderTotals();
 }
-
 function renderHead(){
   document.getElementById('grid-head').innerHTML=`<tr>
-    <th style="width:90px;">Ticker</th>
+    <th style="width:110px;">Ticker</th>
     <th style="min-width:160px;">Fund name</th>
-    <th style="width:110px;">Category</th>
+    <th style="width:115px;">Category</th>
     <th class="num" style="width:80px;">Expense %</th>
     <th class="num" style="width:85px;">Alloc %</th>
-    <th class="center" style="min-width:220px;">Geographic exposure (U.S. / Non-U.S. / Other)</th>
+    <th class="center" style="min-width:230px;">Geo exposure (🇺🇸 U.S. / 🌍 Non-U.S. / ◈ Other)</th>
     <th style="width:40px;"></th>
   </tr>`;
 }
-
-function catKey(c){ return c.replace(/\s+/g,''); }
-
 function renderBody(){
-  const tbody = document.getElementById('grid-body');
-
-  // Fund rows
-  let html = rows.map((row,i)=>{
-    const geoSum = ((row.geo.us||0)+(row.geo.intl||0)+(row.geo.other||0));
-    const geoOk  = Math.abs(geoSum-100)<0.5;
-    const ck = catKey(row.category||'');
-    return `<tr data-i="${i}">
-      <td class="cell-ticker"><span class="ticker-badge">${esc(row.ticker)}</span></td>
-      <td class="cell-name ${row.name?'':'loading'}">${esc(row.name||'Looking up…')}</td>
+  const tbody=document.getElementById('grid-body');
+  let html=rows.map((row,i)=>{
+    const geoSum=(row.geo.us||0)+(row.geo.intl||0)+(row.geo.other||0);
+    const geoOk=Math.abs(geoSum-100)<0.5;
+    const dimmed=row.alloc===0||row.alloc==null;
+    return `<tr data-i="${i}" ${row.fromDB?'class="from-db"':''} style="${dimmed?'opacity:0.55':''}">
+      <td class="cell-ticker">
+        <span class="ticker-badge">${esc(row.ticker)}</span>
+        ${row.fromDB?'<span class="db-badge">DB</span>':''}
+      </td>
+      <td class="cell-name">${esc(row.name||row.ticker)}</td>
       <td class="cell-cat">
         <select class="select-input" onchange="setRowField(${i},'category',this.value)">
-          ${CATEGORIES.map(c=>`<option value="${c}" ${row.category===c?'selected':''}>${c}</option>`).join('')}
+          ${CATEGORIES.map(c=>`<option value="${c}"${row.category===c?' selected':''}>${c}</option>`).join('')}
         </select>
       </td>
       <td class="cell-num">
-        <input class="num-input" type="number" step="0.01" min="0" max="5" value="${row.expense!=null?row.expense:''}" placeholder="0.35"
-          onchange="setRowField(${i},'expense',parseFloat(this.value)||0)" />
+        <input class="num-input" type="number" step="0.01" min="0" max="20"
+          value="${row.expense!=null?row.expense:''}" placeholder="0.35"
+          onchange="setRowField(${i},'expense',parseFloat(this.value)||0)"/>
       </td>
       <td class="cell-num">
-        <input class="num-input" type="number" step="0.1" min="0" max="100" value="${row.alloc!=null?row.alloc:''}" placeholder="5.0"
-          onchange="setRowField(${i},'alloc',parseFloat(this.value)||0);renderTotals()" />
+        <input class="num-input" type="number" step="0.1" min="0" max="100"
+          value="${row.alloc!=null&&row.alloc!==0?row.alloc:''}" placeholder="0.0"
+          onchange="setRowField(${i},'alloc',parseFloat(this.value)||0);renderTotals()"/>
       </td>
       <td>
         <div class="geo-cell">
           <span class="geo-label">🇺🇸</span>
-          <input class="geo-input" type="number" step="0.1" min="0" max="100" value="${row.geo.us!=null?row.geo.us:''}" placeholder="85"
-            onchange="setGeo(${i},'us',this.value)" />
+          <input class="geo-input" type="number" step="0.1" min="0" max="100"
+            value="${row.geo.us!=null?row.geo.us:''}" placeholder="85"
+            onchange="setGeo(${i},'us',this.value)"/>
           <span class="geo-label">🌍</span>
-          <input class="geo-input" type="number" step="0.1" min="0" max="100" value="${row.geo.intl!=null?row.geo.intl:''}" placeholder="10"
-            onchange="setGeo(${i},'intl',this.value)" />
+          <input class="geo-input" type="number" step="0.1" min="0" max="100"
+            value="${row.geo.intl!=null?row.geo.intl:''}" placeholder="10"
+            onchange="setGeo(${i},'intl',this.value)"/>
           <span class="geo-label">◈</span>
-          <input class="geo-input" type="number" step="0.1" min="0" max="100" value="${row.geo.other!=null?row.geo.other:''}" placeholder="5"
-            onchange="setGeo(${i},'other',this.value)" />
+          <input class="geo-input" type="number" step="0.1" min="0" max="100"
+            value="${row.geo.other!=null?row.geo.other:''}" placeholder="5"
+            onchange="setGeo(${i},'other',this.value)"/>
           <span class="geo-sum ${geoOk?'ok':'bad'}">${geoSum.toFixed(0)}%</span>
         </div>
       </td>
@@ -417,108 +547,93 @@ function renderBody(){
     </tr>`;
   }).join('');
 
-  // Add-ticker row always at bottom
-  html += `<tr id="add-row">
-    <td colspan="7">
-      <div class="add-ticker-row">
-        <input class="add-ticker-input" id="add-ticker-input" type="text" placeholder="TICKER"
-          oninput="this.value=this.value.toUpperCase()"
-          onkeydown="if(event.key==='Enter'){event.preventDefault();doAddTicker()}" />
-        <button class="lookup-go" id="lookup-go-btn" onclick="doAddTicker()">
-          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px;vertical-align:middle;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Look up &amp; add
-        </button>
-        <span class="lookup-status" id="lookup-status"></span>
-      </div>
-    </td>
-  </tr>`;
+  // Add-ticker row
+  html+=`<tr id="add-row"><td colspan="7">
+    <div class="add-ticker-row">
+      <input class="add-ticker-input" id="add-ticker-input" type="text" placeholder="TICKER"
+        oninput="this.value=this.value.toUpperCase()"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();doAddTicker()}"/>
+      <button class="lookup-go" id="lookup-go-btn" onclick="doAddTicker()">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px;vertical-align:middle;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Look up &amp; add
+      </button>
+      <span class="lookup-status" id="lookup-status"></span>
+    </div>
+  </td></tr>`;
 
-  // Empty state if no rows yet
   if(rows.length===0){
-    html = `<tr><td colspan="7">
+    html=`<tr><td colspan="7">
       <div class="empty-state">
         <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-        <p>No funds added yet for <strong>${esc(curModel)}</strong></p>
-        <small>Enter a ticker above and click "Look up &amp; add"</small>
+        <p>No funds for <strong>${esc(curModel)}</strong></p>
+        <small>Add a ticker below, or copy from another model</small>
       </div>
     </td></tr>`+html;
   }
 
-  tbody.innerHTML = html;
-  document.getElementById('row-count').textContent = rows.length+' fund'+(rows.length!==1?'s':'');
+  tbody.innerHTML=html;
+  document.getElementById('row-count').textContent=rows.length+' fund'+(rows.length!==1?'s':'');
 }
-
-function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 function renderTotals(){
-  const totalAlloc = rows.reduce((a,r)=>a+(r.alloc||0),0);
-  const ok = Math.abs(totalAlloc-100)<0.5;
-  const pills = document.getElementById('total-pills');
-  const allocColor = ok?'ok':totalAlloc>100?'bad':'warn';
-  pills.innerHTML=`
-    <span class="total-pill ${allocColor}">${curModel}: ${totalAlloc.toFixed(1)}% allocated ${ok?'✓':totalAlloc>100?'↑ over':'↓ under'}</span>
-    <span class="total-pill">${rows.length} fund${rows.length!==1?'s':''}</span>
+  const total=rows.reduce((a,r)=>a+(r.alloc||0),0);
+  const ok=Math.abs(total-100)<0.5;
+  const allocColor=ok?'ok':total>100?'bad':'warn';
+  const nonZero=rows.filter(r=>(r.alloc||0)>0).length;
+  document.getElementById('total-pills').innerHTML=`
+    <span class="total-pill ${allocColor}">${curModel}: ${total.toFixed(2)}% ${ok?'✓ balanced':total>100?'↑ over 100%':'↓ under 100%'}</span>
+    <span class="total-pill">${nonZero} fund${nonZero!==1?'s':''} with allocation</span>
+    ${rows.length!==nonZero?`<span class="total-pill">${rows.length-nonZero} at 0%</span>`:''}
   `;
-  document.getElementById('save-btn').disabled = rows.length===0;
+  document.getElementById('save-btn').disabled=rows.filter(r=>(r.alloc||0)>0).length===0;
 }
 
-/* ────────────────────────────────────────────────
-   ROW MUTATION
-──────────────────────────────────────────────── */
-function setRowField(i, field, val){
-  rows[i][field]=val;
-}
-function setGeo(i, key, val){
+/* ── Row mutation ── */
+function setRowField(i,field,val){rows[i][field]=val;}
+function setGeo(i,key,val){
   rows[i].geo[key]=parseFloat(val)||0;
-  // Re-render just the geo sum for that row without full re-render
   const tr=document.querySelector(`tr[data-i="${i}"]`);
-  if(!tr) return;
+  if(!tr)return;
   const sum=rows[i].geo.us+rows[i].geo.intl+rows[i].geo.other;
   const ok=Math.abs(sum-100)<0.5;
   const pill=tr.querySelector('.geo-sum');
   if(pill){pill.textContent=sum.toFixed(0)+'%';pill.className='geo-sum '+(ok?'ok':'bad');}
 }
-function deleteRow(i){
-  rows.splice(i,1);
-  renderTable();
-}
+function deleteRow(i){rows.splice(i,1);renderTable();}
 function focusAddRow(){
   const el=document.getElementById('add-ticker-input');
   if(el){el.focus();el.scrollIntoView({behavior:'smooth',block:'nearest'});}
 }
 
-/* ────────────────────────────────────────────────
-   YAHOO LOOKUP
-──────────────────────────────────────────────── */
+/* ── Yahoo Lookup ── */
 const PROXIES=[
   u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
   u=>`https://corsproxy.io/?url=${encodeURIComponent(u)}`,
   u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
 ];
-
 async function proxyFetch(targetUrl){
-  for(const makeProxy of PROXIES){
+  for(const mkP of PROXIES){
     try{
-      const r=await fetch(makeProxy(targetUrl));
-      if(!r.ok) continue;
+      const r=await fetch(mkP(targetUrl));
+      if(!r.ok)continue;
       const text=await r.text();
-      if(!text||!text.trim()) continue;
-      const parsed=text.trim().startsWith('{')?JSON.parse(text):null;
-      if(!parsed) continue;
-      if(parsed.contents) return JSON.parse(parsed.contents);
-      return parsed;
+      if(!text||!text.trim())continue;
+      const p=text.trim().startsWith('{')?JSON.parse(text):null;
+      if(!p)continue;
+      if(p.contents)return JSON.parse(p.contents);
+      return p;
     }catch(e){}
   }
   return null;
 }
-
 function classifyCat(mstar){
-  if(!mstar) return 'Equities';
+  if(!mstar)return'Equities';
   const c=mstar.toLowerCase();
-  if(/money.?market|cash|stable.?value|ultra.?short/.test(c)) return 'Cash';
-  if(/bond|income|fixed|muni|treasury|credit|floating|tips|mortgage|government|corporate/.test(c)) return 'Fixed Income';
-  if(/future|neutral|commodit|real.?estate|reit|infrastructure|hedge|macro/.test(c)) return 'Alternatives';
-  if(/allocation|balanced|world|target.?date|multi.?asset/.test(c)) return 'Blended';
-  return 'Equities';
+  if(/money.?market|cash|stable.?value|ultra.?short/.test(c))return'Cash';
+  if(/bond|income|fixed|muni|treasury|credit|floating|tips|mortgage|government|corporate/.test(c))return'Fixed Income';
+  if(/future|neutral|commodit|real.?estate|reit|infrastructure|hedge|macro/.test(c))return'Alternatives';
+  if(/allocation|balanced|world|target.?date|multi.?asset/.test(c))return'Blended';
+  return'Equities';
 }
 
 async function doAddTicker(){
@@ -526,228 +641,176 @@ async function doAddTicker(){
   const statusEl=document.getElementById('lookup-status');
   const btn=document.getElementById('lookup-go-btn');
   const ticker=input.value.trim().toUpperCase();
-  if(!ticker) return;
-
-  // Prevent duplicate
-  if(rows.find(r=>r.ticker===ticker)){
-    statusEl.textContent='Already added'; statusEl.className='lookup-status err'; return;
-  }
-
-  btn.disabled=true;
-  statusEl.textContent='Looking up…'; statusEl.className='lookup-status loading';
-
-  // Add placeholder row immediately
-  const newRow={ticker, name:'', expense:null, category:'Equities', geo:{us:85,intl:10,other:5}, alloc:null};
+  if(!ticker)return;
+  if(rows.find(r=>r.ticker===ticker)){statusEl.textContent='Already in list';statusEl.className='lookup-status err';return;}
+  btn.disabled=true;statusEl.textContent='Looking up…';statusEl.className='lookup-status loading';
+  const newRow={ticker,name:'',expense:null,category:'Equities',geo:{us:85,intl:10,other:5},alloc:null,fromDB:false};
   rows.push(newRow);
   renderTable();
-  // Re-focus and status (renderTable re-creates DOM)
   document.getElementById('lookup-status').textContent='Looking up…';
   document.getElementById('lookup-status').className='lookup-status loading';
   document.getElementById('lookup-go-btn').disabled=true;
-
   const rowIdx=rows.length-1;
-
   try{
-    // v10 quoteSummary
     const v10=await proxyFetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=quoteType%2CsummaryProfile%2CdefaultKeyStatistics%2CtopHoldings%2CfundProfile`);
-    let name=ticker, expense=null, category='Equities', geo={us:85,intl:10,other:5};
-
+    let name=ticker,expense=null,category='Equities',geo={us:85,intl:10,other:5};
     if(v10?.quoteSummary?.result?.[0]){
       const r=v10.quoteSummary.result[0];
       name=r.quoteType?.longName||r.quoteType?.shortName||ticker;
-      const fp=r.fundProfile, ks=r.defaultKeyStatistics;
+      const fp=r.fundProfile;
       const expRaw=fp?.annualReportExpenseRatio?.raw??null;
-      if(expRaw!=null) expense=parseFloat((expRaw*100).toFixed(3));
+      if(expRaw!=null)expense=parseFloat((expRaw*100).toFixed(3));
       category=classifyCat(fp?.categoryName);
-      // Geo from topHoldings
       const th=r.topHoldings;
       if(th?.domesticEquity?.value!=null&&th?.foreignEquity?.value!=null){
-        const us=th.domesticEquity.value, intl=th.foreignEquity.value;
+        const us=th.domesticEquity.value,intl=th.foreignEquity.value;
         geo={us:parseFloat((us*100).toFixed(1)),intl:parseFloat((intl*100).toFixed(1)),other:parseFloat(((1-us-intl)*100).toFixed(1))};
       }
     } else {
-      // v8 fallback for name
       const v8=await proxyFetch(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=5d`);
       const meta=v8?.chart?.result?.[0]?.meta;
-      if(meta) name=meta.longName||meta.shortName||ticker;
+      if(meta)name=meta.longName||meta.shortName||ticker;
     }
-
-    rows[rowIdx]={ticker, name, expense, category, geo, alloc:null};
+    rows[rowIdx]={ticker,name,expense,category,geo,alloc:null,fromDB:false};
     renderTable();
-
     const st=document.getElementById('lookup-status');
-    if(st){st.textContent='✓ '+name.slice(0,40); st.className='lookup-status ok';}
-
+    if(st){st.textContent='✓ '+name.slice(0,40);st.className='lookup-status ok';}
   }catch(e){
     rows[rowIdx].name='[manual entry]';
     renderTable();
     const st=document.getElementById('lookup-status');
-    if(st){st.textContent='Lookup failed — fill in manually'; st.className='lookup-status err';}
+    if(st){st.textContent='Lookup failed — fill in manually';st.className='lookup-status err';}
   }
-
   const inp=document.getElementById('add-ticker-input');
   if(inp){inp.value='';inp.focus();}
   const gob=document.getElementById('lookup-go-btn');
-  if(gob) gob.disabled=false;
+  if(gob)gob.disabled=false;
 }
 
-/* ────────────────────────────────────────────────
-   SAVE ALL
-──────────────────────────────────────────────── */
+/* ── Save All ── */
 async function saveAll(){
-  if(rows.length===0){ toast('No funds to save','err'); return; }
+  const activeRows=rows.filter(r=>(r.alloc||0)>0);
+  if(activeRows.length===0){toast('No funds with allocation to save','err');return;}
 
-  // Validate
+  // Validate only rows with allocation > 0
   const issues=[];
-  rows.forEach((r,i)=>{
-    if(!r.ticker) issues.push('Row '+(i+1)+': missing ticker');
-    if(r.alloc==null||isNaN(r.alloc)) issues.push(r.ticker+': missing allocation %');
-    if(r.expense==null||isNaN(r.expense)) issues.push(r.ticker+': missing expense %');
+  activeRows.forEach(r=>{
+    if(r.expense==null||isNaN(r.expense))issues.push(r.ticker+': missing expense %');
     const gs=(r.geo.us||0)+(r.geo.intl||0)+(r.geo.other||0);
-    if(Math.abs(gs-100)>=1) issues.push(r.ticker+': geo exposure sums to '+gs.toFixed(1)+'% (needs 100%)');
+    if(Math.abs(gs-100)>=1)issues.push(r.ticker+': geo sums to '+gs.toFixed(1)+'% (needs 100%)');
   });
   if(issues.length){toast(issues[0],'err');return;}
 
   const btn=document.getElementById('save-btn');
-  btn.disabled=true; btn.textContent='Saving…';
+  btn.disabled=true;btn.textContent='Saving…';
 
   try{
-    // ── 1. Upsert geo data ──
-    const geoRows=rows.map(r=>({
-      ticker:r.ticker, fund_name:r.name,
-      us_pct:r.geo.us, intl_pct:r.geo.intl, other_pct:r.geo.other,
+    // 1. Upsert geo for ALL rows (including 0%)
+    const geoRows=rows.filter(r=>r.expense!=null).map(r=>({
+      ticker:r.ticker,fund_name:r.name,
+      us_pct:r.geo.us,intl_pct:r.geo.intl,other_pct:r.geo.other,
       updated_at:new Date().toISOString()
     }));
-    const geoRes=await fetch(SB_URL+'/rest/v1/fund_geo',{
-      method:'POST',
-      headers:{...headers(),'Prefer':'resolution=merge-duplicates'},
-      body:JSON.stringify(geoRows)
-    });
-    if(!geoRes.ok) throw new Error('Geo save failed: '+await geoRes.text());
+    if(geoRows.length){
+      await fetch(SB_URL+'/rest/v1/fund_geo',{method:'POST',headers:{...hdr(),'Prefer':'resolution=merge-duplicates'},body:JSON.stringify(geoRows)});
+    }
 
-    // ── 2. Fetch latest snapshot to read existing model data ──
-    const snapRes=await fetch(SB_URL+'/rest/v1/model_snapshots?select=*&order=created_at.desc&limit=1',{headers:headers()});
-    const snaps=snapRes.ok?await snapRes.json():[];
+    // 2. Load latest snapshot
+    const snaps=await sbGet('/rest/v1/model_snapshots?select=*&order=created_at.desc&limit=1');
+    const isTWM=curFamily==='TWM';
 
-    // ── 3. Build updated funds + model data ──
-    // Start from existing snapshot data so we don't wipe other family
-    let twmFunds, sriModel, twmModels, sriModels, twmSummary, sriSummary, sriCatOrder, twmCatOrder, sriCatOrderData, twmCatOrderData, sriModelFundOrder, twmModelFundOrder;
-
+    let twmFunds,sriFunds,twmModels,sriModels,twmSummary,sriSummary,twmCatOrder,sriCatOrder,twmFundOrder,sriFundOrder;
     if(snaps.length){
       const s=snaps[0];
-      twmFunds=s.twm_funds||[];sriModel=s.sri_funds||[];
+      twmFunds=JSON.parse(JSON.stringify(s.twm_funds||[]));
+      sriFunds=JSON.parse(JSON.stringify(s.sri_funds||[]));
       twmModels=JSON.parse(JSON.stringify(s.twm_models||{}));
       sriModels=JSON.parse(JSON.stringify(s.sri_models||{}));
       twmSummary=JSON.parse(JSON.stringify(s.twm_summary||{}));
       sriSummary=JSON.parse(JSON.stringify(s.sri_summary||{}));
       twmCatOrder=s.twm_cat_order||{};sriCatOrder=s.sri_cat_order||{};
-      twmModelFundOrder=s.twm_fund_order||{};sriModelFundOrder=s.sri_fund_order||{};
+      twmFundOrder=s.twm_fund_order||{};sriFundOrder=s.sri_fund_order||{};
     } else {
-      twmFunds=[];sriModel=[];twmModels={};sriModels={};twmSummary={};sriSummary={};
-      twmCatOrder={};sriCatOrder={};twmModelFundOrder={};sriModelFundOrder={};
+      twmFunds=[];sriFunds=[];twmModels={};sriModels={};twmSummary={};sriSummary={};
+      twmCatOrder={};sriCatOrder={};twmFundOrder={};sriFundOrder={};
     }
 
-    // Build new funds array for this family (merge — keep funds from other models, add/update new ones)
-    const isTWM = curFamily==='TWM';
-    const existingFunds = isTWM ? twmFunds : sriModel;
-    const newFunds = [...existingFunds];
-
-    // New fund objects from this save
-    const newFundObjects = rows.map(r=>({
-      ticker:r.ticker, name:r.name||r.ticker,
-      expense:parseFloat((r.expense/100).toFixed(6)),
-      category:r.category
-    }));
-
-    newFundObjects.forEach(f=>{
-      const idx=newFunds.findIndex(x=>x.ticker===f.ticker);
-      if(idx>=0) newFunds[idx]=f; else newFunds.push(f);
-    });
-
-    // Build allocation model object for this model
-    const newModelAlloc={cash:0}; // 'cash' key = 0 unless user adds a 'cash' row explicitly
+    // 3. Merge fund list — update existing, append new
+    const targetFunds=isTWM?twmFunds:sriFunds;
     rows.forEach(r=>{
-      newModelAlloc[r.ticker]=parseFloat((r.alloc/100).toFixed(6));
+      const fund={ticker:r.ticker,name:r.name||r.ticker,expense:r.expense!=null?parseFloat((r.expense/100).toFixed(6)):0,category:r.category};
+      const idx=targetFunds.findIndex(f=>f.ticker===r.ticker);
+      if(idx>=0)targetFunds[idx]=fund; else targetFunds.push(fund);
     });
 
-    // Build summary for this model
-    const newSummary={equities:0,fixedIncome:0,alternatives:0,cash:0,blended:0};
-    rows.forEach(r=>{
-      const v=r.alloc/100;
-      if(r.category==='Equities') newSummary.equities+=v;
-      else if(r.category==='Fixed Income') newSummary.fixedIncome+=v;
-      else if(r.category==='Alternatives') newSummary.alternatives+=v;
-      else if(r.category==='Cash') newSummary.cash+=v;
-      else if(r.category==='Blended') newSummary.blended+=v;
-    });
-
-    // Ensure all models exist in objects
+    // 4. Build allocation for this model (only rows with alloc > 0)
     const modelNames=isTWM?TWM_MODELS:SRI_MODELS;
     const modelMap=isTWM?twmModels:sriModels;
     const summaryMap=isTWM?twmSummary:sriSummary;
-    modelNames.forEach(m=>{ if(!modelMap[m]) modelMap[m]={}; if(!summaryMap[m]) summaryMap[m]={}; });
+    modelNames.forEach(m=>{if(!modelMap[m])modelMap[m]={};if(!summaryMap[m])summaryMap[m]={};});
 
-    // Set the new allocation for this model; ensure new tickers exist (as 0) in all other models
-    modelMap[curModel]=newModelAlloc;
+    const newAlloc={cash:0};
+    const newSummary={equities:0,fixedIncome:0,alternatives:0,cash:0,blended:0};
+    rows.forEach(r=>{
+      const v=parseFloat(((r.alloc||0)/100).toFixed(6));
+      newAlloc[r.ticker]=v;
+      if(v>0){
+        if(r.category==='Equities')newSummary.equities+=v;
+        else if(r.category==='Fixed Income')newSummary.fixedIncome+=v;
+        else if(r.category==='Alternatives')newSummary.alternatives+=v;
+        else if(r.category==='Cash')newSummary.cash+=v;
+        else if(r.category==='Blended')newSummary.blended+=v;
+      }
+    });
+    modelMap[curModel]=newAlloc;
     summaryMap[curModel]=newSummary;
-    newFundObjects.forEach(f=>{
+
+    // Ensure new tickers exist as 0 in all other models
+    rows.forEach(r=>{
       modelNames.forEach(m=>{
-        if(m!==curModel && modelMap[m][f.ticker]===undefined) modelMap[m][f.ticker]=0;
+        if(m!==curModel&&modelMap[m][r.ticker]===undefined)modelMap[m][r.ticker]=0;
       });
     });
 
-    // ── 4. POST new snapshot ──
-    const snapBody={
-      locked_by: authUser?.email||'model-builder',
-      notes:`Model Builder: ${curFamily} ${curModel} — ${rows.length} funds`,
-      twm_funds: isTWM?newFunds:twmFunds,
-      twm_models: isTWM?twmModels:twmModels,
-      twm_summary: isTWM?twmSummary:twmSummary,
-      sri_funds: isTWM?sriModel:newFunds,
-      sri_models: isTWM?sriModels:sriModels,
-      sri_summary: isTWM?sriSummary:sriSummary,
-      twm_cat_order: twmCatOrder,
-      twm_fund_order: twmModelFundOrder,
-      sri_cat_order: sriCatOrder,
-      sri_fund_order: sriModelFundOrder,
+    // 5. POST snapshot
+    const body={
+      locked_by:authUser?.email||'model-builder',
+      notes:`Model Builder: ${curFamily} ${curModel} — ${activeRows.length} funds`,
+      twm_funds:isTWM?twmFunds:twmFunds,
+      twm_models:twmModels,twm_summary:twmSummary,
+      sri_funds:isTWM?sriFunds:sriFunds,
+      sri_models:sriModels,sri_summary:sriSummary,
+      twm_cat_order:twmCatOrder,twm_fund_order:twmFundOrder,
+      sri_cat_order:sriCatOrder,sri_fund_order:sriFundOrder,
     };
+    const res=await fetch(SB_URL+'/rest/v1/model_snapshots',{method:'POST',headers:hdr(),body:JSON.stringify(body)});
+    if(!res.ok)throw new Error('Snapshot save failed: '+await res.text());
+    lastSnapshot=await res.json().then(d=>d[0]);
 
-    const saveRes=await fetch(SB_URL+'/rest/v1/model_snapshots',{
-      method:'POST', headers:headers(), body:JSON.stringify(snapBody)
-    });
-    if(!saveRes.ok) throw new Error('Snapshot save failed: '+await saveRes.text());
-
-    toast('✓ '+rows.length+' funds saved to '+curFamily+' — '+curModel,'ok');
-    setTimeout(()=>{ btn.disabled=false; btn.textContent='Save all to dashboard'; },1000);
-
+    // Mark all rows as fromDB now
+    rows.forEach(r=>r.fromDB=true);
+    renderTable();
+    setDBStatus('ok',`Saved ${activeRows.length} funds to ${curFamily} — ${curModel}`);
+    toast('✓ Saved '+curFamily+' '+curModel,'ok');
   }catch(e){
-    console.error(e);
-    toast('Save failed: '+e.message,'err');
-    btn.disabled=false; btn.textContent='Save all to dashboard';
+    console.error(e);toast('Save failed: '+e.message,'err');
   }
+  btn.disabled=false;btn.textContent='Save all to dashboard';
 }
 
-/* ────────────────────────────────────────────────
-   THEME
-──────────────────────────────────────────────── */
+/* ── Theme ── */
 function toggleTheme(){
-  const cur=document.documentElement.getAttribute('data-theme');
-  const next=cur==='dark'?'light':'dark';
-  document.documentElement.setAttribute('data-theme',next);
-  localStorage.setItem('theme',next);
+  const n=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',n);
+  localStorage.setItem('theme',n);
 }
-(function(){
-  const t=localStorage.getItem('theme');
-  if(t) document.documentElement.setAttribute('data-theme',t);
-})();
+(function(){const t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t);})();
 
-/* ────────────────────────────────────────────────
-   TOAST
-──────────────────────────────────────────────── */
+/* ── Toast ── */
 function toast(msg,type='ok'){
   const el=document.getElementById('toast');
-  el.textContent=msg; el.className='toast '+type+' show';
-  setTimeout(()=>el.className='toast '+type,3000);
+  el.textContent=msg;el.className='toast '+type+' show';
+  setTimeout(()=>el.className='toast '+type,3200);
 }
 </script>
 </body>
