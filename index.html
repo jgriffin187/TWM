@@ -2390,8 +2390,13 @@ function renderAllocTable(data,model,pfx){
             ${catDot(cat)}<span class="ticker-cell">${f.ticker}</span>
           </span>
         </td>
-        <td style="text-align:left;padding:10px 14px;font-size:13px;color:var(--text-2);">
-          ${f.name}
+        <td style="text-align:left;padding:10px 14px;">
+          <span class="editable name-editable" contenteditable="true"
+            data-prefix="${pfx}" data-model="${model}" data-ticker="${f.ticker}" data-field="name"
+            onblur="onEditBlur(this)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}"
+            title="Click to edit fund name"
+            style="font-size:13px;display:inline-block;min-width:80px;max-width:260px;"
+            >${f.name}</span>
         </td>
         <td style="text-align:right;padding:10px 14px;">
           <span class="editable expense-editable" contenteditable="true"
@@ -2440,7 +2445,15 @@ function onEditBlur(el){
   const{prefix,model,ticker,field}=el.dataset;
   const data=prefix==='twm'?TWM:SRI;
 
-  if(field==='expense'){
+  if(field==='name'){
+    // Fund name: trim whitespace, reject empty
+    const name=el.textContent.trim();
+    if(!name){ el.textContent=data.funds.find(f=>f.ticker===ticker)?.name||ticker; return; }
+    el.textContent=name;
+    const fund=data.funds.find(f=>f.ticker===ticker);
+    if(fund) fund.name=name;
+    // No metrics recalc needed — name is display-only
+  } else if(field==='expense'){
     // Expense ratio: 0–100% range, stored as decimal, displayed with 2dp
     const c=isNaN(v)?0:Math.max(0,Math.min(100,v));
     el.textContent=c.toFixed(2)+'%';
