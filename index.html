@@ -577,8 +577,8 @@ async function fetchPrices() {
     /* Theme toggle button */
     .theme-toggle{width:36px;height:36px;border-radius:8px;border:1px solid var(--border-mid);background:var(--surface2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,border-color .2s;flex-shrink:0;}
     .theme-toggle:hover{background:var(--surface);}
-    .theme-toggle svg{width:16px;height:16px;fill:var(--text-2);transition:fill .15s;}
-    .theme-toggle:hover svg{fill:var(--text);}
+    .theme-toggle svg{width:16px;height:16px;color:var(--text-2);transition:color .15s;}
+    .theme-toggle:hover svg{color:var(--text);}
     .icon-sun{display:none;}
     .icon-moon{display:block;}
     [data-theme="dark"] .icon-sun{display:block;}
@@ -1147,14 +1147,14 @@ async function fetchPrices() {
       <span style="font-size:9px;font-weight:700;font-family:'IBM Plex Mono',monospace;letter-spacing:0.04em;line-height:1;margin-left:2px;">PDF</span>
     </button>
     <!-- Theme toggle -->
-    <button class="theme-toggle" onclick="toggleTheme()" title="Switch to light mode" id="theme-toggle-btn" aria-label="Toggle theme">
-      <!-- Moon icon: shown in light mode (click to go dark) -->
-      <svg class="icon-moon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="currentColor" stroke="none"/>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Switch to dark mode" id="theme-toggle-btn" aria-label="Toggle theme">
+      <!-- Moon icon: shown in light mode (click to go dark). Filled crescent. -->
+      <svg class="icon-moon" viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="currentColor"/>
       </svg>
-      <!-- Sun icon: shown in dark mode (click to go light) -->
-      <svg class="icon-sun" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/>
+      <!-- Sun icon: shown in dark mode (click to go light). Stroke-only, no filled shapes. -->
+      <svg class="icon-sun" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="4"/>
         <line x1="12" y1="2" x2="12" y2="5"/>
         <line x1="12" y1="19" x2="12" y2="22"/>
         <line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/>
