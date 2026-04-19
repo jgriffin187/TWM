@@ -2655,21 +2655,30 @@ Format: plain prose paragraphs only. No markdown headers, no bullet lists, no bo
     const aiBodyEl=document.getElementById('fd-ai-body');
     if(aiBodyEl) aiBodyEl.innerHTML='<span class="fd-ai-cursor"></span>';
 
+    console.log('[AI] Fetching summary for',ticker,'from',AI_WORKER_URL);
+
     const response=await fetch(AI_WORKER_URL,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
+        model:'claude-sonnet-4-5',
         max_tokens:600,
         stream:true,
-        tools:[{type:'web_search_20250305',name:'web_search'}],
+        tools:[{
+          type:'web_search_20250305',
+          name:'web_search',
+          max_uses:2
+        }],
         messages:[{role:'user',content:prompt}]
       })
     });
 
+    console.log('[AI] Worker response status:',response.status,response.headers.get('content-type'));
+
     if(!response.ok){
       const err=await response.text();
-      throw new Error('Worker error '+response.status+': '+err.slice(0,120));
+      console.error('[AI] Worker error response:',err);
+      throw new Error('Worker error '+response.status+': '+err.slice(0,200));
     }
 
     // Stream the SSE response
@@ -2677,15 +2686,17 @@ Format: plain prose paragraphs only. No markdown headers, no bullet lists, no bo
     const decoder=new TextDecoder();
     let accumulated='';
     let buffer='';
+    let chunkCount=0;
 
     while(true){
       const{done,value}=await reader.read();
-      if(done) break;
-      if(_fdTicker!==ticker){ reader.cancel(); return; } // drawer switched
+      if(done){ console.log('[AI] Stream done. Chunks:',chunkCount,'Accumulated chars:',accumulated.length); break; }
+      if(_fdTicker!==ticker){ reader.cancel(); return; }
 
+      chunkCount++;
       buffer+=decoder.decode(value,{stream:true});
       const lines=buffer.split('\n');
-      buffer=lines.pop(); // keep incomplete line
+      buffer=lines.pop();
 
       for(const line of lines){
         if(!line.startsWith('data: ')) continue;
@@ -2697,23 +2708,32 @@ Format: plain prose paragraphs only. No markdown headers, no bullet lists, no bo
             accumulated+=evt.delta.text;
             const el=document.getElementById('fd-ai-body');
             if(el) el.innerHTML=_formatAIText(accumulated)+'<span class="fd-ai-cursor"></span>';
+          } else if(evt.type==='message_start'||evt.type==='content_block_start'){
+            console.log('[AI] SSE event:',evt.type, JSON.stringify(evt).slice(0,120));
+          } else if(evt.type==='error'){
+            console.error('[AI] SSE error event:',evt);
+            throw new Error(evt.error?.message||'Stream error');
           }
-        }catch(e){}
+        }catch(parseErr){
+          // Only log if it looks like it should have been valid JSON
+          if(data.startsWith('{')) console.warn('[AI] SSE parse fail:',parseErr.message,'data:',data.slice(0,80));
+        }
       }
     }
 
-    // Final render — remove cursor, add disclaimer, cache
+    // Final render
     const finalEl=document.getElementById('fd-ai-body');
     if(finalEl&&accumulated){
       finalEl.innerHTML=_formatAIText(accumulated)+
         '<div class="fd-ai-disclaimer">AI-generated summary. Verify with current fund documents before use.</div>';
       _aiSummaryCache[ticker]=finalEl.innerHTML;
     }else if(finalEl){
-      finalEl.innerHTML='<div style="font-size:12px;color:var(--text-3);">No summary generated for this fund.</div>';
+      console.warn('[AI] No text accumulated for',ticker);
+      finalEl.innerHTML='<div style="font-size:12px;color:var(--text-3);">No summary generated — check console for details.</div>';
     }
 
   }catch(e){
-    console.warn('AI fund summary failed:',e);
+    console.error('[AI] Fund summary failed for',ticker,':',e);
     const el=document.getElementById('fd-ai-body');
     if(el) el.innerHTML=`<div style="font-size:12px;color:var(--text-3);">Summary unavailable — ${e.message}.<br><a href="https://finance.yahoo.com/quote/${ticker}" target="_blank" style="color:var(--blue);">View on Yahoo Finance ↗</a></div>`;
   }
