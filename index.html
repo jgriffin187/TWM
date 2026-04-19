@@ -2467,7 +2467,7 @@ function renderAllocTable(data,model,pfx){
       <td colspan="1" style="padding:6px 8px 6px 12px;">
         <span class="drag-handle" title="Drag to reorder section">⠿</span>
       </td>
-      <td colspan="5" style="padding:6px 4px;font-size:10px;font-weight:700;letter-spacing:0.10em;text-transform:uppercase;">
+      <td colspan="6" style="padding:6px 4px;font-size:10px;font-weight:700;letter-spacing:0.10em;text-transform:uppercase;">
         <span style="display:inline-flex;align-items:center;gap:6px;">
           <span style="width:7px;height:7px;border-radius:50%;background:${dotColor};display:inline-block;flex-shrink:0;"></span>
           ${cat}
@@ -2534,7 +2534,7 @@ function renderAllocTable(data,model,pfx){
     // Subtotal row always LAST in section
     html+=`<tr class="subtotal cat-subtotal-${ck}" style="border-bottom:2px solid rgba(128,128,128,0.12);">
       <td colspan="1" style="padding:7px 8px 7px 12px;"></td>
-      <td colspan="3" style="text-align:right;padding:7px 14px;font-size:12px;color:var(--text-2);">${cat} subtotal</td>
+      <td colspan="4" style="text-align:right;padding:7px 14px;font-size:12px;color:var(--text-2);">${cat} subtotal</td>
       <td style="text-align:right;padding:7px 14px;font-size:12px;font-family:IBM Plex Mono,monospace;font-weight:700;">${pct(catTotal)}</td>
       <td style="padding:7px 14px;"></td>
     </tr>`;
