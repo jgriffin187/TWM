@@ -2729,9 +2729,13 @@ Format: plain prose paragraphs only. No markdown headers, no bullet lists, no bo
 
     // Note: removed ticker guard — render even if drawer was briefly closed/reopened
     const finalEl=document.getElementById('fd-ai-body');
+    console.log('[AI] finalEl found:',!!finalEl,'text length:',text?.length);
     if(finalEl&&text){
-      finalEl.innerHTML=_formatAIText(text)+
+      const rendered=_formatAIText(text);
+      console.log('[AI] Rendered HTML length:',rendered.length,'preview:',rendered.slice(0,80));
+      finalEl.innerHTML=rendered+
         '<div class="fd-ai-disclaimer">AI-generated summary. Verify with current fund documents before use.</div>';
+      console.log('[AI] innerHTML set. fd-ai-body innerHTML length:',finalEl.innerHTML.length);
       _aiSummaryCache[ticker]=finalEl.innerHTML;
       setAIStatus('done','Ready');
     }else if(finalEl){
