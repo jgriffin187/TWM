@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta http-equiv="Cache-Control" content="no-cache,must-revalidate"/>
+<title>TWM Model Builder</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:       #080f1e;
+  --surface:  #0d1b2e;
+  --surface2: #112240;
+  --border:   rgba(56,189,248,0.12);
+  --border2:  rgba(56,189,248,0.22);
+  --text:     #e2e8f0;
+  --text2:    #94a3b8;
+  --text3:    #475569;
+  --blue:     #38bdf8;
+  --blue2:    #0ea5e9;
+  --green:    #4ade80;
+  --red:      #f87171;
+  --amber:    #fbbf24;
+  --purple:   #a78bfa;
+  --mono:     'IBM Plex Mono',monospace;
+  --sans:     'DM Sans',sans-serif;
+}
+[data-theme="light"]{
+  --bg:#f0f4f8;--surface:#ffffff;--surface2:#f1f5f9;--border:rgba(37,99,235,0.12);
+  --border2:rgba(37,99,235,0.25);--text:#0f172a;--text2:#475569;--text3:#94a3b8;
+  --blue:#2563eb;--blue2:#1d4ed8;--green:#16a34a;--red:#dc2626;--amber:#d97706;--purple:#7c3aed;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;transition:background .2s,color .2s;}
+
+/* ── Login ── */
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:2rem;}
+.login-card{background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:2.5rem 2rem;width:380px;max-width:96vw;box-shadow:0 0 40px rgba(56,189,248,0.06);}
+.login-logo{display:flex;align-items:center;gap:10px;margin-bottom:2rem;}
+.login-mark{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,var(--blue),var(--blue2));display:flex;align-items:center;justify-content:center;}
+.login-mark svg{width:20px;height:20px;fill:white;}
+.login-title{font-size:16px;font-weight:700;color:var(--text);}
+.login-sub{font-size:12px;color:var(--text2);}
+.login-card h2{font-size:20px;font-weight:700;margin-bottom:4px;}
+.login-card p{font-size:13px;color:var(--text2);margin-bottom:1.5rem;}
+.field{margin-bottom:14px;}
+.field label{font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em;}
+.field input{width:100%;padding:10px 13px;border:1px solid var(--border2);border-radius:10px;background:var(--bg);color:var(--text);font-size:14px;font-family:var(--sans);transition:border-color .15s;}
+.field input:focus{outline:none;border-color:var(--blue);}
+.btn-primary{width:100%;padding:11px;border-radius:10px;background:var(--blue);color:#fff;font-size:14px;font-weight:600;border:none;cursor:pointer;font-family:var(--sans);transition:opacity .15s;}
+[data-theme="light"] .btn-primary{color:#0f172a;}
+.btn-primary:hover{opacity:.88;}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;}
+.err-msg{font-size:12px;color:var(--red);margin-top:8px;display:none;}
+
+/* ── App shell ── */
+.app{display:none;flex-direction:column;min-height:100vh;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;}
+.topbar-left{display:flex;align-items:center;gap:12px;}
+.topbar-mark{width:30px;height:30px;border-radius:7px;background:linear-gradient(135deg,var(--blue),var(--blue2));display:flex;align-items:center;justify-content:center;}
+.topbar-mark svg{width:16px;height:16px;fill:white;}
+.topbar-title{font-size:15px;font-weight:700;color:var(--text);}
+.topbar-sub{font-size:11px;color:var(--text2);font-family:var(--mono);}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.theme-btn{background:none;border:1px solid var(--border2);border-radius:8px;padding:6px 10px;cursor:pointer;color:var(--text2);font-size:12px;transition:all .15s;}
+.theme-btn:hover{color:var(--blue);border-color:var(--blue);}
+.back-link{font-size:12px;color:var(--text2);text-decoration:none;border:1px solid var(--border);border-radius:8px;padding:5px 11px;transition:all .15s;}
+.back-link:hover{color:var(--blue);border-color:var(--blue);}
+.user-chip{font-size:12px;color:var(--text2);font-family:var(--mono);}
+
+/* ── Main content ── */
+.main{flex:1;padding:2rem 2rem;max-width:1400px;margin:0 auto;width:100%;}
+.controls{display:flex;align-items:flex-end;gap:14px;margin-bottom:1.5rem;flex-wrap:wrap;}
+.ctrl-group{display:flex;flex-direction:column;gap:5px;}
+.ctrl-label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;font-family:var(--mono);}
+.ctrl-select{padding:9px 32px 9px 12px;border:1px solid var(--border2);border-radius:10px;background:var(--surface);color:var(--text);font-size:14px;font-family:var(--sans);cursor:pointer;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2338bdf8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;min-width:200px;transition:border-color .15s;}
+[data-theme="light"] .ctrl-select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");}
+.ctrl-select:focus{outline:none;border-color:var(--blue);}
+.btn-add-row{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:10px;background:rgba(56,189,248,0.1);border:1px solid var(--border2);color:var(--blue);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans);transition:all .18s;}
+[data-theme="light"] .btn-add-row{background:rgba(37,99,235,0.08);color:var(--blue);}
+.btn-add-row:hover{background:rgba(56,189,248,0.18);border-color:var(--blue);}
+
+/* ── Table ── */
+.table-wrap{overflow-x:auto;border-radius:14px;border:1px solid var(--border);background:var(--surface);}
+.table-wrap::-webkit-scrollbar{height:5px;}
+.table-wrap::-webkit-scrollbar-thumb{background:rgba(56,189,248,0.2);border-radius:99px;}
+.grid-table{border-collapse:collapse;width:100%;font-size:13px;}
+.grid-table th{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);padding:11px 12px;border-bottom:1px solid var(--border2);white-space:nowrap;background:var(--surface2);text-align:left;}
+.grid-table th.num{text-align:right;}
+.grid-table th.center{text-align:center;}
+.grid-table td{padding:0;border-bottom:1px solid var(--border);vertical-align:middle;}
+.grid-table tr:last-child td{border-bottom:none;}
+.grid-table tr:hover td{background:rgba(56,189,248,0.03);}
+[data-theme="light"] .grid-table tr:hover td{background:rgba(37,99,235,0.03);}
+
+/* cells */
+.cell-ticker{padding:8px 12px;white-space:nowrap;}
+.ticker-badge{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--blue);background:rgba(56,189,248,0.1);padding:3px 8px;border-radius:6px;display:inline-block;}
+[data-theme="light"] .ticker-badge{background:rgba(37,99,235,0.08);color:var(--blue2);}
+.cell-name{padding:8px 12px;font-size:12px;color:var(--text);max-width:180px;}
+.cell-name.loading{color:var(--text3);font-style:italic;}
+.cell-cat{padding:6px 10px;}
+.cat-badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;white-space:nowrap;}
+.cat-Equities{background:rgba(56,189,248,0.12);color:#38bdf8;}
+.cat-FixedIncome,.cat-Fixed\ Income{background:rgba(52,211,153,0.12);color:#34d399;}
+.cat-Cash{background:rgba(148,163,184,0.12);color:#94a3b8;}
+.cat-Blended{background:rgba(251,146,60,0.12);color:#fb923c;}
+.cat-Alternatives{background:rgba(167,139,250,0.12);color:#a78bfa;}
+[data-theme="light"] .cat-Equities{background:rgba(37,99,235,0.10);color:#2563eb;}
+[data-theme="light"] .cat-FixedIncome,[data-theme="light"] .cat-Fixed\ Income{background:rgba(5,150,105,0.10);color:#059669;}
+[data-theme="light"] .cat-Cash{background:rgba(100,116,139,0.10);color:#475569;}
+[data-theme="light"] .cat-Blended{background:rgba(217,119,6,0.10);color:#d97706;}
+[data-theme="light"] .cat-Alternatives{background:rgba(124,58,237,0.10);color:#7c3aed;}
+.cell-input{padding:4px 8px;}
+.cell-num{padding:4px 8px;text-align:right;}
+.num-input{width:80px;padding:6px 9px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-size:13px;font-family:var(--mono);text-align:right;transition:border-color .15s;}
+.num-input:focus{outline:none;border-color:var(--blue);}
+.num-input.warn{border-color:var(--amber);}
+.num-input.err{border-color:var(--red);}
+.select-input{padding:6px 26px 6px 9px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-size:12px;font-family:var(--sans);cursor:pointer;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2338bdf8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 7px center;transition:border-color .15s;}
+[data-theme="light"] .select-input{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");}
+.select-input:focus{outline:none;border-color:var(--blue);}
+.geo-cell{padding:4px 8px;display:flex;gap:4px;align-items:center;}
+.geo-input{width:60px;padding:6px 7px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-size:12px;font-family:var(--mono);text-align:right;transition:border-color .15s;}
+.geo-input:focus{outline:none;border-color:var(--blue);}
+.geo-label{font-size:10px;color:var(--text3);font-family:var(--mono);}
+.geo-sum{font-size:11px;font-family:var(--mono);font-weight:600;padding:3px 6px;border-radius:5px;}
+.geo-sum.ok{color:var(--green);background:rgba(74,222,128,0.08);}
+.geo-sum.bad{color:var(--red);background:rgba(248,113,113,0.08);}
+.cell-del{padding:6px 12px;text-align:center;}
+.del-btn{background:none;border:none;cursor:pointer;color:var(--text3);padding:4px 7px;border-radius:6px;font-size:14px;transition:all .15s;}
+.del-btn:hover{color:var(--red);background:rgba(248,113,113,0.10);}
+
+/* ticker lookup row */
+.add-ticker-row{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:2px dashed var(--border2);}
+.add-ticker-input{flex:0 0 90px;padding:7px 10px;border:1.5px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;font-weight:600;text-transform:uppercase;transition:border-color .15s;}
+.add-ticker-input:focus{outline:none;border-color:var(--blue);}
+.lookup-go{padding:7px 14px;border-radius:8px;background:var(--blue);color:#fff;font-size:12px;font-weight:600;border:none;cursor:pointer;font-family:var(--sans);transition:opacity .15s;white-space:nowrap;}
+[data-theme="light"] .lookup-go{color:#0f172a;}
+.lookup-go:hover{opacity:.85;}
+.lookup-go:disabled{opacity:.45;cursor:not-allowed;}
+.lookup-status{font-size:12px;font-family:var(--mono);color:var(--text3);}
+.lookup-status.ok{color:var(--green);}
+.lookup-status.err{color:var(--red);}
+.lookup-status.loading{color:var(--blue);animation:pulse 1s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── Bottom bar ── */
+.bottom-bar{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--border2);padding:14px 28px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;z-index:10;}
+.total-pills{display:flex;gap:8px;flex-wrap:wrap;flex:1;}
+.total-pill{font-size:11px;font-family:var(--mono);padding:4px 10px;border-radius:99px;border:1px solid var(--border);}
+.total-pill.ok{border-color:var(--green);color:var(--green);background:rgba(74,222,128,0.07);}
+.total-pill.warn{border-color:var(--amber);color:var(--amber);background:rgba(251,191,36,0.07);}
+.total-pill.bad{border-color:var(--red);color:var(--red);background:rgba(248,113,113,0.07);}
+.save-btn{padding:10px 28px;border-radius:10px;background:var(--green);color:#0f172a;font-size:14px;font-weight:700;border:none;cursor:pointer;font-family:var(--sans);transition:opacity .15s,transform .12s;white-space:nowrap;}
+.save-btn:hover{opacity:.88;transform:translateY(-1px);}
+.save-btn:disabled{opacity:.45;cursor:not-allowed;transform:none;}
+.row-count{font-size:12px;color:var(--text3);font-family:var(--mono);}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:10px 20px;border-radius:10px;font-size:13px;opacity:0;pointer-events:none;transition:all .25s;z-index:999;white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.ok{border-color:var(--green);color:var(--green);}
+.toast.err{border-color:var(--red);color:var(--red);}
+
+/* ── Empty state ── */
+.empty-state{text-align:center;padding:3rem 2rem;color:var(--text3);}
+.empty-state svg{opacity:.25;margin-bottom:12px;}
+.empty-state p{font-size:14px;margin-bottom:6px;color:var(--text2);}
+.empty-state small{font-size:12px;font-family:var(--mono);}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="login-wrap">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-mark"><svg viewBox="0 0 24 24"><path d="M3 18l9-14 9 14H3z"/></svg></div>
+      <div><div class="login-title">TWM Model Builder</div><div class="login-sub">Trailhead Wealth Management</div></div>
+    </div>
+    <h2>Sign in</h2>
+    <p>Use your TWM dashboard credentials.</p>
+    <div class="field"><label>Email</label><input type="email" id="login-email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+    <div class="field"><label>Password</label><input type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+    <button class="btn-primary" id="login-btn" onclick="doLogin()">Sign in</button>
+    <div class="err-msg" id="login-err"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-mark"><svg viewBox="0 0 24 24"><path d="M3 18l9-14 9 14H3z"/></svg></div>
+      <div>
+        <div class="topbar-title">Model Builder</div>
+        <div class="topbar-sub">Trailhead Wealth Management</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="user-chip" id="user-chip"></span>
+      <button class="theme-btn" onclick="toggleTheme()">☀ / ☾</button>
+      <a href="index.html" class="back-link">← Dashboard</a>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- Controls -->
+    <div class="controls">
+      <div class="ctrl-group">
+        <span class="ctrl-label">Model family</span>
+        <select class="ctrl-select" id="sel-family" onchange="onFamilyChange()">
+          <option value="TWM">TWM Model</option>
+          <option value="SRI">SRI Model</option>
+        </select>
+      </div>
+      <div class="ctrl-group">
+        <span class="ctrl-label">Model</span>
+        <select class="ctrl-select" id="sel-model" onchange="onModelChange()"></select>
+      </div>
+      <div class="ctrl-group" style="margin-left:auto;">
+        <span class="ctrl-label">&nbsp;</span>
+        <button class="btn-add-row" onclick="focusAddRow()">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add fund
+        </button>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <table class="grid-table" id="grid-table">
+        <thead id="grid-head"></thead>
+        <tbody id="grid-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Bottom bar -->
+  <div class="bottom-bar">
+    <div class="total-pills" id="total-pills"></div>
+    <span class="row-count" id="row-count"></span>
+    <button class="save-btn" id="save-btn" onclick="saveAll()">Save all to dashboard</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ────────────────────────────────────────────────
+   CONFIG — matches index.html exactly
+──────────────────────────────────────────────── */
+const SB_URL = 'https://xvcxguzonyebodsnodjw.supabase.co';
+const SB_KEY = 'sb_publishable_VgdPJZ9zZPBIn9fvwcOW5Q_4DriVNfI';
+let authToken = null, authUser = null;
+
+const TWM_MODELS = [
+  'IRA Conservative','IRA Moderate','IRA Aggressive','IRA Ultra Aggressive',
+  'Taxable Conservative','Taxable Moderate','Taxable Aggressive'
+];
+const SRI_MODELS = [
+  'SRI Conservative','SRI Moderate','SRI Aggressive','SRI Ultra Aggressive'
+];
+const CATEGORIES = ['Alternatives','Blended','Cash','Equities','Fixed Income'];
+
+/* ────────────────────────────────────────────────
+   STATE — one row per fund entry
+   row = { ticker, name, expense, category, geo:{us,intl,other}, alloc }
+──────────────────────────────────────────────── */
+let rows = [];       // array of fund row objects
+let curFamily = 'TWM';
+let curModel  = 'IRA Conservative';
+
+/* ────────────────────────────────────────────────
+   AUTH
+──────────────────────────────────────────────── */
+function headers(extra={}){
+  return {
+    'apikey': SB_KEY,
+    'Authorization': 'Bearer '+(authToken||SB_KEY),
+    'Content-Type': 'application/json',
+    'Prefer': 'return=representation',
+    ...extra
+  };
+}
+
+async function doLogin(){
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl    = document.getElementById('login-err');
+  const btn      = document.getElementById('login-btn');
+  errEl.style.display='none';
+  if(!email||!password){errEl.textContent='Enter email and password.';errEl.style.display='block';return;}
+  btn.disabled=true; btn.textContent='Signing in…';
+  try{
+    const r = await fetch(SB_URL+'/auth/v1/token?grant_type=password',{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({email,password})
+    });
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error_description||d.msg||'Invalid credentials');
+    authToken = d.access_token;
+    authUser  = d.user;
+    sessionStorage.setItem('mb_token', authToken);
+    sessionStorage.setItem('mb_user',  JSON.stringify(authUser));
+    onLoginSuccess();
+  }catch(e){
+    errEl.textContent=e.message; errEl.style.display='block';
+    btn.disabled=false; btn.textContent='Sign in';
+  }
+}
+
+function onLoginSuccess(){
+  document.getElementById('login-wrap').style.display='none';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('user-chip').textContent = authUser?.email?.split('@')[0]||'';
+  initSelectors();
+}
+
+// Check for existing session
+(function(){
+  const t=sessionStorage.getItem('mb_token'), u=sessionStorage.getItem('mb_user');
+  if(t&&u){ authToken=t; authUser=JSON.parse(u); onLoginSuccess(); }
+})();
+
+/* ────────────────────────────────────────────────
+   SELECTORS
+──────────────────────────────────────────────── */
+function initSelectors(){
+  onFamilyChange();
+}
+
+function onFamilyChange(){
+  curFamily = document.getElementById('sel-family').value;
+  const models = curFamily==='TWM' ? TWM_MODELS : SRI_MODELS;
+  const sel = document.getElementById('sel-model');
+  sel.innerHTML = models.map(m=>`<option value="${m}">${m}</option>`).join('');
+  curModel = models[0];
+  rows = [];
+  renderTable();
+}
+
+function onModelChange(){
+  curModel = document.getElementById('sel-model').value;
+  rows = [];
+  renderTable();
+}
+
+/* ────────────────────────────────────────────────
+   RENDER TABLE
+──────────────────────────────────────────────── */
+function renderTable(){
+  renderHead();
+  renderBody();
+  renderTotals();
+}
+
+function renderHead(){
+  document.getElementById('grid-head').innerHTML=`<tr>
+    <th style="width:90px;">Ticker</th>
+    <th style="min-width:160px;">Fund name</th>
+    <th style="width:110px;">Category</th>
+    <th class="num" style="width:80px;">Expense %</th>
+    <th class="num" style="width:85px;">Alloc %</th>
+    <th class="center" style="min-width:220px;">Geographic exposure (U.S. / Non-U.S. / Other)</th>
+    <th style="width:40px;"></th>
+  </tr>`;
+}
+
+function catKey(c){ return c.replace(/\s+/g,''); }
+
+function renderBody(){
+  const tbody = document.getElementById('grid-body');
+
+  // Fund rows
+  let html = rows.map((row,i)=>{
+    const geoSum = ((row.geo.us||0)+(row.geo.intl||0)+(row.geo.other||0));
+    const geoOk  = Math.abs(geoSum-100)<0.5;
+    const ck = catKey(row.category||'');
+    return `<tr data-i="${i}">
+      <td class="cell-ticker"><span class="ticker-badge">${esc(row.ticker)}</span></td>
+      <td class="cell-name ${row.name?'':'loading'}">${esc(row.name||'Looking up…')}</td>
+      <td class="cell-cat">
+        <select class="select-input" onchange="setRowField(${i},'category',this.value)">
+          ${CATEGORIES.map(c=>`<option value="${c}" ${row.category===c?'selected':''}>${c}</option>`).join('')}
+        </select>
+      </td>
+      <td class="cell-num">
+        <input class="num-input" type="number" step="0.01" min="0" max="5" value="${row.expense!=null?row.expense:''}" placeholder="0.35"
+          onchange="setRowField(${i},'expense',parseFloat(this.value)||0)" />
+      </td>
+      <td class="cell-num">
+        <input class="num-input" type="number" step="0.1" min="0" max="100" value="${row.alloc!=null?row.alloc:''}" placeholder="5.0"
+          onchange="setRowField(${i},'alloc',parseFloat(this.value)||0);renderTotals()" />
+      </td>
+      <td>
+        <div class="geo-cell">
+          <span class="geo-label">🇺🇸</span>
+          <input class="geo-input" type="number" step="0.1" min="0" max="100" value="${row.geo.us!=null?row.geo.us:''}" placeholder="85"
+            onchange="setGeo(${i},'us',this.value)" />
+          <span class="geo-label">🌍</span>
+          <input class="geo-input" type="number" step="0.1" min="0" max="100" value="${row.geo.intl!=null?row.geo.intl:''}" placeholder="10"
+            onchange="setGeo(${i},'intl',this.value)" />
+          <span class="geo-label">◈</span>
+          <input class="geo-input" type="number" step="0.1" min="0" max="100" value="${row.geo.other!=null?row.geo.other:''}" placeholder="5"
+            onchange="setGeo(${i},'other',this.value)" />
+          <span class="geo-sum ${geoOk?'ok':'bad'}">${geoSum.toFixed(0)}%</span>
+        </div>
+      </td>
+      <td class="cell-del"><button class="del-btn" onclick="deleteRow(${i})" title="Remove">✕</button></td>
+    </tr>`;
+  }).join('');
+
+  // Add-ticker row always at bottom
+  html += `<tr id="add-row">
+    <td colspan="7">
+      <div class="add-ticker-row">
+        <input class="add-ticker-input" id="add-ticker-input" type="text" placeholder="TICKER"
+          oninput="this.value=this.value.toUpperCase()"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();doAddTicker()}" />
+        <button class="lookup-go" id="lookup-go-btn" onclick="doAddTicker()">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px;vertical-align:middle;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Look up &amp; add
+        </button>
+        <span class="lookup-status" id="lookup-status"></span>
+      </div>
+    </td>
+  </tr>`;
+
+  // Empty state if no rows yet
+  if(rows.length===0){
+    html = `<tr><td colspan="7">
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+        <p>No funds added yet for <strong>${esc(curModel)}</strong></p>
+        <small>Enter a ticker above and click "Look up &amp; add"</small>
+      </div>
+    </td></tr>`+html;
+  }
+
+  tbody.innerHTML = html;
+  document.getElementById('row-count').textContent = rows.length+' fund'+(rows.length!==1?'s':'');
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function renderTotals(){
+  const totalAlloc = rows.reduce((a,r)=>a+(r.alloc||0),0);
+  const ok = Math.abs(totalAlloc-100)<0.5;
+  const pills = document.getElementById('total-pills');
+  const allocColor = ok?'ok':totalAlloc>100?'bad':'warn';
+  pills.innerHTML=`
+    <span class="total-pill ${allocColor}">${curModel}: ${totalAlloc.toFixed(1)}% allocated ${ok?'✓':totalAlloc>100?'↑ over':'↓ under'}</span>
+    <span class="total-pill">${rows.length} fund${rows.length!==1?'s':''}</span>
+  `;
+  document.getElementById('save-btn').disabled = rows.length===0;
+}
+
+/* ────────────────────────────────────────────────
+   ROW MUTATION
+──────────────────────────────────────────────── */
+function setRowField(i, field, val){
+  rows[i][field]=val;
+}
+function setGeo(i, key, val){
+  rows[i].geo[key]=parseFloat(val)||0;
+  // Re-render just the geo sum for that row without full re-render
+  const tr=document.querySelector(`tr[data-i="${i}"]`);
+  if(!tr) return;
+  const sum=rows[i].geo.us+rows[i].geo.intl+rows[i].geo.other;
+  const ok=Math.abs(sum-100)<0.5;
+  const pill=tr.querySelector('.geo-sum');
+  if(pill){pill.textContent=sum.toFixed(0)+'%';pill.className='geo-sum '+(ok?'ok':'bad');}
+}
+function deleteRow(i){
+  rows.splice(i,1);
+  renderTable();
+}
+function focusAddRow(){
+  const el=document.getElementById('add-ticker-input');
+  if(el){el.focus();el.scrollIntoView({behavior:'smooth',block:'nearest'});}
+}
+
+/* ────────────────────────────────────────────────
+   YAHOO LOOKUP
+──────────────────────────────────────────────── */
+const PROXIES=[
+  u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+  u=>`https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+  u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+];
+
+async function proxyFetch(targetUrl){
+  for(const makeProxy of PROXIES){
+    try{
+      const r=await fetch(makeProxy(targetUrl));
+      if(!r.ok) continue;
+      const text=await r.text();
+      if(!text||!text.trim()) continue;
+      const parsed=text.trim().startsWith('{')?JSON.parse(text):null;
+      if(!parsed) continue;
+      if(parsed.contents) return JSON.parse(parsed.contents);
+      return parsed;
+    }catch(e){}
+  }
+  return null;
+}
+
+function classifyCat(mstar){
+  if(!mstar) return 'Equities';
+  const c=mstar.toLowerCase();
+  if(/money.?market|cash|stable.?value|ultra.?short/.test(c)) return 'Cash';
+  if(/bond|income|fixed|muni|treasury|credit|floating|tips|mortgage|government|corporate/.test(c)) return 'Fixed Income';
+  if(/future|neutral|commodit|real.?estate|reit|infrastructure|hedge|macro/.test(c)) return 'Alternatives';
+  if(/allocation|balanced|world|target.?date|multi.?asset/.test(c)) return 'Blended';
+  return 'Equities';
+}
+
+async function doAddTicker(){
+  const input=document.getElementById('add-ticker-input');
+  const statusEl=document.getElementById('lookup-status');
+  const btn=document.getElementById('lookup-go-btn');
+  const ticker=input.value.trim().toUpperCase();
+  if(!ticker) return;
+
+  // Prevent duplicate
+  if(rows.find(r=>r.ticker===ticker)){
+    statusEl.textContent='Already added'; statusEl.className='lookup-status err'; return;
+  }
+
+  btn.disabled=true;
+  statusEl.textContent='Looking up…'; statusEl.className='lookup-status loading';
+
+  // Add placeholder row immediately
+  const newRow={ticker, name:'', expense:null, category:'Equities', geo:{us:85,intl:10,other:5}, alloc:null};
+  rows.push(newRow);
+  renderTable();
+  // Re-focus and status (renderTable re-creates DOM)
+  document.getElementById('lookup-status').textContent='Looking up…';
+  document.getElementById('lookup-status').className='lookup-status loading';
+  document.getElementById('lookup-go-btn').disabled=true;
+
+  const rowIdx=rows.length-1;
+
+  try{
+    // v10 quoteSummary
+    const v10=await proxyFetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=quoteType%2CsummaryProfile%2CdefaultKeyStatistics%2CtopHoldings%2CfundProfile`);
+    let name=ticker, expense=null, category='Equities', geo={us:85,intl:10,other:5};
+
+    if(v10?.quoteSummary?.result?.[0]){
+      const r=v10.quoteSummary.result[0];
+      name=r.quoteType?.longName||r.quoteType?.shortName||ticker;
+      const fp=r.fundProfile, ks=r.defaultKeyStatistics;
+      const expRaw=fp?.annualReportExpenseRatio?.raw??null;
+      if(expRaw!=null) expense=parseFloat((expRaw*100).toFixed(3));
+      category=classifyCat(fp?.categoryName);
+      // Geo from topHoldings
+      const th=r.topHoldings;
+      if(th?.domesticEquity?.value!=null&&th?.foreignEquity?.value!=null){
+        const us=th.domesticEquity.value, intl=th.foreignEquity.value;
+        geo={us:parseFloat((us*100).toFixed(1)),intl:parseFloat((intl*100).toFixed(1)),other:parseFloat(((1-us-intl)*100).toFixed(1))};
+      }
+    } else {
+      // v8 fallback for name
+      const v8=await proxyFetch(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=5d`);
+      const meta=v8?.chart?.result?.[0]?.meta;
+      if(meta) name=meta.longName||meta.shortName||ticker;
+    }
+
+    rows[rowIdx]={ticker, name, expense, category, geo, alloc:null};
+    renderTable();
+
+    const st=document.getElementById('lookup-status');
+    if(st){st.textContent='✓ '+name.slice(0,40); st.className='lookup-status ok';}
+
+  }catch(e){
+    rows[rowIdx].name='[manual entry]';
+    renderTable();
+    const st=document.getElementById('lookup-status');
+    if(st){st.textContent='Lookup failed — fill in manually'; st.className='lookup-status err';}
+  }
+
+  const inp=document.getElementById('add-ticker-input');
+  if(inp){inp.value='';inp.focus();}
+  const gob=document.getElementById('lookup-go-btn');
+  if(gob) gob.disabled=false;
+}
+
+/* ────────────────────────────────────────────────
+   SAVE ALL
+──────────────────────────────────────────────── */
+async function saveAll(){
+  if(rows.length===0){ toast('No funds to save','err'); return; }
+
+  // Validate
+  const issues=[];
+  rows.forEach((r,i)=>{
+    if(!r.ticker) issues.push('Row '+(i+1)+': missing ticker');
+    if(r.alloc==null||isNaN(r.alloc)) issues.push(r.ticker+': missing allocation %');
+    if(r.expense==null||isNaN(r.expense)) issues.push(r.ticker+': missing expense %');
+    const gs=(r.geo.us||0)+(r.geo.intl||0)+(r.geo.other||0);
+    if(Math.abs(gs-100)>=1) issues.push(r.ticker+': geo exposure sums to '+gs.toFixed(1)+'% (needs 100%)');
+  });
+  if(issues.length){toast(issues[0],'err');return;}
+
+  const btn=document.getElementById('save-btn');
+  btn.disabled=true; btn.textContent='Saving…';
+
+  try{
+    // ── 1. Upsert geo data ──
+    const geoRows=rows.map(r=>({
+      ticker:r.ticker, fund_name:r.name,
+      us_pct:r.geo.us, intl_pct:r.geo.intl, other_pct:r.geo.other,
+      updated_at:new Date().toISOString()
+    }));
+    const geoRes=await fetch(SB_URL+'/rest/v1/fund_geo',{
+      method:'POST',
+      headers:{...headers(),'Prefer':'resolution=merge-duplicates'},
+      body:JSON.stringify(geoRows)
+    });
+    if(!geoRes.ok) throw new Error('Geo save failed: '+await geoRes.text());
+
+    // ── 2. Fetch latest snapshot to read existing model data ──
+    const snapRes=await fetch(SB_URL+'/rest/v1/model_snapshots?select=*&order=created_at.desc&limit=1',{headers:headers()});
+    const snaps=snapRes.ok?await snapRes.json():[];
+
+    // ── 3. Build updated funds + model data ──
+    // Start from existing snapshot data so we don't wipe other family
+    let twmFunds, sriModel, twmModels, sriModels, twmSummary, sriSummary, sriCatOrder, twmCatOrder, sriCatOrderData, twmCatOrderData, sriModelFundOrder, twmModelFundOrder;
+
+    if(snaps.length){
+      const s=snaps[0];
+      twmFunds=s.twm_funds||[];sriModel=s.sri_funds||[];
+      twmModels=JSON.parse(JSON.stringify(s.twm_models||{}));
+      sriModels=JSON.parse(JSON.stringify(s.sri_models||{}));
+      twmSummary=JSON.parse(JSON.stringify(s.twm_summary||{}));
+      sriSummary=JSON.parse(JSON.stringify(s.sri_summary||{}));
+      twmCatOrder=s.twm_cat_order||{};sriCatOrder=s.sri_cat_order||{};
+      twmModelFundOrder=s.twm_fund_order||{};sriModelFundOrder=s.sri_fund_order||{};
+    } else {
+      twmFunds=[];sriModel=[];twmModels={};sriModels={};twmSummary={};sriSummary={};
+      twmCatOrder={};sriCatOrder={};twmModelFundOrder={};sriModelFundOrder={};
+    }
+
+    // Build new funds array for this family (merge — keep funds from other models, add/update new ones)
+    const isTWM = curFamily==='TWM';
+    const existingFunds = isTWM ? twmFunds : sriModel;
+    const newFunds = [...existingFunds];
+
+    // New fund objects from this save
+    const newFundObjects = rows.map(r=>({
+      ticker:r.ticker, name:r.name||r.ticker,
+      expense:parseFloat((r.expense/100).toFixed(6)),
+      category:r.category
+    }));
+
+    newFundObjects.forEach(f=>{
+      const idx=newFunds.findIndex(x=>x.ticker===f.ticker);
+      if(idx>=0) newFunds[idx]=f; else newFunds.push(f);
+    });
+
+    // Build allocation model object for this model
+    const newModelAlloc={cash:0}; // 'cash' key = 0 unless user adds a 'cash' row explicitly
+    rows.forEach(r=>{
+      newModelAlloc[r.ticker]=parseFloat((r.alloc/100).toFixed(6));
+    });
+
+    // Build summary for this model
+    const newSummary={equities:0,fixedIncome:0,alternatives:0,cash:0,blended:0};
+    rows.forEach(r=>{
+      const v=r.alloc/100;
+      if(r.category==='Equities') newSummary.equities+=v;
+      else if(r.category==='Fixed Income') newSummary.fixedIncome+=v;
+      else if(r.category==='Alternatives') newSummary.alternatives+=v;
+      else if(r.category==='Cash') newSummary.cash+=v;
+      else if(r.category==='Blended') newSummary.blended+=v;
+    });
+
+    // Ensure all models exist in objects
+    const modelNames=isTWM?TWM_MODELS:SRI_MODELS;
+    const modelMap=isTWM?twmModels:sriModels;
+    const summaryMap=isTWM?twmSummary:sriSummary;
+    modelNames.forEach(m=>{ if(!modelMap[m]) modelMap[m]={}; if(!summaryMap[m]) summaryMap[m]={}; });
+
+    // Set the new allocation for this model; ensure new tickers exist (as 0) in all other models
+    modelMap[curModel]=newModelAlloc;
+    summaryMap[curModel]=newSummary;
+    newFundObjects.forEach(f=>{
+      modelNames.forEach(m=>{
+        if(m!==curModel && modelMap[m][f.ticker]===undefined) modelMap[m][f.ticker]=0;
+      });
+    });
+
+    // ── 4. POST new snapshot ──
+    const snapBody={
+      locked_by: authUser?.email||'model-builder',
+      notes:`Model Builder: ${curFamily} ${curModel} — ${rows.length} funds`,
+      twm_funds: isTWM?newFunds:twmFunds,
+      twm_models: isTWM?twmModels:twmModels,
+      twm_summary: isTWM?twmSummary:twmSummary,
+      sri_funds: isTWM?sriModel:newFunds,
+      sri_models: isTWM?sriModels:sriModels,
+      sri_summary: isTWM?sriSummary:sriSummary,
+      twm_cat_order: twmCatOrder,
+      twm_fund_order: twmModelFundOrder,
+      sri_cat_order: sriCatOrder,
+      sri_fund_order: sriModelFundOrder,
+    };
+
+    const saveRes=await fetch(SB_URL+'/rest/v1/model_snapshots',{
+      method:'POST', headers:headers(), body:JSON.stringify(snapBody)
+    });
+    if(!saveRes.ok) throw new Error('Snapshot save failed: '+await saveRes.text());
+
+    toast('✓ '+rows.length+' funds saved to '+curFamily+' — '+curModel,'ok');
+    setTimeout(()=>{ btn.disabled=false; btn.textContent='Save all to dashboard'; },1000);
+
+  }catch(e){
+    console.error(e);
+    toast('Save failed: '+e.message,'err');
+    btn.disabled=false; btn.textContent='Save all to dashboard';
+  }
+}
+
+/* ────────────────────────────────────────────────
+   THEME
+──────────────────────────────────────────────── */
+function toggleTheme(){
+  const cur=document.documentElement.getAttribute('data-theme');
+  const next=cur==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',next);
+  localStorage.setItem('theme',next);
+}
+(function(){
+  const t=localStorage.getItem('theme');
+  if(t) document.documentElement.setAttribute('data-theme',t);
+})();
+
+/* ────────────────────────────────────────────────
+   TOAST
+──────────────────────────────────────────────── */
+function toast(msg,type='ok'){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='toast '+type+' show';
+  setTimeout(()=>el.className='toast '+type,3000);
+}
+</script>
+</body>
+</html>
