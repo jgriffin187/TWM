@@ -876,6 +876,31 @@ async function fetchPrices() {
     .model-selector select{font-size:14px;padding:8px 32px 8px 12px;border:1px solid var(--border-mid);border-radius:10px;background:var(--surface);color:var(--text);cursor:pointer;font-family:'Inter',sans-serif;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B6A65' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;transition:background .2s,border-color .2s,color .2s;}
 
     /* ── Cyber-glass table ── */
+    /* ── Category section tints ── */
+    .cat-row-Cash         td{background:rgba(148,163,184,0.06)!important;}
+    .cat-row-Blended      td{background:rgba(251,146,60, 0.06)!important;}
+    .cat-row-FixedIncome  td{background:rgba(52,211,153, 0.07)!important;}
+    .cat-row-Equities     td{background:rgba(56,189,248, 0.07)!important;}
+    .cat-row-Alternatives td{background:rgba(167,139,250,0.07)!important;}
+    [data-theme="dark"] .cat-row-Cash         td{background:rgba(148,163,184,0.05)!important;}
+    [data-theme="dark"] .cat-row-Blended      td{background:rgba(251,146,60, 0.05)!important;}
+    [data-theme="dark"] .cat-row-FixedIncome  td{background:rgba(52,211,153, 0.06)!important;}
+    [data-theme="dark"] .cat-row-Equities     td{background:rgba(56,189,248, 0.06)!important;}
+    [data-theme="dark"] .cat-row-Alternatives td{background:rgba(167,139,250,0.06)!important;}
+    /* Subtotal rows tinted slightly stronger */
+    .cat-subtotal-Cash         td{background:rgba(148,163,184,0.12)!important;color:var(--text-2);}
+    .cat-subtotal-Blended      td{background:rgba(251,146,60, 0.12)!important;color:var(--text-2);}
+    .cat-subtotal-FixedIncome  td{background:rgba(52,211,153, 0.13)!important;color:var(--text-2);}
+    .cat-subtotal-Equities     td{background:rgba(56,189,248, 0.13)!important;color:var(--text-2);}
+    .cat-subtotal-Alternatives td{background:rgba(167,139,250,0.13)!important;color:var(--text-2);}
+    /* Drag handle */
+    .drag-handle{cursor:grab;color:var(--text-3);opacity:0.40;padding:0 4px;font-size:14px;
+      line-height:1;flex-shrink:0;user-select:none;transition:opacity .15s;}
+    .drag-handle:hover{opacity:0.85;}
+    .cat-drag-header{cursor:grab;user-select:none;}
+    .cat-drag-header:hover .drag-handle{opacity:0.85;}
+    tr.drag-over td{outline:2px solid var(--blue)!important;outline-offset:-1px;}
+    tr.dragging{opacity:0.40;}
     .alloc-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
     .alloc-table-wrap::-webkit-scrollbar{height:4px;}
     .alloc-table-wrap::-webkit-scrollbar-track{background:transparent;}
@@ -2361,11 +2386,47 @@ function catDot(cat){
   return `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${col};${glow}margin-right:6px;flex-shrink:0;vertical-align:middle;"></span>`;
 }
 
+// Persistent category order per prefix (drag to reorder)
+const CAT_ORDER={
+  twm:['Cash','Blended','Fixed Income','Equities','Alternatives'],
+  sri:['Cash','Blended','Fixed Income','Equities','Alternatives'],
+};
+// Persistent fund order per prefix (drag to reorder within category)
+const FUND_ORDER={twm:{},sri:{}};
+
+function catCssKey(cat){ return cat.replace(/\s+/g,''); }
+
 function renderAllocTable(data,model,pfx){
-  const alloc=data.models[model],cats={};
-  data.funds.forEach(f=>{if(!cats[f.category])cats[f.category]=[];cats[f.category].push(f);});
+  const alloc=data.models[model];
+
+  // Build category→funds map respecting FUND_ORDER
+  const catMap={};
+  data.funds.forEach(f=>{
+    if(!catMap[f.category])catMap[f.category]=[];
+    catMap[f.category].push(f);
+  });
+  // Sort funds within each category by FUND_ORDER
+  Object.keys(catMap).forEach(cat=>{
+    const order=FUND_ORDER[pfx][cat];
+    if(order&&order.length){
+      catMap[cat].sort((a,b)=>{
+        const ai=order.indexOf(a.ticker),bi=order.indexOf(b.ticker);
+        if(ai===-1&&bi===-1)return 0;
+        if(ai===-1)return 1;
+        if(bi===-1)return -1;
+        return ai-bi;
+      });
+    }
+  });
+
+  // Sort categories by CAT_ORDER
+  const orderedCats=CAT_ORDER[pfx].filter(c=>catMap[c]).concat(
+    Object.keys(catMap).filter(c=>!CAT_ORDER[pfx].includes(c))
+  );
+
   const thSt='font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;font-family:IBM Plex Mono,monospace;padding:9px 14px;';
   let html=`<thead><tr>
+    <th style="${thSt}text-align:left;width:24px;"></th>
     <th style="${thSt}text-align:left;">Ticker</th>
     <th style="${thSt}text-align:left;">Fund name</th>
     <th style="${thSt}text-align:right;">Expense</th>
@@ -2374,17 +2435,54 @@ function renderAllocTable(data,model,pfx){
     <th style="${thSt}width:110px;"></th>
   </tr></thead><tbody>`;
 
-  const catKeys=Object.keys(cats);
-  catKeys.forEach(cat=>{
-    const funds=cats[cat],catTotal=funds.reduce((a,f)=>a+(alloc[f.ticker]||0),0);
+  orderedCats.forEach(cat=>{
+    const funds=catMap[cat]||[];
+    const catTotal=funds.reduce((a,f)=>a+(alloc[f.ticker]||0),0);
+    const ck=catCssKey(cat);
+    const cyberCat=isDark()?(CYBER_DARK[cat]||CYBER_DARK.Cash):(CYBER_LIGHT[cat]||CYBER_LIGHT.Cash);
+    const dotColor=cyberCat.dot||cyberCat.c1;
+
+    // Category header row (draggable to reorder sections)
+    html+=`<tr class="subtotal cat-drag-header cat-subtotal-${ck}"
+      draggable="true"
+      data-drag-type="cat" data-cat="${cat}" data-pfx="${pfx}"
+      ondragstart="onCatDragStart(event)"
+      ondragover="onCatDragOver(event)"
+      ondrop="onCatDrop(event)"
+      ondragleave="this.classList.remove('drag-over')"
+      ondragend="document.querySelectorAll('tr.dragging,tr.drag-over').forEach(r=>{r.classList.remove('dragging','drag-over');})"
+      >
+      <td colspan="1" style="padding:8px 8px 8px 12px;">
+        <span class="drag-handle" title="Drag to reorder section">⠿</span>
+      </td>
+      <td colspan="3" style="padding:8px 4px;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">
+        <span style="display:inline-flex;align-items:center;gap:6px;">
+          <span style="width:7px;height:7px;border-radius:50%;background:${dotColor};display:inline-block;flex-shrink:0;"></span>
+          ${cat}
+        </span>
+      </td>
+      <td style="text-align:right;padding:8px 14px;font-size:12px;font-family:IBM Plex Mono,monospace;">${pct(catTotal)}</td>
+      <td style="padding:8px 14px;"></td>
+    </tr>`;
+
     funds.forEach(f=>{
       const v=alloc[f.ticker]||0,bw=Math.min(100,(v/0.30)*100).toFixed(1);
-      const safeTicker=f.ticker.replace(/'/g,"\\'");
-      const safePfx=pfx.replace(/'/g,"\\'");
-      const cyberCat=isDark()?(CYBER_DARK[cat]||CYBER_DARK.Cash):(CYBER_LIGHT[cat]||CYBER_LIGHT.Cash);
+      const safeTicker=f.ticker.replace(/'/g,"\'");
+      const safePfx=pfx.replace(/'/g,"\'");
       const barColor=cyberCat.c1;
       const barGlow=isDark()?`box-shadow:0 0 5px ${barColor}80;`:`box-shadow:0 1px 3px ${barColor}50;`;
-      html+=`<tr>
+      html+=`<tr class="cat-row-${ck}"
+        draggable="true"
+        data-drag-type="fund" data-ticker="${f.ticker}" data-cat="${cat}" data-pfx="${pfx}"
+        ondragstart="onFundDragStart(event)"
+        ondragover="onFundDragOver(event)"
+        ondrop="onFundDrop(event)"
+        ondragleave="this.classList.remove('drag-over')"
+        ondragend="document.querySelectorAll('tr.dragging,tr.drag-over').forEach(r=>{r.classList.remove('dragging','drag-over');})"
+        >
+        <td style="padding:10px 4px 10px 12px;">
+          <span class="drag-handle" title="Drag to reorder fund">⠿</span>
+        </td>
         <td style="text-align:left;padding:10px 14px;white-space:nowrap;">
           <span style="display:inline-flex;align-items:center;">
             ${catDot(cat)}<span class="ticker-cell">${f.ticker}</span>
@@ -2395,7 +2493,7 @@ function renderAllocTable(data,model,pfx){
             data-prefix="${pfx}" data-model="${model}" data-ticker="${f.ticker}" data-field="name"
             onblur="onEditBlur(this)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}"
             title="Click to edit fund name"
-            style="font-size:13px;display:inline-block;min-width:80px;max-width:260px;"
+            style="font-size:13px;display:inline-block;min-width:80px;max-width:220px;"
             >${f.name}</span>
         </td>
         <td style="text-align:right;padding:10px 14px;">
@@ -2422,23 +2520,80 @@ function renderAllocTable(data,model,pfx){
         </td>
       </tr>`;
     });
-    html+=`<tr class="subtotal">
-      <td colspan="4" style="text-align:right;padding:8px 14px;">${cat} subtotal</td>
-      <td style="text-align:right;padding:8px 14px;">${pct(catTotal)}</td>
-      <td style="padding:8px 14px;"></td>
-    </tr>`;
   });
   document.getElementById(pfx+'-alloc-table').innerHTML=html+'</tbody>';
   updateSum(data,model,pfx);
 }
 
-
-function updateSum(data,model,pfx){
-  const s=Object.values(data.models[model]).reduce((a,b)=>a+b,0);
-  const el=document.getElementById(pfx+'-sum-display'),ok=Math.abs(s-1)<0.005;
-  el.className='sum-display '+(ok?'sum-ok':'sum-warn');
-  el.textContent='Total: '+(s*100).toFixed(2)+'%  '+(ok?'✓ balanced':'⚠ does not sum to 100%');
+/* ── Drag-to-reorder: categories ── */
+let _dragCat=null;
+function onCatDragStart(e){
+  _dragCat={cat:e.currentTarget.dataset.cat,pfx:e.currentTarget.dataset.pfx};
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed='move';
 }
+function onCatDragOver(e){
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+  const row=e.currentTarget;
+  if(_dragCat&&row.dataset.dragType==='cat'&&row.dataset.cat!==_dragCat.cat){
+    document.querySelectorAll('tr.drag-over').forEach(r=>r.classList.remove('drag-over'));
+    row.classList.add('drag-over');
+  }
+}
+function onCatDrop(e){
+  e.preventDefault();
+  const target=e.currentTarget;
+  if(!_dragCat||target.dataset.dragType!=='cat') return;
+  const pfx=_dragCat.pfx, fromCat=_dragCat.cat, toCat=target.dataset.cat;
+  if(fromCat===toCat) return;
+  const order=CAT_ORDER[pfx];
+  const fi=order.indexOf(fromCat), ti=order.indexOf(toCat);
+  if(fi>-1&&ti>-1){ order.splice(fi,1); order.splice(ti,0,fromCat); }
+  _dragCat=null;
+  const data=pfx==='twm'?TWM:SRI, model=pfx==='twm'?curTWM:curSRI;
+  renderAllocTable(data,model,pfx);
+}
+
+/* ── Drag-to-reorder: funds within category ── */
+let _dragFund=null;
+function onFundDragStart(e){
+  _dragFund={ticker:e.currentTarget.dataset.ticker,cat:e.currentTarget.dataset.cat,pfx:e.currentTarget.dataset.pfx};
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed='move';
+  e.stopPropagation(); // don't bubble to cat drag
+}
+function onFundDragOver(e){
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+  const row=e.currentTarget;
+  if(_dragFund&&row.dataset.dragType==='fund'&&row.dataset.cat===_dragFund.cat&&row.dataset.ticker!==_dragFund.ticker){
+    document.querySelectorAll('tr.drag-over').forEach(r=>r.classList.remove('drag-over'));
+    row.classList.add('drag-over');
+  }
+}
+function onFundDrop(e){
+  e.preventDefault();
+  e.stopPropagation();
+  const target=e.currentTarget;
+  if(!_dragFund||target.dataset.dragType!=='fund'||target.dataset.cat!==_dragFund.cat) return;
+  const pfx=_dragFund.pfx, cat=_dragFund.cat;
+  const data=pfx==='twm'?TWM:SRI;
+  const funds=data.funds.filter(f=>f.category===cat);
+  // Build / update persistent order for this category
+  if(!FUND_ORDER[pfx][cat]) FUND_ORDER[pfx][cat]=funds.map(f=>f.ticker);
+  const order=FUND_ORDER[pfx][cat];
+  const fromT=_dragFund.ticker, toT=target.dataset.ticker;
+  // Ensure all tickers present
+  funds.forEach(f=>{ if(!order.includes(f.ticker)) order.push(f.ticker); });
+  const fi=order.indexOf(fromT), ti=order.indexOf(toT);
+  if(fi>-1&&ti>-1){ order.splice(fi,1); order.splice(ti,0,fromT); }
+  _dragFund=null;
+  const model=pfx==='twm'?curTWM:curSRI;
+  renderAllocTable(data,model,pfx);
+}
+
+
 
 function onEditBlur(el){
   const v=parseFloat(el.textContent.replace('%','').trim());
