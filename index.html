@@ -1183,14 +1183,37 @@
       </div>
     </div>
 
+    <!-- Step 5: AI Fund Summary (shown after successful lookup) -->
+    <div class="add-modal-section" id="add-ai-section">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;">
+        <span class="fd-ai-badge">AI</span>
+        <span class="add-modal-section-title" style="margin-bottom:0;">Fund Summary</span>
+        <span class="fd-ai-status" id="add-ai-status" style="margin-left:auto;">
+          <span class="fd-ai-status-dot loading"></span>
+          <span id="add-ai-status-text">Generating…</span>
+        </span>
+      </div>
+      <div id="add-ai-body" class="fd-ai-body">
+        <div class="fd-ai-skeleton">
+          <div class="fd-sk-line" style="width:90%"></div>
+          <div class="fd-sk-line" style="width:75%"></div>
+          <div class="fd-sk-line" style="width:83%"></div>
+          <div class="fd-sk-gap"></div>
+          <div class="fd-sk-line" style="width:88%"></div>
+          <div class="fd-sk-line" style="width:62%"></div>
+          <div class="fd-sk-gap"></div>
+          <div class="fd-sk-line" style="width:78%"></div>
+          <div class="fd-sk-line" style="width:55%"></div>
+        </div>
+      </div>
+    </div>
+
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
       <button class="btn-save" id="add-modal-save" onclick="confirmAddFund()" disabled>Add fund</button>
     </div>
   </div>
 </div>
-
-<!-- VERSION CONFIRMATION MODAL -->
 <div class="ver-modal-wrap" id="ver-confirm-modal">
   <div class="ver-modal">
     <h2>Save new version?</h2>
@@ -2804,6 +2827,105 @@ function _setAIBody(ticker, html){
   if(el) el.innerHTML=html;
 }
 
+// AI summary for the Add Fund modal — same DB cache, different target element
+async function _fetchAddAISummary(ticker, fundName){
+  function setAddAIStatus(state, msg){
+    const dot=document.getElementById('add-ai-status')?.querySelector('.fd-ai-status-dot');
+    const txt=document.getElementById('add-ai-status-text');
+    if(dot) dot.className='fd-ai-status-dot '+state;
+    if(txt) txt.textContent=msg;
+  }
+
+  function renderAddAI(html){
+    const el=document.getElementById('add-ai-body');
+    if(el){ el.innerHTML=''; el.insertAdjacentHTML('beforeend',html); }
+  }
+
+  // 1 — In-session memory cache
+  if(_aiSummaryCache[ticker]){
+    renderAddAI(_aiSummaryCache[ticker]);
+    setAddAIStatus('done','Cached');
+    return;
+  }
+
+  setAddAIStatus('loading','Checking database…');
+
+  // 2 — Supabase persistent cache
+  try{
+    const rows=await sbGet(`/rest/v1/fund_summaries?ticker=eq.${encodeURIComponent(ticker)}&select=summary_html,generated_at`);
+    if(rows.length){
+      const ageDays=(Date.now()-new Date(rows[0].generated_at).getTime())/(1000*60*60*24);
+      if(ageDays<AI_SUMMARY_MAX_AGE_DAYS){
+        renderAddAI(rows[0].summary_html);
+        _aiSummaryCache[ticker]=rows[0].summary_html;
+        setAddAIStatus('done','From database');
+        return;
+      }
+    }
+  }catch(e){ console.warn('[AI Add] Supabase read failed:',e.message); }
+
+  // 3 — Generate fresh from API
+  setAddAIStatus('loading','Generating…');
+
+  const prompt=`You are a financial data assistant for Trailhead Wealth Management, a registered investment advisor.
+
+Provide a concise, informative fund summary for ${ticker} (${fundName||ticker}) for use inside a portfolio management dashboard.
+
+Write 3–4 short paragraphs covering:
+1. What the fund is and its investment objective/strategy (1–2 sentences)
+2. Key characteristics: top holdings or sectors, duration if a bond fund, yield if relevant, number of positions
+3. Recent performance context or notable characteristics (1-year, 3-year, or 5-year returns if available)
+4. Risk considerations relevant to an RIA (interest rate sensitivity, credit quality, liquidity, etc.)
+
+STRICT FORMAT RULES:
+- Plain prose paragraphs only. No exceptions.
+- Do NOT use any markdown: no # headers, no ** bold **, no * italic *, no bullets, no numbered lists, no backticks.
+- Do NOT include a title or fund name as a header.
+- Separate paragraphs with a blank line.
+- Keep total response under 200 words.
+- End with just the fund company name on its own line.
+- Be factual and professional — this is for an RIA internal tool.`;
+
+  try{
+    const response=await fetch(AI_WORKER_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-haiku-4-5',max_tokens:800,messages:[{role:'user',content:prompt}]})
+    });
+    const rawText=await response.text();
+    let json;
+    try{ json=JSON.parse(rawText); }
+    catch(e){ throw new Error('JSON parse failed'); }
+    if(!response.ok) throw new Error((json.error?.message||'Worker error')+' ('+response.status+')');
+
+    const text=json.content?.filter(b=>b.type==='text'&&b.text?.trim()).map(b=>b.text.trim()).join('\n\n').trim();
+    if(!text) throw new Error('Empty response');
+
+    const finalEl=document.getElementById('add-ai-body');
+    if(!finalEl){ setAddAIStatus('error','DOM error'); return; }
+
+    _buildAIDOM(finalEl, text);
+    const summaryHtml=finalEl.innerHTML;
+    _aiSummaryCache[ticker]=summaryHtml;
+    setAddAIStatus('done','Ready');
+
+    // Persist to Supabase
+    try{
+      await fetch(SB_URL+'/rest/v1/fund_summaries',{
+        method:'POST',
+        headers:{...getHeaders(),'Prefer':'resolution=merge-duplicates'},
+        body:JSON.stringify({ticker,summary_html:summaryHtml,generated_at:new Date().toISOString(),model:'claude-haiku-4-5'})
+      });
+    }catch(e){ console.warn('[AI Add] Supabase write failed:',e.message); }
+
+  }catch(e){
+    console.error('[AI Add] Failed for',ticker,e);
+    setAddAIStatus('error','Failed');
+    const el=document.getElementById('add-ai-body');
+    if(el) el.innerHTML=`<div style="font-size:12px;color:#94a3b8;">Summary unavailable — ${e.message}.</div>`;
+  }
+}
+
 function _formatAIText(text){
   // Strip markdown that the model sometimes adds despite instructions
   const clean=text
@@ -2909,10 +3031,22 @@ function parseGeoFromYahoo(result){
 }
 
 function resetAddModal(){
-  ['add-details-section','add-geo-section','add-alloc-section'].forEach(id=>{
+  ['add-details-section','add-geo-section','add-alloc-section','add-ai-section'].forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.classList.remove('show');
   });
+  // Reset AI section content back to skeleton
+  const aiBody=document.getElementById('add-ai-body');
+  if(aiBody) aiBody.innerHTML=`<div class="fd-ai-skeleton">
+    <div class="fd-sk-line" style="width:90%"></div><div class="fd-sk-line" style="width:75%"></div>
+    <div class="fd-sk-line" style="width:83%"></div><div class="fd-sk-gap"></div>
+    <div class="fd-sk-line" style="width:88%"></div><div class="fd-sk-line" style="width:62%"></div>
+    <div class="fd-sk-gap"></div><div class="fd-sk-line" style="width:78%"></div>
+    <div class="fd-sk-line" style="width:55%"></div></div>`;
+  const dot=document.getElementById('add-ai-status')?.querySelector('.fd-ai-status-dot');
+  const txt=document.getElementById('add-ai-status-text');
+  if(dot) dot.className='fd-ai-status-dot loading';
+  if(txt) txt.textContent='Generating…';
   document.getElementById('add-modal-save').disabled=true;
   document.getElementById('add-modal-status').textContent='';
   document.getElementById('add-modal-status').className='add-modal-status';
@@ -3093,6 +3227,12 @@ async function lookupFund(){
 
   document.getElementById('add-modal-save').disabled=false;
   document.getElementById('add-name').focus();
+
+  // ── AI summary ──
+  if(AI_WORKER_URL){
+    document.getElementById('add-ai-section').classList.add('show');
+    _fetchAddAISummary(ticker, name);
+  }
 }
 
 function openAddModal(data, model, pfx){
