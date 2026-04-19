@@ -522,11 +522,72 @@
     .compare-grid tr.compare-subtotal td.cell-alloc span{background:none!important;}
     .compare-grid tr.compare-total td{font-size:12px;font-weight:700;font-family:'IBM Plex Mono',monospace;padding:9px 12px;border-top:2px solid rgba(148,163,184,0.20);color:var(--text);}
     .compare-section-hidden{display:none;}
-    .ticker-cell{cursor:pointer;transition:background .15s,color .15s;border-radius:4px;padding:2px 4px;user-select:all;}
-    .ticker-cell:hover{background:rgba(56,189,248,0.12);color:var(--blue);}
-    [data-theme="light"] .ticker-cell:hover{background:rgba(37,99,235,0.10);color:#2563eb;}
-    .ticker-cell.copied{background:rgba(52,211,153,0.18)!important;color:#34d399!important;}
-    [data-theme="light"] .ticker-cell.copied{background:rgba(5,150,105,0.12)!important;color:#059669!important;}
+    .ticker-cell-wrap{display:inline-flex;align-items:center;gap:4px;cursor:pointer;}
+    .ticker-cell{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;letter-spacing:0.04em;color:var(--blue);cursor:pointer;border-radius:4px;padding:2px 5px;transition:background .14s,color .14s;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px;text-decoration-color:transparent;}
+    .ticker-cell:hover{background:rgba(37,99,235,0.09);text-decoration-color:var(--blue);}
+    [data-theme="dark"] .ticker-cell{color:#38bdf8;}
+    [data-theme="dark"] .ticker-cell:hover{background:rgba(56,189,248,0.10);text-decoration-color:#38bdf8;}
+    .ticker-copy-btn{opacity:0;transition:opacity .14s;background:none;border:none;cursor:pointer;padding:2px 3px;border-radius:4px;color:var(--text-3);display:inline-flex;align-items:center;flex-shrink:0;}
+    .ticker-copy-btn:hover{color:var(--blue);background:rgba(37,99,235,0.08);}
+    [data-theme="dark"] .ticker-copy-btn:hover{color:#38bdf8;background:rgba(56,189,248,0.10);}
+    .ticker-cell-wrap:hover .ticker-copy-btn{opacity:1;}
+    .ticker-copy-btn.copied{opacity:1;color:#34d399!important;}
+    [data-theme="light"] .ticker-copy-btn.copied{color:#059669!important;}
+
+    /* ── Fund detail drawer ── */
+    .fund-drawer-overlay{position:fixed;inset:0;z-index:600;pointer-events:none;transition:background .22s;}
+    .fund-drawer-overlay.open{pointer-events:all;background:rgba(0,0,0,0.28);}
+    [data-theme="light"] .fund-drawer-overlay.open{background:rgba(15,23,42,0.18);}
+    .fund-drawer{position:fixed;right:0;top:0;bottom:0;width:380px;max-width:95vw;z-index:601;
+      display:flex;flex-direction:column;
+      transform:translateX(110%);transition:transform .28s cubic-bezier(.4,0,.2,1);
+      box-shadow:-8px 0 40px rgba(0,0,0,0.35);}
+    [data-theme="dark"] .fund-drawer{background:#0f1e35;border-left:1px solid rgba(255,255,255,0.08);}
+    [data-theme="light"] .fund-drawer{background:#fff;border-left:1px solid rgba(203,213,225,0.80);}
+    .fund-drawer.open{transform:translateX(0);}
+    .fund-drawer-header{padding:20px 20px 14px;border-bottom:1px solid rgba(148,163,184,0.12);display:flex;justify-content:space-between;align-items:flex-start;flex-shrink:0;}
+    .fund-drawer-ticker{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;letter-spacing:0.04em;color:var(--blue);}
+    [data-theme="dark"] .fund-drawer-ticker{color:#38bdf8;}
+    .fund-drawer-name{font-size:13px;color:var(--text-2);margin-top:3px;line-height:1.4;max-width:260px;}
+    .fund-drawer-close{background:none;border:none;cursor:pointer;padding:4px;border-radius:6px;color:var(--text-3);transition:background .14s,color .14s;flex-shrink:0;}
+    .fund-drawer-close:hover{background:rgba(148,163,184,0.12);color:var(--text);}
+    .fund-drawer-body{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:14px;}
+    .fund-drawer-body::-webkit-scrollbar{width:4px;}
+    .fund-drawer-body::-webkit-scrollbar-thumb{background:rgba(148,163,184,0.20);border-radius:99px;}
+    .fd-section{border-radius:12px;padding:13px 15px;}
+    [data-theme="dark"] .fd-section{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);}
+    [data-theme="light"] .fd-section{background:rgba(15,23,42,0.03);border:1px solid rgba(15,23,42,0.07);}
+    .fd-section-title{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text-2);margin-bottom:10px;font-family:'IBM Plex Mono',monospace;}
+    .fd-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(148,163,184,0.07);}
+    .fd-row:last-child{border-bottom:none;padding-bottom:0;}
+    .fd-label{font-size:12px;color:var(--text-2);}
+    .fd-value{font-size:13px;font-weight:600;color:var(--text);font-family:'IBM Plex Mono',monospace;}
+    .fd-value.up{color:#16a34a;} [data-theme="dark"] .fd-value.up{color:#4ade80;}
+    .fd-value.dn{color:#dc2626;} [data-theme="dark"] .fd-value.dn{color:#f87171;}
+    .fd-cat-badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:600;}
+    .fd-geo-bar{height:8px;border-radius:99px;overflow:hidden;display:flex;margin-top:6px;}
+    .fd-geo-us{background:#2563eb;} [data-theme="dark"] .fd-geo-us{background:#38bdf8;}
+    .fd-geo-intl{background:#059669;} [data-theme="dark"] .fd-geo-intl{background:#34d399;}
+    .fd-geo-other{background:#94a3b8;}
+    .fd-alloc-model{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(148,163,184,0.06);}
+    .fd-alloc-model:last-child{border-bottom:none;}
+    .fd-alloc-name{font-size:12px;color:var(--text-2);flex:1;}
+    .fd-alloc-bar-wrap{flex:1;height:6px;border-radius:99px;overflow:hidden;margin:0 10px;}
+    [data-theme="dark"] .fd-alloc-bar-wrap{background:rgba(255,255,255,0.06);}
+    [data-theme="light"] .fd-alloc-bar-wrap{background:rgba(15,23,42,0.07);}
+    .fd-alloc-bar{height:100%;border-radius:99px;transition:width .4s cubic-bezier(.4,0,.2,1);}
+    .fd-alloc-pct{font-size:12px;font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--text);min-width:38px;text-align:right;}
+    .fd-alloc-zero{color:var(--text-3)!important;}
+    .fund-drawer-footer{padding:14px 20px;border-top:1px solid rgba(148,163,184,0.10);display:flex;gap:8px;flex-shrink:0;}
+    .fd-footer-btn{flex:1;padding:9px;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border-mid);background:var(--surface);color:var(--text-2);font-family:'Inter',sans-serif;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px;}
+    .fd-footer-btn:hover{border-color:var(--blue);color:var(--blue);}
+    [data-theme="dark"] .fd-footer-btn:hover{border-color:#38bdf8;color:#38bdf8;}
+    .fd-footer-btn.primary{background:var(--blue);color:#fff;border-color:var(--blue);}
+    [data-theme="dark"] .fd-footer-btn.primary{background:#38bdf8;color:#0a1628;}
+    .fd-footer-btn.primary:hover{opacity:0.88;}
+    .fd-loading{text-align:center;padding:30px 0;color:var(--text-3);font-size:13px;}
+    @keyframes fd-spin{to{transform:rotate(360deg)}}
+    .fd-spinner{width:18px;height:18px;border:2px solid rgba(148,163,184,0.20);border-top-color:var(--blue);border-radius:50%;animation:fd-spin .7s linear infinite;margin:0 auto 10px;}
     .alloc-table-wrap::-webkit-scrollbar{height:4px;}
     .alloc-table-wrap::-webkit-scrollbar-track{background:transparent;}
     .alloc-table-wrap::-webkit-scrollbar-thumb{background:rgba(148,163,184,0.25);border-radius:99px;}
@@ -2231,7 +2292,12 @@ function renderAllocTable(data,model,pfx){
         </td>
         <td style="text-align:left;padding:10px 14px;white-space:nowrap;">
           <span style="display:inline-flex;align-items:center;">
-            ${catDot(cat)}<span class="ticker-cell" title="Double-click to copy ticker" ondblclick="copyTicker(this,'${f.ticker}')">${f.ticker}</span>
+            ${catDot(cat)}<span class="ticker-cell-wrap">
+              <span class="ticker-cell" title="Click to view fund details" onclick="openFundDrawer('${f.ticker}')">${f.ticker}</span>
+              <button class="ticker-copy-btn" title="Copy ticker" onclick="event.stopPropagation();fdInlineCopy(this,'${f.ticker}')">
+                <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
+            </span>
           </span>
         </td>
         <td style="text-align:left;padding:10px 14px;">
@@ -2350,17 +2416,138 @@ function onFundDrop(e){
 
 
 
-function copyTicker(el, ticker){
+// ── Inline copy button (little clipboard icon next to ticker) ──
+function fdInlineCopy(btn, ticker){
   navigator.clipboard&&navigator.clipboard.writeText(ticker).then(()=>{
-    el.classList.add('copied');
-    const orig=el.textContent;
-    el.textContent='✓ copied';
-    setTimeout(()=>{ el.classList.remove('copied'); el.textContent=orig; },1200);
-  }).catch(()=>{
-    // fallback: select text so user can manually Ctrl+C
-    const sel=window.getSelection(), r=document.createRange();
-    r.selectNodeContents(el); sel.removeAllRanges(); sel.addRange(r);
+    btn.classList.add('copied');
+    setTimeout(()=>btn.classList.remove('copied'), 1400);
+  }).catch(()=>{});
+}
+
+// ── Fund detail drawer ──
+let _fdTicker=null;
+
+function openFundDrawer(ticker){
+  _fdTicker=ticker;
+  // Find fund object across both families
+  const fund=[...TWM.funds,...SRI.funds].find(f=>f.ticker===ticker);
+  document.getElementById('fd-ticker').textContent=ticker;
+  document.getElementById('fd-name').textContent=fund?.name||'';
+  document.getElementById('fd-body').innerHTML='<div class="fd-loading"><div class="fd-spinner"></div>Loading…</div>';
+  document.getElementById('fund-drawer-overlay').classList.add('open');
+  document.getElementById('fund-drawer').classList.add('open');
+  document.addEventListener('keydown', _fdEsc);
+  // Populate immediately with cached data, then try to enrich async
+  _renderFundDrawer(ticker, fund, false);
+}
+
+function closeFundDrawer(){
+  document.getElementById('fund-drawer-overlay').classList.remove('open');
+  document.getElementById('fund-drawer').classList.remove('open');
+  document.removeEventListener('keydown', _fdEsc);
+  _fdTicker=null;
+}
+function _fdEsc(e){ if(e.key==='Escape') closeFundDrawer(); }
+
+function fdCopyTicker(){
+  if(!_fdTicker) return;
+  const btn=document.getElementById('fd-copy-btn');
+  navigator.clipboard&&navigator.clipboard.writeText(_fdTicker).then(()=>{
+    btn.textContent='✓ Copied!';
+    setTimeout(()=>{ btn.innerHTML=`<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy ticker`; }, 1500);
   });
+}
+function fdOpenYahoo(){ if(_fdTicker) window.open('https://finance.yahoo.com/quote/'+_fdTicker,'_blank'); }
+function fdOpenMorningstar(){ if(_fdTicker) window.open('https://www.morningstar.com/search?query='+_fdTicker,'_blank'); }
+
+function _renderFundDrawer(ticker, fund, _unused){
+  const dk=isDark();
+  const q=priceMap[ticker];
+  const beta=betaMap[ticker];
+  const geo=GEO_MAP[ticker];
+
+  // Category color
+  const cat=fund?.category||'—';
+  const cyberCat=dk?(CYBER_DARK[cat]||CYBER_DARK.Cash):(CYBER_LIGHT[cat]||CYBER_LIGHT.Cash);
+  const catColor=cyberCat.dot||cyberCat.c1;
+
+  // Which families contain this fund
+  const inTWM=TWM.funds.some(f=>f.ticker===ticker);
+  const inSRI=SRI.funds.some(f=>f.ticker===ticker);
+  const families=(inTWM&&inSRI)?['TWM','SRI']:inTWM?['TWM']:['SRI'];
+
+  let html='';
+
+  // ── Price & performance ──
+  html+=`<div class="fd-section">
+    <div class="fd-section-title">Price &amp; Performance</div>`;
+  if(q){
+    const chg=q.changePct;
+    const chgCls=chg==null?'':(chg>=0?'up':'dn');
+    const chgStr=chg==null?'—':(chg>=0?'+':'')+Number(chg).toFixed(2)+'%';
+    const ytd=q.ytdReturn;
+    const ytdCls=ytd==null?'':(ytd>=0?'up':'dn');
+    const ytdStr=ytd!=null?(ytd>=0?'+':'')+Number(ytd).toFixed(2)+'%':'—';
+    html+=`
+      <div class="fd-row"><span class="fd-label">Last price</span><span class="fd-value">$${Number(q.price).toFixed(2)}</span></div>
+      <div class="fd-row"><span class="fd-label">Day change</span><span class="fd-value ${chgCls}">${chgStr}</span></div>
+      <div class="fd-row"><span class="fd-label">YTD return</span><span class="fd-value ${ytdCls}">${ytdStr}</span></div>
+      <div class="fd-row"><span class="fd-label">Price date</span><span class="fd-value" style="font-size:11px;">${CACHE_DATE}</span></div>`;
+  } else {
+    html+=`<div style="font-size:12px;color:var(--text-3);padding:6px 0;">No price data loaded — click Refresh prices.</div>`;
+  }
+  html+=`</div>`;
+
+  // ── Fund details ──
+  html+=`<div class="fd-section">
+    <div class="fd-section-title">Fund Details</div>
+    <div class="fd-row">
+      <span class="fd-label">Category</span>
+      <span class="fd-cat-badge" style="background:${catColor}18;color:${catColor};border:1px solid ${catColor}30;">${cat}</span>
+    </div>
+    <div class="fd-row"><span class="fd-label">Expense ratio</span><span class="fd-value">${fund?((fund.expense||0)*100).toFixed(2)+'%':'—'}</span></div>
+    <div class="fd-row"><span class="fd-label">Beta (vs S&amp;P 500)</span><span class="fd-value">${beta!=null?Number(beta).toFixed(2):'—'}</span></div>
+    <div class="fd-row"><span class="fd-label">Family</span><span class="fd-value" style="font-size:12px;">${families.join(' &amp; ')}</span></div>
+  </div>`;
+
+  // ── Geographic exposure ──
+  if(geo){
+    const usP=(geo.us*100).toFixed(1);
+    const intlP=(geo.intl*100).toFixed(1);
+    const otherP=(geo.other*100).toFixed(1);
+    html+=`<div class="fd-section">
+      <div class="fd-section-title">Geographic Exposure</div>
+      <div class="fd-geo-bar" style="margin-bottom:10px;">
+        <div class="fd-geo-us" style="width:${usP}%;"></div>
+        <div class="fd-geo-intl" style="width:${intlP}%;"></div>
+        <div class="fd-geo-other" style="width:${otherP}%;"></div>
+      </div>
+      <div class="fd-row"><span class="fd-label">🇺🇸 U.S.</span><span class="fd-value">${usP}%</span></div>
+      <div class="fd-row"><span class="fd-label">🌍 Non-U.S.</span><span class="fd-value">${intlP}%</span></div>
+      ${parseFloat(otherP)>0.1?`<div class="fd-row"><span class="fd-label">Other</span><span class="fd-value">${otherP}%</span></div>`:''}
+    </div>`;
+  }
+
+  // ── Allocation across all models ──
+  const allModels=[];
+  if(inTWM) TWM_MODEL_NAMES.forEach(m=>allModels.push({label:m,family:'TWM',v:TWM.models[m]?.[ticker]||0,color:dk?'#38bdf8':'#2563eb'}));
+  if(inSRI) SRI_MODEL_NAMES.forEach(m=>allModels.push({label:m,family:'SRI',v:SRI.models[m]?.[ticker]||0,color:dk?'#a78bfa':'#7c3aed'}));
+  const maxAlloc=Math.max(...allModels.map(x=>x.v), 0.001);
+
+  html+=`<div class="fd-section">
+    <div class="fd-section-title">Allocation by Model</div>`;
+  allModels.forEach(({label,v,color})=>{
+    const barW=Math.min(100,(v/maxAlloc)*100).toFixed(1);
+    const pctStr=v>0?(v*100).toFixed(1)+'%':'—';
+    html+=`<div class="fd-alloc-model">
+      <span class="fd-alloc-name">${label}</span>
+      <div class="fd-alloc-bar-wrap"><div class="fd-alloc-bar" style="width:${v>0?barW+'%':'0%'};background:${color};"></div></div>
+      <span class="fd-alloc-pct ${v<=0?'fd-alloc-zero':''}">${pctStr}</span>
+    </div>`;
+  });
+  html+=`</div>`;
+
+  document.getElementById('fd-body').innerHTML=html;
 }
 
 function updateSum(data,model,pfx){
@@ -3359,7 +3546,12 @@ function renderCompareGrid(pfx){
 
       html+=`<tr class="cat-row-${ck}">
         <td class="cell-ticker" style="text-align:left;padding:8px 10px;white-space:nowrap;">
-          <span style="display:inline-flex;align-items:center;">${catDot(cat)}<span class="ticker-cell" title="Double-click to copy" ondblclick="copyTicker(this,'${f.ticker}')">${f.ticker}</span></span>
+          <span style="display:inline-flex;align-items:center;">${catDot(cat)}<span class="ticker-cell-wrap">
+            <span class="ticker-cell" title="Click to view fund details" onclick="openFundDrawer('${f.ticker}')">${f.ticker}</span>
+            <button class="ticker-copy-btn" title="Copy ticker" onclick="event.stopPropagation();fdInlineCopy(this,'${f.ticker}')">
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </button>
+          </span></span>
         </td>
         <td class="cell-fund" style="text-align:left;padding:8px 10px;font-size:12px;color:var(--text);">${f.name}</td>
         <td style="text-align:right;padding:8px 10px;font-size:12px;font-family:'IBM Plex Mono',monospace;color:var(--text-2);">${((f.expense||0)*100).toFixed(2)}%</td>
@@ -4536,5 +4728,36 @@ async function fetchPrices() {
     </div>
   </div>
 </div>
+<!-- Fund detail drawer -->
+<div class="fund-drawer-overlay" id="fund-drawer-overlay" onclick="closeFundDrawer()"></div>
+<div class="fund-drawer" id="fund-drawer">
+  <div class="fund-drawer-header">
+    <div>
+      <div class="fund-drawer-ticker" id="fd-ticker">—</div>
+      <div class="fund-drawer-name" id="fd-name"></div>
+    </div>
+    <button class="fund-drawer-close" onclick="closeFundDrawer()" title="Close">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="fund-drawer-body" id="fd-body">
+    <div class="fd-loading"><div class="fd-spinner"></div>Loading…</div>
+  </div>
+  <div class="fund-drawer-footer">
+    <button class="fd-footer-btn" id="fd-copy-btn" onclick="fdCopyTicker()">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      Copy ticker
+    </button>
+    <button class="fd-footer-btn" id="fd-yahoo-btn" onclick="fdOpenYahoo()" title="Open in Yahoo Finance">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      Yahoo Finance
+    </button>
+    <button class="fd-footer-btn" id="fd-mstar-btn" onclick="fdOpenMorningstar()" title="Open in Morningstar">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      Morningstar
+    </button>
+  </div>
+</div>
+
 </body>
 </html>
