@@ -10,6 +10,7 @@
   <meta name="apple-mobile-web-app-title" content="TWM Models" />
   <meta name="theme-color" content="#0a1628" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, must-revalidate" />
   <title>Trailhead Model Allocations</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -2772,20 +2773,22 @@ function _setAIBody(ticker, html){
 function _formatAIText(text){
   // Strip markdown that the model sometimes adds despite instructions
   const clean=text
-    .replace(/^#{1,6}\s+/gm,'')        // # headers
+    .replace(/^#{1,6}\s+.*$/gm,'')      // remove entire # header lines
     .replace(/\*\*(.+?)\*\*/g,'$1')     // **bold**
     .replace(/\*(.+?)\*/g,'$1')         // *italic*
     .replace(/^[-*•]\s+/gm,'')          // bullet points
     .replace(/^\d+\.\s+/gm,'')          // numbered lists
     .replace(/`(.+?)`/g,'$1')           // `code`
+    .replace(/\n{3,}/g,'\n\n')          // collapse excess blank lines
     .trim();
-  // Handle both single and double newlines as paragraph breaks
+  const dk=isDark();
+  const textColor=dk?'#e2e8f0':'#1e293b';
   const hasDblNewline=/\n\n/.test(clean);
   return clean
     .split(hasDblNewline?/\n{2,}/:/\n/)
     .map(p=>p.trim())
-    .filter(Boolean)
-    .map(p=>`<p style="margin:0 0 8px;font-size:12px;line-height:1.7;color:var(--text);font-family:'Inter',sans-serif;">${p.replace(/\n/g,' ')}</p>`)
+    .filter(p=>p.length>2)  // skip empty or near-empty lines left by header removal
+    .map(p=>`<p style="margin:0 0 9px;font-size:12px;line-height:1.75;color:${textColor};font-family:'Inter',sans-serif;">${p.replace(/\n/g,' ')}</p>`)
     .join('');
 }
 
