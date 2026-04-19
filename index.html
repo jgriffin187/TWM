@@ -220,32 +220,12 @@ async function fetchPrices() {
 };
 
 </script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js">
-/* ── About modal ── */
-function openAboutModal(){
-  document.getElementById('about-overlay').classList.add('open');
-  document.addEventListener('keydown',_aboutEsc);
-  switchAboutSection('sources');
-}
-function closeAboutModal(){
-  document.getElementById('about-overlay').classList.remove('open');
-  document.removeEventListener('keydown',_aboutEsc);
-}
-function _aboutEsc(e){ if(e.key==='Escape') closeAboutModal(); }
-
-function switchAboutSection(id){
-  document.querySelectorAll('.about-nav-item').forEach(el=>el.classList.toggle('active',el.dataset.section===id));
-  const content=document.getElementById('about-content');
-  content.scrollTop=0;
-  content.innerHTML=ABOUT_SECTIONS[id]||'';
-}
-
-function aboutSectionLabel(text){
-  return `<div class="about-section-label">${text}</div>`;
-}
-function aboutTableRow(key,val){
-  return `<div class="about-table-row"><span class="about-table-key">${key}</span><span class="about-table-val">${val}</span></div>`;
-}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script>
+  /* ── About modal placeholder (full implementation below in main script) ── */
+  
+  
 function aboutFormula(label,math,note){
   return `<div class="about-formula">
     <div class="about-formula-label">${label}</div>
@@ -770,6 +750,8 @@ async function fetchPrices() {
     .metrics-top{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:10px;}
     /* metrics-cmp: cyber-glass comparison tiles */
     .metrics-cmp{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:1.5rem;}
+    .cyber-tile.tile-drag-over,.cmp-tile.tile-drag-over{outline:2px solid var(--blue);outline-offset:2px;opacity:0.8;}
+    .cyber-tile.tile-dragging,.cmp-tile.tile-dragging{opacity:0.35;}
     .cmp-tile{border-radius:18px;overflow:hidden;position:relative;cursor:default;
       backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
       transition:transform .22s cubic-bezier(.34,1.56,.64,1),box-shadow .22s ease,border-color .22s ease;
@@ -905,6 +887,11 @@ async function fetchPrices() {
     tr.drag-over td{outline:2px solid var(--blue)!important;outline-offset:-1px;}
     tr.dragging{opacity:0.40;}
     .alloc-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+    .ticker-cell{cursor:pointer;transition:background .15s,color .15s;border-radius:4px;padding:2px 4px;user-select:all;}
+    .ticker-cell:hover{background:rgba(56,189,248,0.12);color:var(--blue);}
+    [data-theme="light"] .ticker-cell:hover{background:rgba(37,99,235,0.10);color:#2563eb;}
+    .ticker-cell.copied{background:rgba(52,211,153,0.18)!important;color:#34d399!important;}
+    [data-theme="light"] .ticker-cell.copied{background:rgba(5,150,105,0.12)!important;color:#059669!important;}
     .alloc-table-wrap::-webkit-scrollbar{height:4px;}
     .alloc-table-wrap::-webkit-scrollbar-track{background:transparent;}
     .alloc-table-wrap::-webkit-scrollbar-thumb{background:rgba(148,163,184,0.25);border-radius:99px;}
@@ -1155,6 +1142,16 @@ async function fetchPrices() {
       </svg>
       <span style="font-size:9px;font-weight:700;font-family:'IBM Plex Mono',monospace;letter-spacing:0.04em;line-height:1;margin-left:2px;">PDF</span>
     </button>
+    <!-- Excel export button -->
+    <button class="pdf-btn" id="xlsx-btn" onclick="exportExcel()" title="Export as Excel" style="display:none;">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="12" y1="11" x2="12" y2="17"/>
+        <polyline points="9 14 12 17 15 14"/>
+      </svg>
+      <span style="font-size:9px;font-weight:700;font-family:'IBM Plex Mono',monospace;letter-spacing:0.04em;line-height:1;margin-left:2px;">XLS</span>
+    </button>
     <!-- Theme toggle -->
     <button class="theme-toggle" onclick="toggleTheme()" title="Switch to dark mode" id="theme-toggle-btn" aria-label="Toggle theme">
       <!-- Moon icon: shown in light mode (click to go dark). Filled crescent. -->
@@ -1389,8 +1386,8 @@ async function fetchPrices() {
           </select>
         </div>
         <div class="add-modal-field">
-          <label>Expense ratio %</label>
-          <input type="number" id="add-expense" placeholder="e.g. 0.35" step="0.01" min="0" max="5" />
+          <label>Expense ratio % <span style="font-size:11px;color:var(--text-3);">(full %, e.g. 1.25)</span></label>
+          <input type="number" id="add-expense" placeholder="e.g. 1.25" step="0.01" min="0" max="20" />
         </div>
       </div>
     </div>
@@ -1575,6 +1572,7 @@ function onLoginSuccess(){
   document.getElementById('user-menu-email').textContent=email;
   document.getElementById('user-menu-wrap').classList.add('visible');
   document.getElementById('pdf-btn').style.display='';
+  document.getElementById('xlsx-btn').style.display='';
   // Boot the dashboard
   checkConnection().then(()=>{ fetchPrices(); fetchBetas(); fetchDowYtd(); loadGeoData(); });
 }
@@ -1588,6 +1586,7 @@ function doLogout(){
   ls.style.display='flex'; ls.classList.remove('hidden');
   document.getElementById('user-menu-wrap').classList.remove('visible');
   document.getElementById('pdf-btn').style.display='none';
+  document.getElementById('xlsx-btn').style.display='none';
   closeUserMenu();
   document.getElementById('login-email').value='';
   document.getElementById('login-password').value='';
@@ -2211,7 +2210,7 @@ const TILE_CFG={
   },
 };
 
-function renderCyberTile(cfg, valueRaw, maxPct){
+function renderCyberTile(cfg, valueRaw, maxPct, dragType, dragKey){
   const dk=isDark();
   const accent=dk?cfg.darkAccent:cfg.lightAccent;
   const wash=dk?cfg.darkWash:cfg.lightWash;
@@ -2222,8 +2221,12 @@ function renderCyberTile(cfg, valueRaw, maxPct){
   const hoverColor=dk?cfg.darkHover:cfg.lightHover;
   const barW=Math.min(100,(valueRaw*100)).toFixed(1)+'%';
   const valStr=pct(valueRaw);
+  const dragAttrs=dragType&&dragKey
+    ?`draggable="true" ondragstart="onTileDragStart(event,'${dragType}','${dragKey}')" ondragover="onTileDragOver(event,'${dragType}','${dragKey}')" ondrop="onTileDrop(event,'${dragType}','${dragKey}')" ondragend="onTileDragEnd()" ondragleave="this.classList.remove('tile-drag-over')" title="Drag to reorder"`
+    :'';
 
-  return `<div class="cyber-tile"
+  return `<div class="cyber-tile" ${dragAttrs}
+    style="cursor:${dragType?'grab':'default'};"
     onmouseenter="this.style.borderColor='${accent}40';this.querySelector('.cyber-tile-bar-fill').style.boxShadow='${barGlow}';${dk?'this.style.boxShadow=\'0 0 24px '+hoverColor+',0 2px 8px rgba(0,0,0,0.4)\'':''}"
     onmouseleave="this.style.borderColor='';this.querySelector('.cyber-tile-bar-fill').style.boxShadow='';${dk?'this.style.boxShadow=\'\'':''}"
     >
@@ -2278,7 +2281,7 @@ function cmpSentiment(good){
   };
 }
 
-function renderCmpTile(label,valueStr,cmpStr,sentiment,barPct,tooltipText){
+function renderCmpTile(label,valueStr,cmpStr,sentiment,barPct,tooltipText,dragType,dragKey){
   const good=sentiment==='good';
   const neutral=sentiment==='neutral';
   const tok=cmpSentiment(neutral?true:good); // neutral uses loading state
@@ -2296,8 +2299,12 @@ function renderCmpTile(label,valueStr,cmpStr,sentiment,barPct,tooltipText){
   const inset=neutral?'none':tok.insetShadow;
   const wash=neutral?'transparent':tok.accentFaint;
 
-  return `<div class="cmp-tile"
-    style="background:${cardBg};border:1px solid ${tok.borderBase};box-shadow:${baseShadow};"
+  const dragAttrs=dragType&&dragKey
+    ?`draggable="true" ondragstart="onTileDragStart(event,'${dragType}','${dragKey}')" ondragover="onTileDragOver(event,'${dragType}','${dragKey}')" ondrop="onTileDrop(event,'${dragType}','${dragKey}')" ondragend="onTileDragEnd()" ondragleave="this.classList.remove('tile-drag-over')" title="Drag to reorder"`
+    :'';
+
+  return `<div class="cmp-tile" ${dragAttrs}
+    style="background:${cardBg};border:1px solid ${tok.borderBase};box-shadow:${baseShadow};${dragType?'cursor:grab;':''}"
     onmouseenter="
       this.style.borderColor='${neutral?tok.borderBase:hoverBorder}';
       this.style.boxShadow='${neutral?baseShadow:hoverGlow}';
@@ -2354,11 +2361,15 @@ function renderMetrics(data,model,pfx){
     ?(dowYtd!=null?'DOW YTD: '+dowStr+' (portfolio loading…)':'Fetching DOW data…')
     :(ytdVsDow>=0?'+':'')+ytdVsDow.toFixed(2)+'% vs DOW ('+dowStr+')';
 
+  // Build ordered tile row from CARD_ORDER.tile
+  const TILE_MAP={
+    equities:    ()=>renderCyberTile(TILE_CFG.equities,    s.equities,    0.80,'tile','equities'),
+    fixedIncome: ()=>renderCyberTile(TILE_CFG.fixedIncome, s.fixedIncome, 0.80,'tile','fixedIncome'),
+    cash:        ()=>renderCyberTile(TILE_CFG.cash,        s.cash,        0.30,'tile','cash'),
+    alternatives:()=>renderCyberTile(TILE_CFG.alternatives,s.alternatives,0.30,'tile','alternatives'),
+  };
   document.getElementById(pfx+'-metrics-top').innerHTML=
-    renderCyberTile(TILE_CFG.equities,    s.equities,    0.80) +
-    renderCyberTile(TILE_CFG.fixedIncome, s.fixedIncome, 0.80) +
-    renderCyberTile(TILE_CFG.cash,        s.cash,        0.30) +
-    renderCyberTile(TILE_CFG.alternatives,s.alternatives,0.30);
+    CARD_ORDER.tile.map(k=>TILE_MAP[k]?TILE_MAP[k]():'').join('');
 
   // Sentiment: beta — good if below market (beta < 1)
   const betaSentiment=betaDiff===null?'neutral':betaDiff<0?'good':'bad';
@@ -2373,19 +2384,16 @@ function renderMetrics(data,model,pfx){
   const ytdSentiment=ytdVsDow===null?'neutral':ytdVsDow>=0?'good':'bad';
   const ytdBar=portYtd!=null?Math.min(100,Math.max(0,50+portYtd*5)).toFixed(0):'50';
 
+  const CMP_MAP={
+    beta: ()=>renderCmpTile('Portfolio beta', betaStr, betaDiffStr, betaSentiment, betaBar,
+      'Beta measures how much this portfolio moves relative to the S&P 500. Beta of 1.0 = moves with the market. Below 1.0 = less volatile. Calculated as a weighted average of each fund.','cmp','beta'),
+    expense: ()=>renderCmpTile('Wtd. expense', expStr, expDiffStr, expSentiment, expBar,
+      'Weighted expense ratio is the blended annual cost of the portfolio. Compared to SPY at 0.09%. Lower is better — every 0.10% costs $100/yr per $100k invested.','cmp','expense'),
+    ytd: ()=>renderCmpTile('YTD vs DOW', ytdStr, ytdDiffStr, ytdSentiment, ytdBar,
+      'Year-to-date return of this portfolio vs. the Dow Jones Industrial Average. Green = outperforming the DOW, red = underperforming. Load prices to populate.','cmp','ytd'),
+  };
   document.getElementById(pfx+'-metrics-cmp').innerHTML=
-    renderCmpTile(
-      'Portfolio beta', betaStr, betaDiffStr, betaSentiment, betaBar,
-      'Beta measures how much this portfolio moves relative to the S&P 500. Beta of 1.0 = moves with the market. Below 1.0 = less volatile. Calculated as a weighted average of each fund.'
-    )+
-    renderCmpTile(
-      'Wtd. expense', expStr, expDiffStr, expSentiment, expBar,
-      'Weighted expense ratio is the blended annual cost of the portfolio. Compared to SPY at 0.09%. Lower is better — every 0.10% costs $100/yr per $100k invested.'
-    )+
-    renderCmpTile(
-      'YTD vs DOW', ytdStr, ytdDiffStr, ytdSentiment, ytdBar,
-      'Year-to-date return of this portfolio vs. the Dow Jones Industrial Average. Green = outperforming the DOW, red = underperforming. Load prices to populate.'
-    );
+    CARD_ORDER.cmp.map(k=>CMP_MAP[k]?CMP_MAP[k]():'').join('');
 }
 
 function catDot(cat){
@@ -2408,6 +2416,60 @@ function catDot(cat){
 const CAT_ORDER={twm:{},sri:{}};
 const FUND_ORDER={twm:{},sri:{}};
 const DEFAULT_CAT_ORDER=['Cash','Blended','Fixed Income','Equities','Alternatives'];
+
+// ── Card row ordering ──
+// TILE_ORDER: order of the 4 category tiles (equities/fixedIncome/cash/alternatives)
+// CMP_ORDER:  order of the 3 comparison tiles (beta/expense/ytd)
+const DEFAULT_TILE_ORDER=['equities','fixedIncome','cash','alternatives'];
+const DEFAULT_CMP_ORDER=['beta','expense','ytd'];
+const CARD_ORDER={tile:[...DEFAULT_TILE_ORDER], cmp:[...DEFAULT_CMP_ORDER]};
+
+// Save/restore card order alongside snapshots
+function saveCardOrder(){
+  try{ localStorage.setItem('twm_card_order',JSON.stringify(CARD_ORDER)); }catch(e){}
+}
+function loadCardOrder(){
+  try{
+    const saved=localStorage.getItem('twm_card_order');
+    if(saved){
+      const o=JSON.parse(saved);
+      if(o.tile&&o.tile.length===4) CARD_ORDER.tile=[...o.tile];
+      if(o.cmp&&o.cmp.length===3) CARD_ORDER.cmp=[...o.cmp];
+    }
+  }catch(e){}
+}
+loadCardOrder();
+
+// Drag state for tiles
+let _tilesDrag=null;
+function onTileDragStart(e,type,key){
+  _tilesDrag={type,key};
+  e.currentTarget.classList.add('tile-dragging');
+  e.dataTransfer.effectAllowed='move';
+}
+function onTileDragOver(e,type,key){
+  if(!_tilesDrag||_tilesDrag.type!==type||_tilesDrag.key===key) return;
+  e.preventDefault();
+  document.querySelectorAll('.tile-drag-over').forEach(el=>el.classList.remove('tile-drag-over'));
+  e.currentTarget.classList.add('tile-drag-over');
+}
+function onTileDrop(e,type,key){
+  e.preventDefault();
+  if(!_tilesDrag||_tilesDrag.type!==type) return;
+  const arr=type==='tile'?CARD_ORDER.tile:CARD_ORDER.cmp;
+  const fi=arr.indexOf(_tilesDrag.key), ti=arr.indexOf(key);
+  if(fi>-1&&ti>-1&&fi!==ti){ arr.splice(fi,1); arr.splice(ti,0,_tilesDrag.key); }
+  _tilesDrag=null;
+  document.querySelectorAll('.tile-dragging,.tile-drag-over').forEach(el=>el.classList.remove('tile-dragging','tile-drag-over'));
+  saveCardOrder();
+  renderMetrics(TWM,curTWM,'twm');
+  renderMetrics(SRI,curSRI,'sri');
+  toast('Card order saved');
+}
+function onTileDragEnd(){
+  _tilesDrag=null;
+  document.querySelectorAll('.tile-dragging,.tile-drag-over').forEach(el=>el.classList.remove('tile-dragging','tile-drag-over'));
+}
 
 function getModelCatOrder(pfx,model){
   if(!CAT_ORDER[pfx][model]) CAT_ORDER[pfx][model]=[...DEFAULT_CAT_ORDER];
@@ -2508,7 +2570,7 @@ function renderAllocTable(data,model,pfx){
         </td>
         <td style="text-align:left;padding:10px 14px;white-space:nowrap;">
           <span style="display:inline-flex;align-items:center;">
-            ${catDot(cat)}<span class="ticker-cell">${f.ticker}</span>
+            ${catDot(cat)}<span class="ticker-cell" title="Double-click to copy ticker" ondblclick="copyTicker(this,'${f.ticker}')">${f.ticker}</span>
           </span>
         </td>
         <td style="text-align:left;padding:10px 14px;">
@@ -2626,6 +2688,19 @@ function onFundDrop(e){
 }
 
 
+
+function copyTicker(el, ticker){
+  navigator.clipboard&&navigator.clipboard.writeText(ticker).then(()=>{
+    el.classList.add('copied');
+    const orig=el.textContent;
+    el.textContent='✓ copied';
+    setTimeout(()=>{ el.classList.remove('copied'); el.textContent=orig; },1200);
+  }).catch(()=>{
+    // fallback: select text so user can manually Ctrl+C
+    const sel=window.getSelection(), r=document.createRange();
+    r.selectNodeContents(el); sel.removeAllRanges(); sel.addRange(r);
+  });
+}
 
 function updateSum(data,model,pfx){
   const s=Object.values(data.models[model]).reduce((a,b)=>a+b,0);
@@ -2943,7 +3018,7 @@ function openManualEntry(){
 }
 
 async function confirmAddFund(){
-  const ticker=document.getElementById('add-ticker').value.trim().toUpperCase();
+  let ticker=document.getElementById('add-ticker').value.trim().toUpperCase();
   const name=document.getElementById('add-name').value.trim();
   const expenseRaw=parseFloat(document.getElementById('add-expense').value)||0;
   const allocRaw=parseFloat(document.getElementById('add-alloc').value);
@@ -3738,6 +3813,139 @@ async function exportPDF(){
     toast('PDF exported successfully');
   }catch(e){
     toast('PDF export failed: '+e.message,'err');
+    console.error(e);
+  }
+  btn.disabled=false;
+  btn.innerHTML=origText;
+}
+
+/* ── Excel Export ── */
+async function exportExcel(){
+  const btn=document.getElementById('xlsx-btn');
+  btn.disabled=true;
+  const origText=btn.innerHTML;
+  btn.innerHTML='<svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor;animation:spin .7s linear infinite;"><path d="M12 2a10 10 0 1 0 10 10h-2a8 8 0 1 1-8-8V2z"/></svg> <span style="font-size:9px;font-family:\'IBM Plex Mono\',monospace;">...</span>';
+
+  const isSRI=document.getElementById('tab-sri').style.display!=='none';
+  const pfx=isSRI?'sri':'twm';
+  const data=isSRI?SRI:TWM;
+  const model=isSRI?curSRI:curTWM;
+  const family=isSRI?'SRI':'TWM';
+  const versionName=document.getElementById('version-label').textContent||'—';
+  const now=new Date().toLocaleString('en-US',{month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+
+  try{
+    if(typeof XLSX==='undefined') throw new Error('SheetJS not loaded. Please refresh and try again.');
+
+    const wb=XLSX.utils.book_new();
+
+    /* ── Sheet 1: Fund Allocations (current model) ── */
+    const allocRows=[
+      [`${family} — ${model}  |  ${versionName}  |  Generated: ${now}`],
+      [],
+      ['Category','Ticker','Fund Name','Expense Ratio %','Last Price','Allocation %','Allocation (decimal)'],
+    ];
+
+    // Build ordered cats same as renderAllocTable
+    const catMap={};
+    data.funds.forEach(f=>{ if(!catMap[f.category]) catMap[f.category]=[]; catMap[f.category].push(f); });
+    const modelCatOrder=getModelCatOrder(pfx,model);
+    const orderedCats=modelCatOrder.filter(c=>catMap[c]).concat(Object.keys(catMap).filter(c=>!modelCatOrder.includes(c)));
+    const alloc=data.models[model];
+
+    orderedCats.forEach(cat=>{
+      const funds=catMap[cat]||[];
+      let catTotal=0;
+      funds.forEach(f=>{
+        const v=alloc[f.ticker]||0;
+        catTotal+=v;
+        const q=priceMap[f.ticker];
+        const price=q?Number(q.price).toFixed(2):'—';
+        allocRows.push([cat, f.ticker, f.name, ((f.expense||0)*100).toFixed(2), price, (v*100).toFixed(2), v]);
+      });
+      allocRows.push(['','','',cat+' Subtotal','',( catTotal*100).toFixed(2), catTotal]);
+      allocRows.push([]);
+    });
+
+    // Grand total
+    const grandTotal=Object.values(alloc).reduce((a,b)=>a+b,0);
+    allocRows.push(['','','','GRAND TOTAL','', (grandTotal*100).toFixed(2), grandTotal]);
+
+    const ws1=XLSX.utils.aoa_to_sheet(allocRows);
+    // Column widths
+    ws1['!cols']=[{wch:16},{wch:10},{wch:34},{wch:14},{wch:12},{wch:14},{wch:18}];
+    XLSX.utils.book_append_sheet(wb, ws1, 'Allocations');
+
+    /* ── Sheet 2: All Models Summary ── */
+    const modelNames=isSRI?SRI_MODEL_NAMES:TWM_MODEL_NAMES;
+    const summaryHeader=['Metric', ...modelNames];
+    const summaryRows=[
+      [`${family} — All Models Summary  |  ${versionName}`],
+      [],
+      summaryHeader,
+      ['Equities %',   ...modelNames.map(m=>((data.summary[m]?.equities||0)*100).toFixed(2))],
+      ['Fixed Income %',...modelNames.map(m=>((data.summary[m]?.fixedIncome||0)*100).toFixed(2))],
+      ['Alternatives %',...modelNames.map(m=>((data.summary[m]?.alternatives||0)*100).toFixed(2))],
+      ['Cash %',       ...modelNames.map(m=>((data.summary[m]?.cash||0)*100).toFixed(2))],
+      ...(isSRI?[['Blended %', ...modelNames.map(m=>((data.summary[m]?.blended||0)*100).toFixed(2))]]:[]),
+      [],
+      ['Portfolio Beta',...modelNames.map(m=>{ const b=calcPortfolioBeta(data,m); return b>0?b.toFixed(3):'—'; })],
+      ['Wtd Expense %', ...modelNames.map(m=>{ const e=calcWeightedExpense(data,m); return e>0?(e*100).toFixed(3):'—'; })],
+    ];
+    const ws2=XLSX.utils.aoa_to_sheet(summaryRows);
+    const metricColW=[{wch:18},...modelNames.map(()=>({wch:20}))];
+    ws2['!cols']=metricColW;
+    XLSX.utils.book_append_sheet(wb, ws2, 'Model Summary');
+
+    /* ── Sheet 3: All Funds × All Models (full allocation grid) ── */
+    const gridHeader=['Category','Ticker','Fund Name','Expense %',...modelNames];
+    const gridRows=[
+      [`${family} — Full Allocation Grid  |  ${versionName}`],
+      [],
+      gridHeader,
+    ];
+    data.funds.forEach(f=>{
+      gridRows.push([
+        f.category, f.ticker, f.name, ((f.expense||0)*100).toFixed(2),
+        ...modelNames.map(m=>((data.models[m]?.[f.ticker]||0)*100).toFixed(2))
+      ]);
+    });
+    const ws3=XLSX.utils.aoa_to_sheet(gridRows);
+    ws3['!cols']=[{wch:16},{wch:10},{wch:34},{wch:12},...modelNames.map(()=>({wch:18}))];
+    XLSX.utils.book_append_sheet(wb, ws3, 'Full Grid');
+
+    /* ── Sheet 4: Price Data ── */
+    const priceHeader=['Ticker','Fund Name','Category','Family','Last Price','Day Change %','YTD Return %','Beta'];
+    const priceRows=[
+      [`Price Data  |  As of: ${CACHE_DATE}`],
+      [],
+      priceHeader,
+    ];
+    const seen=new Set();
+    [...TWM.funds,...SRI.funds].forEach(f=>{
+      if(seen.has(f.ticker)) return; seen.add(f.ticker);
+      const q=priceMap[f.ticker];
+      const inTWM=TWM.funds.some(x=>x.ticker===f.ticker);
+      const inSRI=SRI.funds.some(x=>x.ticker===f.ticker);
+      const fam=(inTWM&&inSRI)?'TWM & SRI':inTWM?'TWM':'SRI';
+      priceRows.push([
+        f.ticker, f.name, f.category, fam,
+        q?Number(q.price).toFixed(2):'—',
+        q&&q.changePct!=null?Number(q.changePct).toFixed(3):'—',
+        q&&q.ytdReturn!=null?Number(q.ytdReturn).toFixed(3):'—',
+        betaMap[f.ticker]!=null?Number(betaMap[f.ticker]).toFixed(3):'—',
+      ]);
+    });
+    const ws4=XLSX.utils.aoa_to_sheet(priceRows);
+    ws4['!cols']=[{wch:10},{wch:34},{wch:16},{wch:12},{wch:12},{wch:14},{wch:14},{wch:8}];
+    XLSX.utils.book_append_sheet(wb, ws4, 'Prices');
+
+    // Write and trigger download
+    const filename=(versionName.replace(/[^a-z0-9]/gi,'_')+'_'+family+'_'+model.replace(/[^a-z0-9]/gi,'_')+'.xlsx').toLowerCase();
+    XLSX.writeFile(wb, filename);
+    toast('Excel exported — '+filename);
+  }catch(e){
+    toast('Excel export failed: '+e.message,'err');
     console.error(e);
   }
   btn.disabled=false;
