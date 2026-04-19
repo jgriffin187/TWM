@@ -831,8 +831,8 @@
     <div class="model-selector">
       <label>View model:</label>
       <select onchange="updateTWMView(this.value)">
-        <option value="IRA Conservative">IRA Conservative</option>
-        <option value="IRA Moderate" selected>IRA Moderate</option>
+        <option value="IRA Conservative" selected>IRA Conservative</option>
+        <option value="IRA Moderate">IRA Moderate</option>
         <option value="IRA Aggressive">IRA Aggressive</option>
         <option value="IRA Ultra Aggressive">IRA Ultra Aggressive</option>
         <option value="Taxable Conservative">Taxable Conservative</option>
@@ -872,8 +872,8 @@
     <div class="model-selector">
       <label>View model:</label>
       <select onchange="updateSRIView(this.value)">
-        <option value="SRI Conservative">SRI Conservative</option>
-        <option value="SRI Moderate" selected>SRI Moderate</option>
+        <option value="SRI Conservative" selected>SRI Conservative</option>
+        <option value="SRI Moderate">SRI Moderate</option>
         <option value="SRI Aggressive">SRI Aggressive</option>
         <option value="SRI Ultra Aggressive">SRI Ultra Aggressive</option>
       </select>
@@ -987,11 +987,11 @@
         <div class="add-modal-field">
           <label>Asset class bucket <span style="color:var(--red-text);">*</span></label>
           <select id="add-category">
-            <option value="Equities">Equities</option>
-            <option value="Fixed Income">Fixed Income</option>
+            <option value="Alternatives">Alternatives</option>
             <option value="Blended">Blended</option>
             <option value="Cash">Cash</option>
-            <option value="Alternatives">Alternatives</option>
+            <option value="Equities">Equities</option>
+            <option value="Fixed Income">Fixed Income</option>
           </select>
         </div>
         <div class="add-modal-field">
@@ -1275,7 +1275,7 @@ const SRI={
   }
 };
 
-let curTWM='IRA Moderate', curSRI='SRI Moderate';
+let curTWM='IRA Conservative', curSRI='SRI Conservative';
 let pendingAdd={data:null,model:null,pfx:null}; // state for add-fund modal
 let isManualEntry=false; // true when user clicked 'Add manually' — skips price fetch
 const MANUAL_TICKERS=new Set(); // tickers added manually — no Yahoo price available
@@ -3227,14 +3227,29 @@ async function doSave(){
     const res=await sbPost('/rest/v1/model_snapshots',{locked_by:name,notes:notes||null,twm_funds:TWM.funds,twm_models:TWM.models,twm_summary:TWM.summary,sri_funds:SRI.funds,sri_models:SRI.models,sri_summary:SRI.summary,twm_cat_order:CAT_ORDER.twm,twm_fund_order:FUND_ORDER.twm,sri_cat_order:CAT_ORDER.sri,sri_fund_order:FUND_ORDER.sri});
     const snapId=res[0].id,createdAt=res[0].created_at,diffs=[];
     if(lastSnapshot){
-      Object.keys(TWM.models).forEach(model=>Object.keys(TWM.models[model]).forEach(ticker=>{
-        const curr=TWM.models[model][ticker],old=(lastSnapshot.twm_models[model]||{})[ticker]||0;
-        if(Math.abs(curr-old)>0.0001)diffs.push({snapshot_id:snapId,model_family:'TWM',model_name:model,ticker,from_pct:parseFloat((old*100).toFixed(4)),to_pct:parseFloat((curr*100).toFixed(4)),change_pp:parseFloat(((curr-old)*100).toFixed(4))});
-      }));
-      Object.keys(SRI.models).forEach(model=>Object.keys(SRI.models[model]).forEach(ticker=>{
-        const curr=SRI.models[model][ticker],old=(lastSnapshot.sri_models[model]||{})[ticker]||0;
-        if(Math.abs(curr-old)>0.0001)diffs.push({snapshot_id:snapId,model_family:'SRI',model_name:model,ticker,from_pct:parseFloat((old*100).toFixed(4)),to_pct:parseFloat((curr*100).toFixed(4)),change_pp:parseFloat(((curr-old)*100).toFixed(4))});
-      }));
+      Object.keys(TWM.models).forEach(model=>{
+        // Union of current and previous ticker keys to catch deletions
+        const allTickers=new Set([
+          ...Object.keys(TWM.models[model]),
+          ...Object.keys((lastSnapshot.twm_models||{})[model]||{})
+        ]);
+        allTickers.forEach(ticker=>{
+          const curr=TWM.models[model][ticker]??0;
+          const old=((lastSnapshot.twm_models||{})[model]||{})[ticker]??0;
+          if(Math.abs(curr-old)>0.0001)diffs.push({snapshot_id:snapId,model_family:'TWM',model_name:model,ticker,from_pct:parseFloat((old*100).toFixed(4)),to_pct:parseFloat((curr*100).toFixed(4)),change_pp:parseFloat(((curr-old)*100).toFixed(4))});
+        });
+      });
+      Object.keys(SRI.models).forEach(model=>{
+        const allTickers=new Set([
+          ...Object.keys(SRI.models[model]),
+          ...Object.keys((lastSnapshot.sri_models||{})[model]||{})
+        ]);
+        allTickers.forEach(ticker=>{
+          const curr=SRI.models[model][ticker]??0;
+          const old=((lastSnapshot.sri_models||{})[model]||{})[ticker]??0;
+          if(Math.abs(curr-old)>0.0001)diffs.push({snapshot_id:snapId,model_family:'SRI',model_name:model,ticker,from_pct:parseFloat((old*100).toFixed(4)),to_pct:parseFloat((curr*100).toFixed(4)),change_pp:parseFloat(((curr-old)*100).toFixed(4))});
+        });
+      });
     }
     if(diffs.length>0)await sbPost('/rest/v1/snapshot_changes',diffs);
     lastSnapshot=res[0];
