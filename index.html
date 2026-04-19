@@ -899,6 +899,7 @@ async function fetchPrices() {
     .ticker-cell{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;text-align:left;white-space:nowrap;letter-spacing:0.04em;color:var(--text);}
     .fund-name{color:var(--text);font-size:15px;text-align:left;font-weight:500;}
     .expense-cell{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text-2);white-space:nowrap;font-weight:500;}
+    .expense-editable{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text-2);white-space:nowrap;font-weight:500;}
 
     .price-cell{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--text);display:inline-block;text-align:right;}
     .price-up{color:#16a34a !important;}
@@ -2393,7 +2394,11 @@ function renderAllocTable(data,model,pfx){
           ${f.name}
         </td>
         <td style="text-align:right;padding:10px 14px;">
-          <span class="expense-cell">${pct(f.expense)}</span>
+          <span class="editable expense-editable" contenteditable="true"
+            data-prefix="${pfx}" data-model="${model}" data-ticker="${f.ticker}" data-field="expense"
+            onblur="onEditBlur(this)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}"
+            title="Click to edit expense ratio"
+            >${((f.expense||0)*100).toFixed(2)}%</span>
         </td>
         <td style="text-align:right;padding:10px 14px;white-space:nowrap;">
           ${priceCell(f.ticker)}
@@ -2432,13 +2437,26 @@ function updateSum(data,model,pfx){
 
 function onEditBlur(el){
   const v=parseFloat(el.textContent.replace('%','').trim());
-  const c=isNaN(v)?0:Math.max(0,Math.min(100,v));
-  el.textContent=c.toFixed(1)+'%';
-  const{prefix,model,ticker}=el.dataset,data=prefix==='twm'?TWM:SRI;
-  data.models[model][ticker]=c/100;
-  updateSum(data,model,prefix);
-  updateMetricsFromAlloc(data,model,prefix);
-  updateDonut(data,model,prefix);
+  const{prefix,model,ticker,field}=el.dataset;
+  const data=prefix==='twm'?TWM:SRI;
+
+  if(field==='expense'){
+    // Expense ratio: 0–100% range, stored as decimal, displayed with 2dp
+    const c=isNaN(v)?0:Math.max(0,Math.min(100,v));
+    el.textContent=c.toFixed(2)+'%';
+    const fund=data.funds.find(f=>f.ticker===ticker);
+    if(fund) fund.expense=c/100;
+    // Re-render metrics so weighted expense tile updates live
+    renderMetrics(data,model,prefix);
+  } else {
+    // Allocation weight: 0–100%, stored as decimal
+    const c=isNaN(v)?0:Math.max(0,Math.min(100,v));
+    el.textContent=c.toFixed(1)+'%';
+    data.models[model][ticker]=c/100;
+    updateSum(data,model,prefix);
+    updateMetricsFromAlloc(data,model,prefix);
+    updateDonut(data,model,prefix);
+  }
 }
 
 function updateMetricsFromAlloc(data,model,pfx){
