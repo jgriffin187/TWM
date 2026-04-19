@@ -298,7 +298,52 @@ let lastSnapshot=null;  // full snapshot object from DB, kept in memory
 function hdr(extra={}){
   return{'apikey':SB_KEY,'Authorization':'Bearer '+(authToken||SB_KEY),'Content-Type':'application/json','Prefer':'return=representation',...extra};
 }
-async function sbGet(p){const r=await fetch(SB_URL+p,{headers:hdr()});if(!r.ok)throw new Error(await r.text());return r.json();}
+
+async function sbGet(p){
+  const r=await fetch(SB_URL+p,{headers:hdr()});
+  if(r.status===401){await handleAuthExpiry();const r2=await fetch(SB_URL+p,{headers:hdr()});if(!r2.ok)throw new Error(await r2.text());return r2.json();}
+  if(!r.ok)throw new Error(await r.text());
+  return r.json();
+}
+
+async function sbFetch(url,opts){
+  // Wraps arbitrary fetch calls with token refresh on 401
+  const r=await fetch(url,{...opts,headers:{...hdr(),...(opts.headers||{})}});
+  if(r.status===401){
+    await handleAuthExpiry();
+    const r2=await fetch(url,{...opts,headers:{...hdr(),...(opts.headers||{})}});
+    return r2;
+  }
+  return r;
+}
+
+async function handleAuthExpiry(){
+  // Try to refresh using stored credentials
+  const email=sessionStorage.getItem('mb_email');
+  const password=sessionStorage.getItem('mb_pass');
+  if(email&&password){
+    try{
+      const r=await fetch(SB_URL+'/auth/v1/token?grant_type=password',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+      const d=await r.json();
+      if(r.ok){authToken=d.access_token;sessionStorage.setItem('mb_token',authToken);console.log('Token refreshed');return;}
+    }catch(e){}
+  }
+  // Can't refresh — show re-login
+  showReLogin();
+  throw new Error('Session expired — please sign in again');
+}
+
+function showReLogin(){
+  authToken=null;
+  sessionStorage.removeItem('mb_token');
+  sessionStorage.removeItem('mb_user');
+  sessionStorage.removeItem('mb_pass');
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-wrap').style.display='flex';
+  const errEl=document.getElementById('login-err');
+  errEl.textContent='Your session expired — please sign in again.';
+  errEl.style.display='block';
+}
 
 async function doLogin(){
   const email=document.getElementById('login-email').value.trim();
@@ -315,6 +360,8 @@ async function doLogin(){
     authToken=d.access_token;authUser=d.user;
     sessionStorage.setItem('mb_token',authToken);
     sessionStorage.setItem('mb_user',JSON.stringify(authUser));
+    sessionStorage.setItem('mb_email',email);
+    sessionStorage.setItem('mb_pass',password);
     onLoginSuccess();
   }catch(e){errEl.textContent=e.message;errEl.style.display='block';btn.disabled=false;btn.textContent='Sign in';}
 }
@@ -712,7 +759,8 @@ async function saveAll(){
       updated_at:new Date().toISOString()
     }));
     if(geoRows.length){
-      await fetch(SB_URL+'/rest/v1/fund_geo',{method:'POST',headers:{...hdr(),'Prefer':'resolution=merge-duplicates'},body:JSON.stringify(geoRows)});
+      const geoRes=await sbFetch(SB_URL+'/rest/v1/fund_geo',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body:JSON.stringify(geoRows)});
+      if(!geoRes.ok)throw new Error('Geo save failed: '+await geoRes.text());
     }
 
     // 2. Load latest snapshot
@@ -783,7 +831,7 @@ async function saveAll(){
       twm_cat_order:twmCatOrder,twm_fund_order:twmFundOrder,
       sri_cat_order:sriCatOrder,sri_fund_order:sriFundOrder,
     };
-    const res=await fetch(SB_URL+'/rest/v1/model_snapshots',{method:'POST',headers:hdr(),body:JSON.stringify(body)});
+    const res=await sbFetch(SB_URL+'/rest/v1/model_snapshots',{method:'POST',body:JSON.stringify(body)});
     if(!res.ok)throw new Error('Snapshot save failed: '+await res.text());
     lastSnapshot=await res.json().then(d=>d[0]);
 
