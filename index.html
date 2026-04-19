@@ -2551,8 +2551,11 @@ function onCatDrop(e){
   const fi=order.indexOf(fromCat), ti=order.indexOf(toCat);
   if(fi>-1&&ti>-1){ order.splice(fi,1); order.splice(ti,0,fromCat); }
   _dragCat=null;
+  // Re-render the current model (visible) — other models pick up the order on next render
   const data=pfx==='twm'?TWM:SRI, model=pfx==='twm'?curTWM:curSRI;
   renderAllocTable(data,model,pfx);
+  // Toast confirms sync
+  toast('Category order updated across all '+pfx.toUpperCase()+' models');
 }
 
 /* ── Drag-to-reorder: funds within category ── */
@@ -2589,8 +2592,10 @@ function onFundDrop(e){
   const fi=order.indexOf(fromT), ti=order.indexOf(toT);
   if(fi>-1&&ti>-1){ order.splice(fi,1); order.splice(ti,0,fromT); }
   _dragFund=null;
+  // Re-render current model — FUND_ORDER is tab-scoped so all models get same order on switch
   const model=pfx==='twm'?curTWM:curSRI;
   renderAllocTable(data,model,pfx);
+  toast('Fund order updated across all '+pfx.toUpperCase()+' models');
 }
 
 
