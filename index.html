@@ -3477,7 +3477,7 @@ async function doSave(){
   const notes=document.getElementById('snap-notes').value.trim();
   const btn=document.getElementById('btn-save');btn.disabled=true;btn.textContent='Saving…';
   try{
-    const res=await sbPost('/rest/v1/model_snapshots',{locked_by:name,notes:notes||null,twm_models:TWM.models,sri_models:SRI.models,twm_summary:TWM.summary,sri_summary:SRI.summary});
+    const res=await sbPost('/rest/v1/model_snapshots',{locked_by:name,notes:notes||null,twm_funds:TWM.funds,twm_models:TWM.models,twm_summary:TWM.summary,sri_funds:SRI.funds,sri_models:SRI.models,sri_summary:SRI.summary});
     const snapId=res[0].id,createdAt=res[0].created_at,diffs=[];
     if(lastSnapshot){
       Object.keys(TWM.models).forEach(model=>Object.keys(TWM.models[model]).forEach(ticker=>{
@@ -4115,7 +4115,10 @@ async function checkConnection(){
     const _dot=document.getElementById('conn-dot');if(_dot){_dot.title='Supabase connected';_dot.style.opacity='1';}
     if(snaps.length){
       lastSnapshot=snaps[0];
-      // Restore only keys that belong to each family — never cross-contaminate
+      // Restore funds list (add/delete fund changes)
+      if(snaps[0].twm_funds&&snaps[0].twm_funds.length) TWM.funds=snaps[0].twm_funds;
+      if(snaps[0].sri_funds&&snaps[0].sri_funds.length) SRI.funds=snaps[0].sri_funds;
+      // Restore model weights and summaries
       TWM_MODEL_NAMES.forEach(m=>{
         if(snaps[0].twm_models[m]) TWM.models[m]=snaps[0].twm_models[m];
         if(snaps[0].twm_summary[m]) TWM.summary[m]=snaps[0].twm_summary[m];
