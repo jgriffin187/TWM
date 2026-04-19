@@ -2662,29 +2662,31 @@ Format: plain prose paragraphs only. No markdown headers, no bullet lists, no bo
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         model:'claude-sonnet-4-5',
-        max_tokens:600,
-        tools:[{
-          type:'web_search_20250305',
-          name:'web_search',
-          max_uses:2
-        }],
+        max_tokens:800,
         messages:[{role:'user',content:prompt}]
       })
     });
 
     console.log('[AI] Response status:',response.status);
 
-    const json=await response.json();
-    console.log('[AI] Response body:',JSON.stringify(json).slice(0,300));
+    const rawText=await response.text();
+    console.log('[AI] Raw response length:',rawText.length,'chars');
+    console.log('[AI] Raw response tail:',rawText.slice(-200));
+
+    let json;
+    try{ json=JSON.parse(rawText); }
+    catch(e){ throw new Error('JSON parse failed: '+e.message+' — raw: '+rawText.slice(0,200)); }
 
     if(!response.ok){
       throw new Error((json.error?.message||json.error||'Worker error')+' ('+response.status+')');
     }
 
-    // Extract text from content blocks (skip tool_use blocks)
+    console.log('[AI] Content blocks:',json.content?.map(b=>b.type).join(', '));
+
+    // Extract all text blocks (skip server_tool_use, server_tool_result, etc.)
     const text=json.content
-      ?.filter(b=>b.type==='text')
-      .map(b=>b.text)
+      ?.filter(b=>b.type==='text'&&b.text?.trim())
+      .map(b=>b.text.trim())
       .join('\n\n')
       .trim();
 
