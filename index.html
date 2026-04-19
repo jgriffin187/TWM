@@ -992,6 +992,11 @@ async function fetchPrices() {
     .lookup-btn:disabled{opacity:.5;cursor:not-allowed;}
     .lookup-row{display:flex;gap:8px;align-items:flex-end;margin-bottom:12px;}
     .lookup-row input{flex:1;margin-bottom:0;}
+    .manual-btn{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;
+      color:var(--text-2);background:var(--surface2);border:1px solid var(--border-mid);
+      border-radius:8px;padding:8px 14px;cursor:pointer;font-family:'Inter',sans-serif;
+      transition:all .15s;flex-shrink:0;white-space:nowrap;}
+    .manual-btn:hover{background:var(--surface);color:var(--text);}
     .confidence-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;font-family:'IBM Plex Mono',monospace;margin-left:6px;vertical-align:middle;}
     .conf-manual{background:var(--surface2);color:var(--text-2);border:1px solid var(--border-mid);}
     .conf-auto{background:var(--green-bg);color:var(--green-text);}
@@ -1341,7 +1346,7 @@ async function fetchPrices() {
 <div class="add-modal-wrap" id="add-modal">
   <div class="add-modal">
     <h2>Add fund</h2>
-    <p style="font-size:13px;color:var(--text-2);margin-bottom:1.25rem;line-height:1.6;">Enter a ticker and click Look up — we'll auto-fill the name, category, expense ratio, and geographic breakdown. You can override anything before adding.</p>
+    <p style="font-size:13px;color:var(--text-2);margin-bottom:1.25rem;line-height:1.6;">Enter a ticker and look up to auto-fill details, or add manually if the fund isn't in Yahoo Finance.</p>
 
     <!-- Step 1: Ticker lookup -->
     <div class="lookup-row">
@@ -1354,6 +1359,12 @@ async function fetchPrices() {
       <button class="lookup-btn" id="lookup-btn" onclick="lookupFund()">
         <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:white;"><path d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/></svg>
         Look up
+      </button>
+      <button class="manual-btn" id="manual-entry-btn" onclick="openManualEntry()" title="Skip lookup and enter details manually">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Add manually
       </button>
     </div>
 
@@ -2892,6 +2903,39 @@ function openAddModal(data, model, pfx){
   setTimeout(()=>document.getElementById('add-ticker').focus(),60);
 }
 function closeAddModal(){ document.getElementById('add-modal').classList.remove('open'); }
+
+function openManualEntry(){
+  // Clear any previous status
+  const statusEl=document.getElementById('add-modal-status');
+  statusEl.className='add-modal-status';
+  statusEl.textContent='';
+  // Set MANUAL badges
+  const confBadge=document.getElementById('add-conf-badge');
+  confBadge.textContent='MANUAL';confBadge.className='confidence-badge conf-manual';
+  const geoBadge=document.getElementById('add-geo-conf-badge');
+  geoBadge.textContent='MANUAL';geoBadge.className='confidence-badge conf-manual';
+  // Sensible defaults
+  const ticker=document.getElementById('add-ticker').value.trim().toUpperCase()||'';
+  document.getElementById('add-name').value=ticker;
+  document.getElementById('add-category').value='Equities';
+  document.getElementById('add-expense').value='';
+  document.getElementById('add-geo-us').value='85.0';
+  document.getElementById('add-geo-intl').value='10.0';
+  document.getElementById('add-geo-other').value='5.0';
+  document.getElementById('add-alloc').value='';
+  updateAddGeoSum();
+  // Show all sections
+  ['add-details-section','add-geo-section','add-alloc-section'].forEach(id=>{
+    document.getElementById(id).classList.add('show');
+  });
+  document.getElementById('add-modal-save').disabled=false;
+  // Focus fund name field
+  setTimeout(()=>{
+    const n=document.getElementById('add-name');
+    n.focus();
+    if(ticker) n.select();
+  },50);
+}
 
 async function confirmAddFund(){
   const ticker=document.getElementById('add-ticker').value.trim().toUpperCase();
