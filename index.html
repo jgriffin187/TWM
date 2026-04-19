@@ -588,6 +588,32 @@
     .fd-loading{text-align:center;padding:30px 0;color:var(--text-3);font-size:13px;}
     @keyframes fd-spin{to{transform:rotate(360deg)}}
     .fd-spinner{width:18px;height:18px;border:2px solid rgba(148,163,184,0.20);border-top-color:var(--blue);border-radius:50%;animation:fd-spin .7s linear infinite;margin:0 auto 10px;}
+    /* AI summary section */
+    .fd-ai-section{border-radius:12px;padding:13px 15px;position:relative;overflow:hidden;}
+    [data-theme="dark"] .fd-ai-section{background:linear-gradient(135deg,rgba(56,189,248,0.06) 0%,rgba(167,139,250,0.05) 100%);border:1px solid rgba(56,189,248,0.14);}
+    [data-theme="light"] .fd-ai-section{background:linear-gradient(135deg,rgba(37,99,235,0.04) 0%,rgba(124,58,237,0.03) 100%);border:1px solid rgba(37,99,235,0.12);}
+    .fd-ai-header{display:flex;align-items:center;gap:7px;margin-bottom:10px;}
+    .fd-ai-badge{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:99px;font-family:'IBM Plex Mono',monospace;}
+    [data-theme="dark"] .fd-ai-badge{background:rgba(56,189,248,0.15);color:#38bdf8;border:1px solid rgba(56,189,248,0.25);}
+    [data-theme="light"] .fd-ai-badge{background:rgba(37,99,235,0.10);color:#2563eb;border:1px solid rgba(37,99,235,0.18);}
+    .fd-ai-title{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-2);font-family:'IBM Plex Mono',monospace;}
+    .fd-ai-body{font-size:12px;line-height:1.7;color:var(--text);font-family:'Inter',sans-serif;}
+    .fd-ai-body p{margin:0 0 8px;}
+    .fd-ai-body p:last-child{margin-bottom:0;}
+    .fd-ai-body strong{font-weight:600;color:var(--text);}
+    .fd-ai-body ul{margin:4px 0 8px 0;padding-left:16px;}
+    .fd-ai-body li{margin-bottom:3px;}
+    .fd-ai-cursor{display:inline-block;width:2px;height:13px;background:var(--blue);margin-left:1px;vertical-align:middle;animation:fd-blink .8s step-end infinite;}
+    [data-theme="dark"] .fd-ai-cursor{background:#38bdf8;}
+    @keyframes fd-blink{0%,100%{opacity:1}50%{opacity:0}}
+    .fd-ai-loading{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-3);}
+    .fd-ai-dot{width:5px;height:5px;border-radius:50%;animation:fd-dot-pulse 1.2s ease-in-out infinite;}
+    [data-theme="dark"] .fd-ai-dot{background:#38bdf8;}
+    [data-theme="light"] .fd-ai-dot{background:#2563eb;}
+    .fd-ai-dot:nth-child(2){animation-delay:.2s;}
+    .fd-ai-dot:nth-child(3){animation-delay:.4s;}
+    @keyframes fd-dot-pulse{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+    .fd-ai-disclaimer{font-size:10px;color:var(--text-3);margin-top:8px;line-height:1.5;font-style:italic;}
     .alloc-table-wrap::-webkit-scrollbar{height:4px;}
     .alloc-table-wrap::-webkit-scrollbar-track{background:transparent;}
     .alloc-table-wrap::-webkit-scrollbar-thumb{background:rgba(148,163,184,0.25);border-radius:99px;}
@@ -2429,7 +2455,6 @@ let _fdTicker=null;
 
 function openFundDrawer(ticker){
   _fdTicker=ticker;
-  // Find fund object across both families
   const fund=[...TWM.funds,...SRI.funds].find(f=>f.ticker===ticker);
   document.getElementById('fd-ticker').textContent=ticker;
   document.getElementById('fd-name').textContent=fund?.name||'';
@@ -2437,8 +2462,9 @@ function openFundDrawer(ticker){
   document.getElementById('fund-drawer-overlay').classList.add('open');
   document.getElementById('fund-drawer').classList.add('open');
   document.addEventListener('keydown', _fdEsc);
-  // Populate immediately with cached data, then try to enrich async
-  _renderFundDrawer(ticker, fund, false);
+  // Render cached data immediately, then fetch AI summary
+  _renderFundDrawer(ticker, fund);
+  _fetchAISummary(ticker, fund);
 }
 
 function closeFundDrawer(){
@@ -2460,7 +2486,7 @@ function fdCopyTicker(){
 function fdOpenYahoo(){ if(_fdTicker) window.open('https://finance.yahoo.com/quote/'+_fdTicker,'_blank'); }
 function fdOpenMorningstar(){ if(_fdTicker) window.open('https://www.morningstar.com/search?query='+_fdTicker,'_blank'); }
 
-function _renderFundDrawer(ticker, fund, _unused){
+function _renderFundDrawer(ticker, fund){
   const dk=isDark();
   const q=priceMap[ticker];
   const beta=betaMap[ticker];
@@ -2547,10 +2573,150 @@ function _renderFundDrawer(ticker, fund, _unused){
   });
   html+=`</div>`;
 
+  // ── AI summary placeholder (filled in by _fetchAISummary) ──
+  html+=`<div class="fd-ai-section" id="fd-ai-section">
+    <div class="fd-ai-header">
+      <span class="fd-ai-badge">AI</span>
+      <span class="fd-ai-title">Fund Summary</span>
+    </div>
+    <div class="fd-ai-body" id="fd-ai-body">
+      <div class="fd-ai-loading">
+        <div class="fd-ai-dot"></div><div class="fd-ai-dot"></div><div class="fd-ai-dot"></div>
+        <span>Fetching fund summary…</span>
+      </div>
+    </div>
+  </div>`;
+
   document.getElementById('fd-body').innerHTML=html;
 }
 
-function updateSum(data,model,pfx){
+// Cache so re-opening the same ticker doesn't re-fetch
+const _aiSummaryCache={};
+
+async function _fetchAISummary(ticker, fund){
+  // If drawer was closed before we started, abort
+  if(_fdTicker!==ticker) return;
+
+  // Serve from cache if available
+  if(_aiSummaryCache[ticker]){
+    _setAIBody(ticker, _aiSummaryCache[ticker]);
+    return;
+  }
+
+  // Build context for the prompt
+  const q=priceMap[ticker];
+  const beta=betaMap[ticker];
+  const priceCtx=q
+    ?`Last price: $${Number(q.price).toFixed(2)}, day change: ${q.changePct!=null?(q.changePct>=0?'+':'')+Number(q.changePct).toFixed(2)+'%':'n/a'}, YTD: ${q.ytdReturn!=null?(q.ytdReturn>=0?'+':'')+Number(q.ytdReturn).toFixed(2)+'%':'n/a'} (as of ${CACHE_DATE}).`
+    :'No price data available.';
+  const expenseCtx=fund?`Expense ratio: ${((fund.expense||0)*100).toFixed(2)}%.`:'';
+  const betaCtx=beta!=null?`Beta vs S&P 500: ${Number(beta).toFixed(2)}.`:'';
+  const catCtx=fund?`Asset class: ${fund.category}.`:'';
+
+  const prompt=`You are a financial data assistant for Trailhead Wealth Management, a registered investment advisor.
+
+Provide a concise, informative fund summary for ${ticker} (${fund?.name||ticker}) for use inside a portfolio management dashboard. Use web search to find current information.
+
+Context already shown in the dashboard UI (do NOT repeat these verbatim):
+- ${priceCtx}
+- ${expenseCtx}
+- ${betaCtx}
+- ${catCtx}
+
+Write 3–4 short paragraphs covering:
+1. What the fund is and its investment objective/strategy (1–2 sentences)
+2. Key characteristics: top holdings or sectors, duration if a bond fund, yield if relevant, number of positions
+3. Recent performance context or notable characteristics (1-year, 3-year, or 5-year returns if available)
+4. Risk considerations relevant to an RIA (interest rate sensitivity, credit quality, liquidity, etc.)
+
+Format: plain prose paragraphs only. No markdown headers, no bullet lists, no bold. Keep it under 200 words total. End with the fund company name on its own line. Be factual and professional — this is for an RIA's internal tool.`;
+
+  try{
+    const response=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:600,
+        stream:true,
+        tools:[{type:'web_search_20250305',name:'web_search'}],
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+
+    if(!response.ok){
+      const err=await response.text();
+      throw new Error('API error: '+err);
+    }
+
+    // Stream the response
+    const reader=response.body.getReader();
+    const decoder=new TextDecoder();
+    let accumulated='';
+    let buffer='';
+
+    // Show cursor while streaming
+    const aiBodyEl=document.getElementById('fd-ai-body');
+    if(aiBodyEl) aiBodyEl.innerHTML='<span class="fd-ai-cursor"></span>';
+
+    while(true){
+      const{done,value}=await reader.read();
+      if(done) break;
+      if(_fdTicker!==ticker){ reader.cancel(); return; } // drawer switched
+
+      buffer+=decoder.decode(value,{stream:true});
+      const lines=buffer.split('\n');
+      buffer=lines.pop(); // keep incomplete line
+
+      for(const line of lines){
+        if(!line.startsWith('data: ')) continue;
+        const data=line.slice(6).trim();
+        if(data==='[DONE]') continue;
+        try{
+          const evt=JSON.parse(data);
+          // Extract text from content_block_delta events
+          if(evt.type==='content_block_delta'&&evt.delta?.type==='text_delta'){
+            accumulated+=evt.delta.text;
+            const el=document.getElementById('fd-ai-body');
+            if(el) el.innerHTML=_formatAIText(accumulated)+'<span class="fd-ai-cursor"></span>';
+          }
+        }catch(e){}
+      }
+    }
+
+    // Final render — no cursor, add disclaimer
+    const finalEl=document.getElementById('fd-ai-body');
+    if(finalEl&&accumulated){
+      finalEl.innerHTML=_formatAIText(accumulated)+
+        '<div class="fd-ai-disclaimer">AI-generated summary. Verify with current fund documents before use.</div>';
+      _aiSummaryCache[ticker]=finalEl.innerHTML; // cache the final HTML
+    }else if(finalEl&&!accumulated){
+      finalEl.innerHTML='<div style="font-size:12px;color:var(--text-3);">No summary available for this fund.</div>';
+    }
+
+  }catch(e){
+    console.warn('AI fund summary failed:',e);
+    const el=document.getElementById('fd-ai-body');
+    if(el) el.innerHTML=`<div style="font-size:12px;color:var(--text-3);">Summary unavailable. <a href="https://finance.yahoo.com/quote/${ticker}" target="_blank" style="color:var(--blue);">View on Yahoo Finance ↗</a></div>`;
+  }
+}
+
+function _setAIBody(ticker, html){
+  if(_fdTicker!==ticker) return;
+  const el=document.getElementById('fd-ai-body');
+  if(el) el.innerHTML=html;
+}
+
+function _formatAIText(text){
+  // Convert plain text paragraphs to HTML paragraphs
+  return text
+    .trim()
+    .split(/\n{2,}/)
+    .map(p=>p.trim())
+    .filter(Boolean)
+    .map(p=>`<p>${p.replace(/\n/g,' ')}</p>`)
+    .join('');
+}
   const s=Object.values(data.models[model]).reduce((a,b)=>a+b,0);
   const el=document.getElementById(pfx+'-sum-display'),ok=Math.abs(s-1)<0.005;
   if(!el) return;
@@ -2964,6 +3130,8 @@ function deleteFund(pfx, ticker){
   // Record the deletion so doSave can include it in the change count
   const fund=data.funds.find(f=>f.ticker===ticker);
   _pendingFundChanges.push({type:'deleted',family:pfx.toUpperCase(),ticker,name:fund?.name||ticker});
+  // Clear any cached AI summary for this ticker
+  delete _aiSummaryCache[ticker];
 
   // Remove from funds list
   data.funds=data.funds.filter(f=>f.ticker!==ticker);
