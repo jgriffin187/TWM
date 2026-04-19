@@ -518,7 +518,9 @@ async function fetchPrices() {
     .topbar-title{font-size:14px;font-weight:600;letter-spacing:-.01em;color:var(--text-2);}
     .topbar-sub{font-size:13px;color:var(--text-2);margin-top:2px;font-weight:500;}
     /* Collapsed connection dot */
-    .conn-dot-only{width:9px;height:9px;border-radius:50%;flex-shrink:0;cursor:default;}
+    .conn-dot-only{width:9px;height:9px;border-radius:50%;flex-shrink:0;cursor:default;transition:transform .15s,box-shadow .15s;}
+    .conn-err .conn-dot-only{cursor:pointer;}
+    .conn-err .conn-dot-only:hover{transform:scale(1.35);box-shadow:0 0 8px rgba(200,80,80,0.6);}
     .conn-ok .conn-dot-only{background:#4a9e20;}
     .conn-err .conn-dot-only{background:#b94040;}
     [data-theme="dark"] .conn-ok .conn-dot-only{background:#7DC454;}
@@ -1132,7 +1134,7 @@ async function fetchPrices() {
   <div class="topbar-right">
     <!-- Connection dot only -->
     <span class="conn-badge conn-ok" id="conn-badge" title="Supabase connected" style="padding:0;background:transparent;border:none;">
-      <span class="conn-dot-only" id="conn-dot"></span>
+      <span class="conn-dot-only" id="conn-dot" onclick="retryConnection()" title="Supabase connected"></span>
     </span>
     <!-- PDF export button -->
     <button class="pdf-btn" id="pdf-btn" onclick="exportPDF()" title="Export as PDF" style="display:none;">
@@ -4054,11 +4056,35 @@ document.addEventListener('click',function(e){
   if(wrap&&!wrap.contains(e.target)) closeUserMenu();
 });
 
+async function retryConnection(){
+  const dot=document.getElementById('conn-dot');
+  const badge=document.getElementById('conn-badge');
+  // Only retry if in error state
+  if(!badge.classList.contains('conn-err')) return;
+  dot.style.opacity='0.5';
+  dot.title='Retrying…';
+  toast('Retrying connection…');
+  try{
+    await checkConnection();
+    // If checkConnection succeeded the badge is now conn-ok
+    if(document.getElementById('conn-badge').classList.contains('conn-ok')){
+      dot.style.opacity='1';
+      dot.title='Supabase connected';
+      fetchPrices();
+      fetchBetas();
+    }
+  }catch(e){
+    dot.style.opacity='1';
+    dot.title='Connection failed — click to retry';
+  }
+}
+
 async function checkConnection(){
   const badge=document.getElementById('conn-badge'),label=document.getElementById('conn-label'),btn=document.getElementById('lock-btn');
   try{
     const snaps=await sbGet('/rest/v1/model_snapshots?select=*&order=created_at.desc&limit=1');
     badge.className='conn-badge conn-ok';badge.title='Supabase connected';btn.disabled=false;
+    const _dot=document.getElementById('conn-dot');if(_dot){_dot.title='Supabase connected';_dot.style.opacity='1';}
     if(snaps.length){
       lastSnapshot=snaps[0];
       // Restore only keys that belong to each family — never cross-contaminate
@@ -4089,10 +4115,10 @@ async function checkConnection(){
       }catch(e){}
     }
   }catch(e){
-    badge.className='conn-badge conn-err';badge.title='Connection failed';btn.disabled=true;
+    badge.className='conn-badge conn-err';badge.title='Connection failed — click dot to retry';btn.disabled=true;
     document.getElementById('last-snap-info').textContent='Could not reach Supabase';
     const dot=document.getElementById('conn-dot');
-    if(dot){dot.style.background='var(--red-text)';}
+    if(dot){dot.style.background='';dot.style.opacity='1';dot.title='Connection failed — click to retry';}
   }
 }
 
