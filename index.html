@@ -2391,27 +2391,34 @@ function catDot(cat){
 }
 
 // Persistent category order per prefix (drag to reorder)
-const CAT_ORDER={
-  twm:['Cash','Blended','Fixed Income','Equities','Alternatives'],
-  sri:['Cash','Blended','Fixed Income','Equities','Alternatives'],
-};
-// Persistent fund order per prefix (drag to reorder within category)
+// Per-model category and fund order: { twm: { 'IRA Moderate': [...], ... }, sri: {...} }
+const CAT_ORDER={twm:{},sri:{}};
 const FUND_ORDER={twm:{},sri:{}};
+const DEFAULT_CAT_ORDER=['Cash','Blended','Fixed Income','Equities','Alternatives'];
+
+function getModelCatOrder(pfx,model){
+  if(!CAT_ORDER[pfx][model]) CAT_ORDER[pfx][model]=[...DEFAULT_CAT_ORDER];
+  return CAT_ORDER[pfx][model];
+}
+function getModelFundOrder(pfx,model){
+  if(!FUND_ORDER[pfx][model]) FUND_ORDER[pfx][model]={};
+  return FUND_ORDER[pfx][model];
+}
 
 function catCssKey(cat){ return cat.replace(/\s+/g,''); }
 
 function renderAllocTable(data,model,pfx){
   const alloc=data.models[model];
 
-  // Build category→funds map respecting FUND_ORDER
+  // Build category→funds map respecting per-model FUND_ORDER
   const catMap={};
   data.funds.forEach(f=>{
     if(!catMap[f.category])catMap[f.category]=[];
     catMap[f.category].push(f);
   });
-  // Sort funds within each category by FUND_ORDER
+  const modelFundOrder=getModelFundOrder(pfx,model);
   Object.keys(catMap).forEach(cat=>{
-    const order=FUND_ORDER[pfx][cat];
+    const order=modelFundOrder[cat];
     if(order&&order.length){
       catMap[cat].sort((a,b)=>{
         const ai=order.indexOf(a.ticker),bi=order.indexOf(b.ticker);
@@ -2423,9 +2430,10 @@ function renderAllocTable(data,model,pfx){
     }
   });
 
-  // Sort categories by CAT_ORDER
-  const orderedCats=CAT_ORDER[pfx].filter(c=>catMap[c]).concat(
-    Object.keys(catMap).filter(c=>!CAT_ORDER[pfx].includes(c))
+  // Sort categories by per-model CAT_ORDER
+  const modelCatOrder=getModelCatOrder(pfx,model);
+  const orderedCats=modelCatOrder.filter(c=>catMap[c]).concat(
+    Object.keys(catMap).filter(c=>!modelCatOrder.includes(c))
   );
 
   const thSt='font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;font-family:IBM Plex Mono,monospace;padding:9px 14px;';
@@ -2557,15 +2565,13 @@ function onCatDrop(e){
   if(!_dragCat||target.dataset.dragType!=='cat') return;
   const pfx=_dragCat.pfx, fromCat=_dragCat.cat, toCat=target.dataset.cat;
   if(fromCat===toCat) return;
-  const order=CAT_ORDER[pfx];
+  const data=pfx==='twm'?TWM:SRI, model=pfx==='twm'?curTWM:curSRI;
+  const order=getModelCatOrder(pfx,model);
   const fi=order.indexOf(fromCat), ti=order.indexOf(toCat);
   if(fi>-1&&ti>-1){ order.splice(fi,1); order.splice(ti,0,fromCat); }
   _dragCat=null;
-  // Re-render the current model (visible) — other models pick up the order on next render
-  const data=pfx==='twm'?TWM:SRI, model=pfx==='twm'?curTWM:curSRI;
   renderAllocTable(data,model,pfx);
-  // Toast confirms sync
-  toast('Category order updated across all '+pfx.toUpperCase()+' models');
+  toast('Category order updated for '+model);
 }
 
 /* ── Drag-to-reorder: funds within category ── */
@@ -2592,20 +2598,18 @@ function onFundDrop(e){
   if(!_dragFund||target.dataset.dragType!=='fund'||target.dataset.cat!==_dragFund.cat) return;
   const pfx=_dragFund.pfx, cat=_dragFund.cat;
   const data=pfx==='twm'?TWM:SRI;
+  const model=pfx==='twm'?curTWM:curSRI;
   const funds=data.funds.filter(f=>f.category===cat);
-  // Build / update persistent order for this category
-  if(!FUND_ORDER[pfx][cat]) FUND_ORDER[pfx][cat]=funds.map(f=>f.ticker);
-  const order=FUND_ORDER[pfx][cat];
+  const modelFO=getModelFundOrder(pfx,model);
+  if(!modelFO[cat]) modelFO[cat]=funds.map(f=>f.ticker);
+  const order=modelFO[cat];
   const fromT=_dragFund.ticker, toT=target.dataset.ticker;
-  // Ensure all tickers present
   funds.forEach(f=>{ if(!order.includes(f.ticker)) order.push(f.ticker); });
   const fi=order.indexOf(fromT), ti=order.indexOf(toT);
   if(fi>-1&&ti>-1){ order.splice(fi,1); order.splice(ti,0,fromT); }
   _dragFund=null;
-  // Re-render current model — FUND_ORDER is tab-scoped so all models get same order on switch
-  const model=pfx==='twm'?curTWM:curSRI;
   renderAllocTable(data,model,pfx);
-  toast('Fund order updated across all '+pfx.toUpperCase()+' models');
+  toast('Fund order updated for '+model);
 }
 
 
@@ -3477,7 +3481,7 @@ async function doSave(){
   const notes=document.getElementById('snap-notes').value.trim();
   const btn=document.getElementById('btn-save');btn.disabled=true;btn.textContent='Saving…';
   try{
-    const res=await sbPost('/rest/v1/model_snapshots',{locked_by:name,notes:notes||null,twm_funds:TWM.funds,twm_models:TWM.models,twm_summary:TWM.summary,sri_funds:SRI.funds,sri_models:SRI.models,sri_summary:SRI.summary});
+    const res=await sbPost('/rest/v1/model_snapshots',{locked_by:name,notes:notes||null,twm_funds:TWM.funds,twm_models:TWM.models,twm_summary:TWM.summary,sri_funds:SRI.funds,sri_models:SRI.models,sri_summary:SRI.summary,twm_cat_order:CAT_ORDER.twm,twm_fund_order:FUND_ORDER.twm,sri_cat_order:CAT_ORDER.sri,sri_fund_order:FUND_ORDER.sri});
     const snapId=res[0].id,createdAt=res[0].created_at,diffs=[];
     if(lastSnapshot){
       Object.keys(TWM.models).forEach(model=>Object.keys(TWM.models[model]).forEach(ticker=>{
@@ -3758,13 +3762,17 @@ async function confirmVersionSave(){
       version_name: versionName,
       created_by:   creator,
       dow_ytd:      dowYtd!=null?parseFloat(dowYtd.toFixed(4)):null,
-      twm_funds:    TWM.funds,
-      twm_models:   TWM.models,
-      twm_summary:  TWM.summary,
+      twm_funds:      TWM.funds,
+      twm_models:     TWM.models,
+      twm_summary:    TWM.summary,
+      twm_cat_order:  CAT_ORDER.twm,
+      twm_fund_order: FUND_ORDER.twm,
       twm_meta:     twmMeta,
-      sri_funds:    SRI.funds,
-      sri_models:   SRI.models,
-      sri_summary:  SRI.summary,
+      sri_funds:      SRI.funds,
+      sri_models:     SRI.models,
+      sri_summary:    SRI.summary,
+      sri_cat_order:  CAT_ORDER.sri,
+      sri_fund_order: FUND_ORDER.sri,
       sri_meta:     sriMeta,
     };
     const result=await sbPost('/rest/v1/model_versions',body);
@@ -3835,6 +3843,8 @@ async function loadVersion(id, name, closePanel=false){
 
     // Load version data into dashboard (read-only)
     if(v.twm_funds) TWM.funds=v.twm_funds;
+    if(v.twm_cat_order&&typeof v.twm_cat_order==='object') Object.assign(CAT_ORDER.twm,v.twm_cat_order);
+    if(v.twm_fund_order&&typeof v.twm_fund_order==='object') Object.assign(FUND_ORDER.twm,v.twm_fund_order);
     if(v.twm_models){
       TWM_MODEL_NAMES.forEach(m=>{ if(v.twm_models[m]) TWM.models[m]=v.twm_models[m]; });
     }
@@ -3842,6 +3852,8 @@ async function loadVersion(id, name, closePanel=false){
       TWM_MODEL_NAMES.forEach(m=>{ if(v.twm_summary[m]) TWM.summary[m]=v.twm_summary[m]; });
     }
     if(v.sri_funds) SRI.funds=v.sri_funds;
+    if(v.sri_cat_order&&typeof v.sri_cat_order==='object') Object.assign(CAT_ORDER.sri,v.sri_cat_order);
+    if(v.sri_fund_order&&typeof v.sri_fund_order==='object') Object.assign(FUND_ORDER.sri,v.sri_fund_order);
     if(v.sri_models){
       SRI_MODEL_NAMES.forEach(m=>{ if(v.sri_models[m]) SRI.models[m]=v.sri_models[m]; });
     }
@@ -4118,6 +4130,12 @@ async function checkConnection(){
       // Restore funds list (add/delete fund changes)
       if(snaps[0].twm_funds&&snaps[0].twm_funds.length) TWM.funds=snaps[0].twm_funds;
       if(snaps[0].sri_funds&&snaps[0].sri_funds.length) SRI.funds=snaps[0].sri_funds;
+      // Restore section and fund ordering
+      // Restore per-model order (CAT_ORDER/FUND_ORDER are now keyed by model name)
+      if(snaps[0].twm_cat_order&&typeof snaps[0].twm_cat_order==='object') Object.assign(CAT_ORDER.twm,snaps[0].twm_cat_order);
+      if(snaps[0].sri_cat_order&&typeof snaps[0].sri_cat_order==='object') Object.assign(CAT_ORDER.sri,snaps[0].sri_cat_order);
+      if(snaps[0].twm_fund_order&&typeof snaps[0].twm_fund_order==='object') Object.assign(FUND_ORDER.twm,snaps[0].twm_fund_order);
+      if(snaps[0].sri_fund_order&&typeof snaps[0].sri_fund_order==='object') Object.assign(FUND_ORDER.sri,snaps[0].sri_fund_order);
       // Restore model weights and summaries
       TWM_MODEL_NAMES.forEach(m=>{
         if(snaps[0].twm_models[m]) TWM.models[m]=snaps[0].twm_models[m];
