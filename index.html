@@ -2932,8 +2932,8 @@ async function confirmAddFund(){
   updateDonut(data,model,pfx);
   renderGeoBar(data,model,pfx);
 
-  setTimeout(closeAddModal,800);
-  document.getElementById('add-modal-save').disabled=false;
+  toast(ticker+' added to '+cat);
+  closeAddModal();
 }
 
 function deleteFund(pfx, ticker){
