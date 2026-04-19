@@ -2692,6 +2692,8 @@ async function confirmAddFund(){
   // Add fund to data structure
   const newFund={ticker, name, expense:expenseRaw/100, category:cat};
   data.funds.push(newFund);
+  // Track the addition for the save diff count
+  _pendingFundChanges.push({type:'added',family:pfx.toUpperCase(),ticker,name});
   data.models[model][ticker]=allocRaw/100;
   Object.keys(data.models).forEach(m=>{
     if(m!==model&&data.models[m][ticker]===undefined) data.models[m][ticker]=0;
@@ -2713,9 +2715,16 @@ async function confirmAddFund(){
   closeAddModal();
 }
 
+// Track pending structural changes (fund additions/deletions) between snapshots
+const _pendingFundChanges=[];  // {type:'added'|'deleted', family:'TWM'|'SRI', ticker, name}
+
 function deleteFund(pfx, ticker){
   const data=pfx==='twm'?TWM:SRI;
   const model=pfx==='twm'?curTWM:curSRI;
+
+  // Record the deletion so doSave can include it in the change count
+  const fund=data.funds.find(f=>f.ticker===ticker);
+  _pendingFundChanges.push({type:'deleted',family:pfx.toUpperCase(),ticker,name:fund?.name||ticker});
 
   // Remove from funds list
   data.funds=data.funds.filter(f=>f.ticker!==ticker);
@@ -3256,7 +3265,25 @@ async function doSave(){
     const dt=new Date(createdAt).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
     document.getElementById('last-snap-info').textContent='Last snapshot: '+dt+' by '+name;
     closeModal();
-    toast('Snapshot saved — '+diffs.length+' change(s) recorded');
+    // Build a human-readable summary: allocation diffs + structural fund changes
+    const structCount=_pendingFundChanges.length;
+    const totalCount=diffs.length+structCount;
+    let msg='Snapshot saved — ';
+    if(totalCount===0){
+      msg+='no allocation changes detected';
+    } else {
+      const parts=[];
+      if(diffs.length>0) parts.push(diffs.length+' allocation change'+(diffs.length!==1?'s':''));
+      if(structCount>0){
+        const dels=_pendingFundChanges.filter(c=>c.type==='deleted');
+        const adds=_pendingFundChanges.filter(c=>c.type==='added');
+        if(dels.length) parts.push(dels.map(c=>c.ticker).join(', ')+' removed');
+        if(adds.length) parts.push(adds.map(c=>c.ticker).join(', ')+' added');
+      }
+      msg+=parts.join(' · ');
+    }
+    _pendingFundChanges.length=0;  // clear after save
+    toast(msg);
     document.getElementById('snap-notes').value='';
   }catch(e){toast('Save failed: '+e.message,'err');}
   finally{btn.disabled=false;btn.textContent='Save snapshot';}
