@@ -2622,6 +2622,7 @@ function _renderFundDrawer(ticker, fund){
 }
 
 // Cache so re-opening the same ticker doesn't re-fetch
+// Keyed by ticker — cleared when funds are deleted or on format changes
 const _aiSummaryCache={};
 
 async function _fetchAISummary(ticker, fund){
@@ -2677,7 +2678,14 @@ Write 3–4 short paragraphs covering:
 3. Recent performance context or notable characteristics (1-year, 3-year, or 5-year returns if available)
 4. Risk considerations relevant to an RIA (interest rate sensitivity, credit quality, liquidity, etc.)
 
-Format: plain prose paragraphs only. No markdown headers, no bullet lists, no bold. Keep it under 200 words total. End with the fund company name on its own line. Be factual and professional — this is for an RIA's internal tool.`;
+STRICT FORMAT RULES — you must follow these exactly:
+- Plain prose paragraphs only. No exceptions.
+- Do NOT use any markdown: no # headers, no ** bold **, no * italic *, no bullet points, no numbered lists, no dashes, no backticks.
+- Do NOT include a title or fund name as a header.
+- Separate paragraphs with a blank line.
+- Keep total response under 200 words.
+- End with just the fund company name on its own line.
+- This is for an RIA internal tool — be factual and professional.`;
 
   // Helper to update the status badge
   function setAIStatus(state, msg){
@@ -2738,10 +2746,13 @@ Format: plain prose paragraphs only. No markdown headers, no bullet lists, no bo
       console.log('[AI] innerHTML set. fd-ai-body innerHTML length:',finalEl.innerHTML.length);
       _aiSummaryCache[ticker]=finalEl.innerHTML;
       setAIStatus('done','Ready');
-    }else if(finalEl){
-      console.warn('[AI] No text in response for',ticker,'json:',JSON.stringify(json).slice(0,300));
-      finalEl.innerHTML='<div style="font-size:12px;color:var(--text-3);">No summary available for this fund.</div>';
+    }else if(finalEl&&!text){
+      finalEl.innerHTML='<div style="font-size:12px;color:var(--text-3);">DEBUG: text was empty after extraction. Check console.</div>';
       setAIStatus('error','No data');
+    }else{
+      // Element not found — show debug in a toast
+      toast('DEBUG: fd-ai-body element not found in DOM','err');
+      setAIStatus('error','DOM error');
     }
 
   }catch(e){
@@ -2759,12 +2770,22 @@ function _setAIBody(ticker, html){
 }
 
 function _formatAIText(text){
-  return text
-    .trim()
-    .split(/\n{2,}/)
+  // Strip markdown that the model sometimes adds despite instructions
+  const clean=text
+    .replace(/^#{1,6}\s+/gm,'')        // # headers
+    .replace(/\*\*(.+?)\*\*/g,'$1')     // **bold**
+    .replace(/\*(.+?)\*/g,'$1')         // *italic*
+    .replace(/^[-*•]\s+/gm,'')          // bullet points
+    .replace(/^\d+\.\s+/gm,'')          // numbered lists
+    .replace(/`(.+?)`/g,'$1')           // `code`
+    .trim();
+  // Handle both single and double newlines as paragraph breaks
+  const hasDblNewline=/\n\n/.test(clean);
+  return clean
+    .split(hasDblNewline?/\n{2,}/:/\n/)
     .map(p=>p.trim())
     .filter(Boolean)
-    .map(p=>`<p>${p.replace(/\n/g,' ')}</p>`)
+    .map(p=>`<p style="margin:0 0 8px;font-size:12px;line-height:1.7;color:var(--text);font-family:'Inter',sans-serif;">${p.replace(/\n/g,' ')}</p>`)
     .join('');
 }
 
