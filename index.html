@@ -1670,6 +1670,7 @@ const SRI={
 let curTWM='IRA Moderate', curSRI='SRI Moderate';
 let pendingAdd={data:null,model:null,pfx:null}; // state for add-fund modal
 let isManualEntry=false; // true when user clicked 'Add manually' — skips price fetch
+const MANUAL_TICKERS=new Set(); // tickers added manually — no Yahoo price available
 let twmDonut,sriDonut,twmBar,sriBar,lastSnapshot=null;
 const CAT_COLORS={Cash:'#888780',Blended:'#5DCAA5','Fixed Income':'#378ADD',Equities:'#7F77DD',Alternatives:'#D85A30'};
 
@@ -1741,7 +1742,7 @@ const TWM_MODEL_NAMES=['IRA Conservative','IRA Moderate','IRA Aggressive','IRA U
 const SRI_MODEL_NAMES=['SRI Conservative','SRI Moderate','SRI Aggressive','SRI Ultra Aggressive'];
 
 // Price + beta data
-const ALL_TICKERS=[...new Set([...TWM.funds.map(f=>f.ticker),...SRI.funds.map(f=>f.ticker)])];
+let ALL_TICKERS=[...new Set([...TWM.funds.map(f=>f.ticker),...SRI.funds.map(f=>f.ticker)])];
 let priceMap={}; // { TICKER: { price, change, changePct, ytdReturn } }
 let betaMap={};  // { TICKER: beta }
 let sp500Beta=1.0, sp500Expense=0.0009; // S&P 500 baseline: beta=1, SPY ER=0.09%
@@ -1994,7 +1995,7 @@ async function fetchPrices(){
   // FGTXX — money market, always $1.00, no fetch needed
   priceMap['FGTXX']={price:1.00,change:0,changePct:0,ytdReturn:0};
 
-  const toFetch=ALL_TICKERS.filter(t=>t!=='FGTXX');
+  const toFetch=ALL_TICKERS.filter(t=>t!=='FGTXX'&&!MANUAL_TICKERS.has(t));
 
   // ── Step 1: Load from Supabase cache ──
   let cachedCount=0;
@@ -2731,7 +2732,7 @@ function updateAddGeoSum(){
 }
 
 async function lookupFund(){
-  const ticker=document.getElementById('add-ticker').value.trim().toUpperCase();
+  let ticker=document.getElementById('add-ticker').value.trim().toUpperCase();
   if(!ticker){ return; }
   const statusEl=document.getElementById('add-modal-status');
   const lookupBtn=document.getElementById('lookup-btn');
@@ -2949,6 +2950,12 @@ async function confirmAddFund(){
   const cat=document.getElementById('add-category').value;
   const statusEl=document.getElementById('add-modal-status');
 
+  // For manual entry, auto-generate a ticker from name initials if left blank
+  // For manual entry, auto-generate a ticker from name initials if left blank
+  if(!ticker && isManualEntry && name){
+    ticker=name.split(/\s+/).map(w=>w[0]).join('').toUpperCase().slice(0,6);
+    document.getElementById('add-ticker').value=ticker;
+  }
   if(!ticker||!name||!cat||isNaN(allocRaw)){
     statusEl.className='add-modal-status err';
     statusEl.textContent='Please complete all required fields.';
@@ -3005,6 +3012,10 @@ async function confirmAddFund(){
   Object.keys(data.models).forEach(m=>{
     if(m!==model&&data.models[m][ticker]===undefined) data.models[m][ticker]=0;
   });
+  // Keep ALL_TICKERS in sync so fetchPrices covers new funds
+  if(!ALL_TICKERS.includes(ticker)) ALL_TICKERS.push(ticker);
+  // Mark manual tickers so fetchPrices skips Yahoo lookup for them
+  if(isManualEntry) MANUAL_TICKERS.add(ticker);
 
   statusEl.className='add-modal-status ok';
   statusEl.textContent=(isManualEntry?'✓ Added manually':priceMap[ticker]?'✓ Price loaded':'Price unavailable')+' — '+ticker+' added to '+cat+'.';
