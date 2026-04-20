@@ -3019,6 +3019,8 @@ function updateMetricsFromAlloc(data,model,pfx){
     else if(f.category==='Blended')s.blended+=v;
     else if(f.category==='Specialty')s.specialty+=v;
   });
+  // Also include the bare 'cash' key (legacy separate cash slot, not a fund ticker)
+  s.cash+=a.cash||0;
   data.summary[model]=s;
   renderMetrics(data,model,pfx);
 }
@@ -3795,7 +3797,7 @@ function drawCyberBar(containerId, data, modelNames, family){
           </div>`;}).join('')}
         <div style="margin-top:7px;padding-top:7px;border-top:1px solid ${_bt.useGlow?'rgba(255,255,255,0.07)':'rgba(15,23,42,0.08)'};display:flex;justify-content:space-between;">
           <span style="font-size:10px;color:${_bt.textHint};font-family:Courier New,monospace;">Total</span>
-          <span style="font-size:12px;font-weight:700;color:${_bt.textPrimary};font-family:Courier New,monospace;">${d.equities+d.fixed+d.cash}%</span>
+          <span style="font-size:12px;font-weight:700;color:${_bt.textPrimary};font-family:Courier New,monospace;">${(d.equities+d.fixed+(d.mixed||0)+(d.alts||0)+d.cash).toFixed(1)}%</span>
         </div>`;
       colGroup._tip=tipHtml;
       showTip(tipHtml,e);
