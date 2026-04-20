@@ -2965,7 +2965,11 @@ function _formatAIText(text){
 }
 
 function updateSum(data,model,pfx){
-  const s=Object.values(data.models[model]).reduce((a,b)=>a+b,0);
+  // Sum only fund ticker keys — exclude the bare 'cash' key which is a legacy
+  // separate slot and would double-count cash alongside FGTXX
+  const alloc=data.models[model];
+  const fundTickers=new Set(data.funds.map(f=>f.ticker));
+  const s=Object.keys(alloc).filter(k=>fundTickers.has(k)).reduce((a,k)=>a+(alloc[k]||0),0);
   const el=document.getElementById(pfx+'-sum-display'),ok=Math.abs(s-1)<0.005;
   if(!el) return;
   el.className='sum-display '+(ok?'sum-ok':'sum-warn');
@@ -3673,7 +3677,7 @@ function drawCyberBar(containerId, data, modelNames, family){
 
   el.innerHTML='';
 
-  // Build family-specific bar series — TWM uses Blended, SRI uses Specialty
+  // Build family-specific bar series — 5 segments matching the donut chart
   const isSRI=family==='sri';
   const mixedLabel=isSRI?'Specialty':'Blended';
   const dk=isDark();
@@ -3688,8 +3692,11 @@ function drawCyberBar(containerId, data, modelNames, family){
       ?{key:'mixed',   label:mixedLabel,    c1:'#fb923c',c2:'#7f1d1d',dot:'#fb923c',shadow:'rgba(251,146,60,0.20)'}
       :{key:'mixed',   label:mixedLabel,    c1:'#f97316',c2:'#c2410c',dot:'#ea580c',shadow:'rgba(249,115,22,0.15)'},
     dk
-      ?{key:'cash',    label:'Cash / Alt',  c1:'#64748b',c2:'#1e293b',dot:'#94a3b8',shadow:'rgba(148,163,184,0.15)'}
-      :{key:'cash',    label:'Cash / Alt',  c1:'#94a3b8',c2:'#475569',dot:'#64748b',shadow:'rgba(100,116,139,0.10)'},
+      ?{key:'alts',    label:'Alternatives',c1:'#a78bfa',c2:'#1e1b4b',dot:'#a78bfa',shadow:'rgba(167,139,250,0.20)'}
+      :{key:'alts',    label:'Alternatives',c1:'#8b5cf6',c2:'#4c1d95',dot:'#7c3aed',shadow:'rgba(139,92,246,0.15)'},
+    dk
+      ?{key:'cash',    label:'Cash',        c1:'#64748b',c2:'#1e293b',dot:'#94a3b8',shadow:'rgba(148,163,184,0.15)'}
+      :{key:'cash',    label:'Cash',        c1:'#94a3b8',c2:'#475569',dot:'#64748b',shadow:'rgba(100,116,139,0.10)'},
   ];
   const gradPfx=containerId.replace(/[^a-z0-9]/gi,'_');
   const margin={top:16,right:16,bottom:48,left:36};
@@ -3701,7 +3708,8 @@ function drawCyberBar(containerId, data, modelNames, family){
     equities:parseFloat(((data.summary[m]?.equities||0)*100).toFixed(1)),
     fixed:parseFloat(((data.summary[m]?.fixedIncome||0)*100).toFixed(1)),
     mixed:parseFloat(((isSRI?(data.summary[m]?.specialty||0):(data.summary[m]?.blended||0))*100).toFixed(1)),
-    cash:parseFloat((((data.summary[m]?.cash||0)+(data.summary[m]?.alternatives||0))*100).toFixed(1)),
+    alts:parseFloat(((data.summary[m]?.alternatives||0)*100).toFixed(1)),
+    cash:parseFloat(((data.summary[m]?.cash||0)*100).toFixed(1)),
   }));
 
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
@@ -4021,11 +4029,13 @@ function renderCompareGrid(pfx){
   });
 
   // Grand total row
+  const fundTickerSet=new Set(data.funds.map(f=>f.ticker));
   html+=`<tr class="compare-total">
     <td colspan="2" style="text-align:right;padding:9px 10px;">Grand total</td>
     <td></td>
     ${modelNames.map(m=>{
-      const tot=Object.values(data.models[m]).reduce((a,b)=>a+b,0);
+      const alloc=data.models[m];
+      const tot=Object.keys(alloc).filter(k=>fundTickerSet.has(k)).reduce((a,k)=>a+(alloc[k]||0),0);
       const ok=Math.abs(tot-1)<0.005;
       return `<td style="text-align:center;padding:9px 8px;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${ok?(dk?'#4ade80':'#15803d'):(dk?'#f87171':'#991b1b')};">${(tot*100).toFixed(1)}%</td>`;
     }).join('')}
