@@ -477,17 +477,20 @@
     .cat-row-FixedIncome  td{background:rgba(52,211,153, 0.07)!important;}
     .cat-row-Equities     td{background:rgba(56,189,248, 0.07)!important;}
     .cat-row-Alternatives td{background:rgba(167,139,250,0.07)!important;}
+    .cat-row-Specialty    td{background:rgba(34,211,238, 0.07)!important;}
     [data-theme="dark"] .cat-row-Cash         td{background:rgba(148,163,184,0.05)!important;}
     [data-theme="dark"] .cat-row-Blended      td{background:rgba(251,146,60, 0.05)!important;}
     [data-theme="dark"] .cat-row-FixedIncome  td{background:rgba(52,211,153, 0.06)!important;}
     [data-theme="dark"] .cat-row-Equities     td{background:rgba(56,189,248, 0.06)!important;}
     [data-theme="dark"] .cat-row-Alternatives td{background:rgba(167,139,250,0.06)!important;}
+    [data-theme="dark"] .cat-row-Specialty    td{background:rgba(34,211,238, 0.06)!important;}
     /* Subtotal rows tinted slightly stronger */
     .cat-subtotal-Cash         td{background:rgba(148,163,184,0.12)!important;color:var(--text-2);}
     .cat-subtotal-Blended      td{background:rgba(251,146,60, 0.12)!important;color:var(--text-2);}
     .cat-subtotal-FixedIncome  td{background:rgba(52,211,153, 0.13)!important;color:var(--text-2);}
     .cat-subtotal-Equities     td{background:rgba(56,189,248, 0.13)!important;color:var(--text-2);}
     .cat-subtotal-Alternatives td{background:rgba(167,139,250,0.13)!important;color:var(--text-2);}
+    .cat-subtotal-Specialty    td{background:rgba(34,211,238, 0.13)!important;color:var(--text-2);}
     /* Drag handle */
     .drag-handle{cursor:grab;color:var(--text-3);opacity:0.40;padding:0 4px;font-size:14px;
       line-height:1;flex-shrink:0;user-select:none;transition:opacity .15s;}
@@ -1432,7 +1435,7 @@ const TWM={
 const SRI={
   funds:[
     {ticker:'FGTXX',name:'Cash',                   expense:0.0018,category:'Cash'},
-    {ticker:'LMRNX',name:'Loomis Sayles Blend',    expense:0.007, category:'Blended'},
+    {ticker:'LMRNX',name:'Loomis Sayles Blend',    expense:0.007, category:'Specialty'},
     {ticker:'SUSB', name:'iShares ESG 1-5Y Bond',  expense:0.0012,category:'Fixed Income'},
     {ticker:'TSBIX',name:'Thornburg Ltd Term Muni', expense:0.0035,category:'Fixed Income'},
     {ticker:'PFPLX',name:'Parnassus Fixed Income',  expense:0.0039,category:'Fixed Income'},
@@ -1448,10 +1451,10 @@ const SRI={
     'SRI Ultra Aggressive':{cash:0.01,FGTXX:0.02,LMRNX:0.20,SUSB:0.03,TSBIX:0.08,PFPLX:0,   DSI:0.19,PFPWX:0.15,PXWIX:0.17,PGINX:0.15},
   },
   summary:{
-    'SRI Conservative':    {equities:0.34,fixedIncome:0.45,alternatives:0,blended:0.15,cash:0.06},
-    'SRI Moderate':        {equities:0.47,fixedIncome:0.32,alternatives:0,blended:0.16,cash:0.05},
-    'SRI Aggressive':      {equities:0.55,fixedIncome:0.24,alternatives:0,blended:0.17,cash:0.04},
-    'SRI Ultra Aggressive':{equities:0.66,fixedIncome:0.11,alternatives:0,blended:0.20,cash:0.03},
+    'SRI Conservative':    {equities:0.34,fixedIncome:0.45,alternatives:0,specialty:0.15,cash:0.06},
+    'SRI Moderate':        {equities:0.47,fixedIncome:0.32,alternatives:0,specialty:0.16,cash:0.05},
+    'SRI Aggressive':      {equities:0.55,fixedIncome:0.24,alternatives:0,specialty:0.17,cash:0.04},
+    'SRI Ultra Aggressive':{equities:0.66,fixedIncome:0.11,alternatives:0,specialty:0.20,cash:0.03},
   }
 };
 
@@ -2209,6 +2212,7 @@ function catDot(cat){
     Cash:          {l:'#475569',d:'#94a3b8'},
     Blended:       {l:'#d97706',d:'#fbbf24'},
     Alternatives:  {l:'#7c3aed',d:'#a78bfa'},
+    Specialty:     {l:'#0891b2',d:'#22d3ee'},
   };
   const c=(DOTS[cat]||{l:'#64748b',d:'#94a3b8'});
   const col=dk?c.d:c.l;
@@ -2220,7 +2224,7 @@ function catDot(cat){
 // Per-model category and fund order: { twm: { 'IRA Moderate': [...], ... }, sri: {...} }
 const CAT_ORDER={twm:{},sri:{}};
 const FUND_ORDER={twm:{},sri:{}};
-const DEFAULT_CAT_ORDER=['Cash','Blended','Fixed Income','Equities','Alternatives'];
+const DEFAULT_CAT_ORDER=['Cash','Blended','Specialty','Fixed Income','Equities','Alternatives'];
 
 // ── Card row ordering ──
 // TILE_ORDER: order of the 4 category tiles (equities/fixedIncome/cash/alternatives)
@@ -3001,7 +3005,7 @@ function onEditBlur(el){
 }
 
 function updateMetricsFromAlloc(data,model,pfx){
-  const a=data.models[model],s={equities:0,fixedIncome:0,alternatives:0,cash:0,blended:0};
+  const a=data.models[model],s={equities:0,fixedIncome:0,alternatives:0,cash:0,blended:0,specialty:0};
   data.funds.forEach(f=>{
     const v=a[f.ticker]||0;
     if(f.category==='Equities')s.equities+=v;
@@ -3009,6 +3013,7 @@ function updateMetricsFromAlloc(data,model,pfx){
     else if(f.category==='Alternatives')s.alternatives+=v;
     else if(f.category==='Cash')s.cash+=v;
     else if(f.category==='Blended')s.blended+=v;
+    else if(f.category==='Specialty')s.specialty+=v;
   });
   data.summary[model]=s;
   renderMetrics(data,model,pfx);
@@ -3419,6 +3424,7 @@ const CYBER_DARK = {
   Cash:          {c1:'#64748b', c2:'#1e293b', dot:'#94a3b8', shadow:'rgba(148,163,184,0.20)'},
   Blended:       {c1:'#fb923c', c2:'#7f1d1d', dot:'#fb923c', shadow:'rgba(251,146,60,0.25)'},
   Alternatives:  {c1:'#a78bfa', c2:'#1e1b4b', dot:'#a78bfa', shadow:'rgba(167,139,250,0.25)'},
+  Specialty:     {c1:'#22d3ee', c2:'#164e63', dot:'#22d3ee', shadow:'rgba(34,211,238,0.25)'},
 };
 const CYBER_LIGHT = {
   Equities:      {c1:'#3b82f6', c2:'#1e40af', dot:'#2563eb', shadow:'rgba(59,130,246,0.18)'},
@@ -3426,18 +3432,19 @@ const CYBER_LIGHT = {
   Cash:          {c1:'#94a3b8', c2:'#475569', dot:'#64748b', shadow:'rgba(100,116,139,0.15)'},
   Blended:       {c1:'#f97316', c2:'#c2410c', dot:'#ea580c', shadow:'rgba(249,115,22,0.18)'},
   Alternatives:  {c1:'#8b5cf6', c2:'#4c1d95', dot:'#7c3aed', shadow:'rgba(139,92,246,0.18)'},
+  Specialty:     {c1:'#06b6d4', c2:'#0e7490', dot:'#0891b2', shadow:'rgba(6,182,212,0.18)'},
 };
 const BAR_DARK=[
   {key:'equities',label:'Equities',    c1:'#38bdf8',c2:'#3730a3',dot:'#38bdf8',shadow:'rgba(56,189,248,0.20)'},
   {key:'fixed',   label:'Fixed Income',c1:'#34d399',c2:'#065f46',dot:'#34d399',shadow:'rgba(52,211,153,0.20)'},
-  {key:'blended', label:'Blended',          c1:'#fb923c',c2:'#7f1d1d',dot:'#fb923c',shadow:'rgba(251,146,60,0.20)'},
-  {key:'cash',    label:'Cash / Alt',       c1:'#64748b',c2:'#1e293b',dot:'#94a3b8',shadow:'rgba(148,163,184,0.15)'},
+  {key:'mixed',   label:'Blended/Spec',c1:'#fb923c',c2:'#7f1d1d',dot:'#fb923c',shadow:'rgba(251,146,60,0.20)'},
+  {key:'cash',    label:'Cash / Alt',  c1:'#64748b',c2:'#1e293b',dot:'#94a3b8',shadow:'rgba(148,163,184,0.15)'},
 ];
 const BAR_LIGHT=[
   {key:'equities',label:'Equities',    c1:'#3b82f6',c2:'#1e40af',dot:'#2563eb',shadow:'rgba(59,130,246,0.15)'},
   {key:'fixed',   label:'Fixed Income',c1:'#10b981',c2:'#065f46',dot:'#059669',shadow:'rgba(16,185,129,0.15)'},
-  {key:'blended', label:'Blended',          c1:'#f97316',c2:'#c2410c',dot:'#ea580c',shadow:'rgba(249,115,22,0.15)'},
-  {key:'cash',    label:'Cash / Alt',       c1:'#94a3b8',c2:'#475569',dot:'#64748b',shadow:'rgba(100,116,139,0.10)'},
+  {key:'mixed',   label:'Blended/Spec',c1:'#f97316',c2:'#c2410c',dot:'#ea580c',shadow:'rgba(249,115,22,0.15)'},
+  {key:'cash',    label:'Cash / Alt',  c1:'#94a3b8',c2:'#475569',dot:'#64748b',shadow:'rgba(100,116,139,0.10)'},
 ];
 
 function getCYBER(name){ return isDark()?(CYBER_DARK[name]||CYBER_DARK.Cash):(CYBER_LIGHT[name]||CYBER_LIGHT.Cash); }
@@ -3690,7 +3697,7 @@ function drawCyberBar(containerId, data, modelNames){
     model:shorts[i],
     equities:parseFloat(((data.summary[m]?.equities||0)*100).toFixed(1)),
     fixed:parseFloat(((data.summary[m]?.fixedIncome||0)*100).toFixed(1)),
-    blended:parseFloat(((data.summary[m]?.blended||0)*100).toFixed(1)),
+    mixed:parseFloat((((data.summary[m]?.blended||0)+(data.summary[m]?.specialty||0))*100).toFixed(1)),
     cash:parseFloat((((data.summary[m]?.cash||0)+(data.summary[m]?.alternatives||0))*100).toFixed(1)),
   }));
 
