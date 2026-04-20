@@ -4595,6 +4595,9 @@ async function loadVersion(id, name, closePanel=false){
     if(v.sri_summary){
       SRI_MODEL_NAMES.forEach(m=>{ if(v.sri_summary[m]) SRI.summary[m]=v.sri_summary[m]; });
     }
+    // Recompute summaries from fund categories to fix any stale keys
+    TWM_MODEL_NAMES.forEach(m=>updateMetricsFromAlloc(TWM,m,'twm'));
+    SRI_MODEL_NAMES.forEach(m=>updateMetricsFromAlloc(SRI,m,'sri'));
 
     // Enter read-only mode
     isReadOnly=true;
@@ -4880,6 +4883,10 @@ async function checkConnection(){
         if(snaps[0].sri_models[m]) SRI.models[m]=snaps[0].sri_models[m];
         if(snaps[0].sri_summary[m]) SRI.summary[m]=snaps[0].sri_summary[m];
       });
+      // Recompute summaries from live fund categories so blended/specialty keys
+      // are always correct even if the stored snapshot has stale category keys
+      TWM_MODEL_NAMES.forEach(m=>updateMetricsFromAlloc(TWM,m,'twm'));
+      SRI_MODEL_NAMES.forEach(m=>updateMetricsFromAlloc(SRI,m,'sri'));
       const dt=new Date(snaps[0].created_at).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
       document.getElementById('last-snap-info').textContent='Last snapshot: '+dt+' by '+snaps[0].locked_by;
       // Load latest version label
