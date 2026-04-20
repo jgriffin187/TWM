@@ -1465,27 +1465,27 @@ const CAT_COLORS={Cash:'#888780',Blended:'#5DCAA5','Fixed Income':'#378ADD',Equi
 // Geographic breakdown per fund — US vs Non-US vs Other
 // Sources: Fund Data sheet (spreadsheet) + Morningstar/prospectus for tickers not in sheet
 let GEO_MAP={
-  'FGTXX': {us:1.000, intl:0.000, other:0.000}, // money market
-  'VGSTX': {us:0.776, intl:0.223, other:0.001}, // Vanguard STAR — from Fund Data
-  'FDUIX': {us:0.970, intl:0.030, other:0.000}, // Fidelity Intermediate Bond
-  'FEHIX': {us:0.880, intl:0.100, other:0.020}, // Fidelity High Yield
-  'CGMU':  {us:1.000, intl:0.000, other:0.000}, // iShares Muni
-  'BND':   {us:0.970, intl:0.030, other:0.000}, // Vanguard Total Bond
-  'VUSB':  {us:1.000, intl:0.000, other:0.000}, // Vanguard Short-Term Bond
-  'VB':    {us:1.000, intl:0.000, other:0.000}, // Vanguard Small Cap
-  'VTI':   {us:0.988, intl:0.009, other:0.003}, // Vanguard Total Market — from Fund Data
-  'SGIIX': {us:0.493, intl:0.399, other:0.108}, // Sextant Global — from Fund Data
-  'FEBIX': {us:0.000, intl:1.000, other:0.000}, // Fidelity Emerging Markets — 100% intl
-  'GARIX': {us:0.750, intl:0.150, other:0.100}, // Counterpoint Alts
-  'MAFIX': {us:0.800, intl:0.100, other:0.100}, // Manning & Napier Alts
-  'LMRNX': {us:0.550, intl:0.380, other:0.070}, // Loomis Sayles Blend
-  'SUSB':  {us:1.000, intl:0.000, other:0.000}, // iShares ESG USD Bond
-  'TSBIX': {us:0.844, intl:0.152, other:0.004}, // Thornburg Ltd Term — from Fund Data
-  'PFPLX': {us:1.000, intl:0.000, other:0.000}, // Parnassus Fixed Income
-  'DSI':   {us:1.000, intl:0.000, other:0.000}, // iShares MSCI KLD 400 (US large cap ESG)
-  'PFPWX': {us:0.980, intl:0.020, other:0.000}, // Parnassus Core Equity
-  'PXWIX': {us:0.687, intl:0.312, other:0.001}, // PIMCO Alloc Plus — from Fund Data
-  'PGINX': {us:0.592, intl:0.407, other:0.001}, // PIMCO Intl Dev — from Fund Data
+  'FGTXX': {us:1.000, intl:0.000, other:0.000}, // Cash
+  'VGSTX': {us:0.615, intl:0.382, other:0.003}, // Vanguard STAR
+  'FDUIX': {us:0.934, intl:0.062, other:0.004}, // Fidelity Inter Bond
+  'FEHIX': {us:0.845, intl:0.120, other:0.035}, // Fidelity HY Bond
+  'CGMU':  {us:1.000, intl:0.000, other:0.000}, // iShares Munis
+  'BND':   {us:1.000, intl:0.000, other:0.000}, // Vanguard Bond
+  'VUSB':  {us:0.985, intl:0.010, other:0.005}, // Vanguard ST Bond
+  'VB':    {us:0.992, intl:0.005, other:0.003}, // Vanguard Small Cap
+  'VTI':   {us:0.995, intl:0.003, other:0.002}, // Vanguard Total Market
+  'SGIIX': {us:0.550, intl:0.410, other:0.040}, // Sextant Global Growth
+  'FEBIX': {us:0.912, intl:0.083, other:0.005}, // Fidelity Emerging Mkts
+  'GARIX': {us:0.970, intl:0.020, other:0.010}, // Counterpoint Alternatives
+  'MAFIX': {us:0.878, intl:0.105, other:0.017}, // Manning & Napier Alts
+  'LMRNX': {us:0.885, intl:0.102, other:0.013}, // Loomis Sayles Blend
+  'SUSB':  {us:0.924, intl:0.071, other:0.005}, // iShares ESG 1-5Y Bond
+  'TSBIX': {us:0.865, intl:0.115, other:0.020}, // Thornburg Ltd Term Muni
+  'PFPLX': {us:0.910, intl:0.060, other:0.030}, // Parnassus Fixed Income
+  'DSI':   {us:0.998, intl:0.001, other:0.001}, // iShares MSCI KLD 400
+  'PFPWX': {us:0.760, intl:0.180, other:0.060}, // Parnassus Core Equity
+  'PXWIX': {us:0.025, intl:0.940, other:0.035}, // PIMCO Alloc Plus
+  'PGINX': {us:0.420, intl:0.510, other:0.070}, // PIMCO International Dev
 };
 
 function calcGeo(data, model){
