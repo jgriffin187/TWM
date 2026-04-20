@@ -357,7 +357,7 @@
     .tab:hover:not(.active){color:var(--text);}
 
     /* metrics-top: cyber tile row */
-    .metrics-top{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:10px;}
+    .metrics-top{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:10px;}
     /* metrics-cmp: cyber-glass comparison tiles */
     .metrics-cmp{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:1.5rem;}
     .cyber-tile.tile-drag-over,.cmp-tile.tile-drag-over{outline:2px solid var(--blue);outline-offset:2px;opacity:0.8;}
@@ -2001,6 +2001,17 @@ const TILE_CFG={
     lightBar:'#8b5cf6', darkBar:'#a78bfa',
     lightHover:'rgba(124,58,237,0.14)', darkHover:'rgba(167,139,250,0.18)',
   },
+  blended:{
+    label:'Blended', context:'Blended allocation', color:'amber',
+    icon:'<path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>',
+    lightAccent:'#d97706', darkAccent:'#fbbf24',
+    lightWash:'rgba(254,243,199,0.55)', darkWash:'rgba(251,191,36,0.08)',
+    lightInner:'inset 0 2px 8px rgba(217,119,6,0.13),inset 0 1px 3px rgba(217,119,6,0.07)',
+    darkInner:'inset 0 4px 14px rgba(251,191,36,0.28)',
+    lightIcon:'rgba(217,119,6,0.10)', darkIcon:'rgba(251,191,36,0.12)',
+    lightBar:'#f59e0b', darkBar:'#fbbf24',
+    lightHover:'rgba(217,119,6,0.14)', darkHover:'rgba(251,191,36,0.18)',
+  },
 };
 
 function renderCyberTile(cfg, valueRaw, maxPct, dragType, dragKey){
@@ -2160,6 +2171,7 @@ function renderMetrics(data,model,pfx){
     fixedIncome: ()=>renderCyberTile(TILE_CFG.fixedIncome, s.fixedIncome, 0.80,'tile','fixedIncome'),
     cash:        ()=>renderCyberTile(TILE_CFG.cash,        s.cash,        0.30,'tile','cash'),
     alternatives:()=>renderCyberTile(TILE_CFG.alternatives,s.alternatives,0.30,'tile','alternatives'),
+    blended:     ()=>renderCyberTile(TILE_CFG.blended,     s.blended||0,  0.30,'tile','blended'),
   };
   document.getElementById(pfx+'-metrics-top').innerHTML=
     CARD_ORDER.tile.map(k=>TILE_MAP[k]?TILE_MAP[k]():'').join('');
@@ -2213,7 +2225,7 @@ const DEFAULT_CAT_ORDER=['Cash','Blended','Fixed Income','Equities','Alternative
 // ── Card row ordering ──
 // TILE_ORDER: order of the 4 category tiles (equities/fixedIncome/cash/alternatives)
 // CMP_ORDER:  order of the 3 comparison tiles (beta/expense/ytd)
-const DEFAULT_TILE_ORDER=['equities','fixedIncome','cash','alternatives'];
+const DEFAULT_TILE_ORDER=['cash','blended','fixedIncome','equities','alternatives'];
 const DEFAULT_CMP_ORDER=['beta','expense','ytd'];
 const CARD_ORDER={tile:[...DEFAULT_TILE_ORDER], cmp:[...DEFAULT_CMP_ORDER]};
 
@@ -2226,7 +2238,7 @@ function loadCardOrder(){
     const saved=localStorage.getItem('twm_card_order');
     if(saved){
       const o=JSON.parse(saved);
-      if(o.tile&&o.tile.length===4) CARD_ORDER.tile=[...o.tile];
+      if(o.tile&&o.tile.length===5) CARD_ORDER.tile=[...o.tile];
       if(o.cmp&&o.cmp.length===3) CARD_ORDER.cmp=[...o.cmp];
     }
   }catch(e){}
@@ -4169,7 +4181,7 @@ async function exportPDF(){
     mWrap.appendChild(metricsTop.cloneNode(true));
     mWrap.appendChild(metricsCmp.cloneNode(true));
     // Override grid for print
-    mWrap.querySelectorAll('.metrics-top').forEach(el=>el.style.cssText='display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px;');
+    mWrap.querySelectorAll('.metrics-top').forEach(el=>el.style.cssText='display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:10px;');
     mWrap.querySelectorAll('.metrics-cmp').forEach(el=>el.style.cssText='display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;');
     mWrap.querySelectorAll('.metric').forEach(el=>el.style.cssText='background:#F2F1EC;border:1px solid rgba(0,0,0,.12);border-radius:10px;padding:12px 14px;');
     mWrap.querySelectorAll('.metric-label').forEach(el=>el.style.cssText='font-size:10px;font-weight:700;color:#3D3C38;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;');
