@@ -2015,6 +2015,17 @@ const TILE_CFG={
     lightBar:'#f59e0b', darkBar:'#fbbf24',
     lightHover:'rgba(217,119,6,0.14)', darkHover:'rgba(251,191,36,0.18)',
   },
+  specialty:{
+    label:'Specialty', context:'Specialty allocation', color:'cyan',
+    icon:'<path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>',
+    lightAccent:'#0891b2', darkAccent:'#22d3ee',
+    lightWash:'rgba(207,250,254,0.55)', darkWash:'rgba(34,211,238,0.08)',
+    lightInner:'inset 0 2px 8px rgba(8,145,178,0.13),inset 0 1px 3px rgba(8,145,178,0.07)',
+    darkInner:'inset 0 4px 14px rgba(34,211,238,0.28)',
+    lightIcon:'rgba(8,145,178,0.10)', darkIcon:'rgba(34,211,238,0.12)',
+    lightBar:'#06b6d4', darkBar:'#22d3ee',
+    lightHover:'rgba(8,145,178,0.14)', darkHover:'rgba(34,211,238,0.18)',
+  },
 };
 
 function renderCyberTile(cfg, valueRaw, maxPct, dragType, dragKey){
@@ -2169,12 +2180,15 @@ function renderMetrics(data,model,pfx){
     :(ytdVsDow>=0?'+':'')+ytdVsDow.toFixed(2)+'% vs DOW ('+dowStr+')';
 
   // Build ordered tile row from CARD_ORDER.tile
+  const isSRI = pfx==='sri';
   const TILE_MAP={
-    equities:    ()=>renderCyberTile(TILE_CFG.equities,    s.equities,    0.80,'tile','equities'),
-    fixedIncome: ()=>renderCyberTile(TILE_CFG.fixedIncome, s.fixedIncome, 0.80,'tile','fixedIncome'),
-    cash:        ()=>renderCyberTile(TILE_CFG.cash,        s.cash,        0.30,'tile','cash'),
-    alternatives:()=>renderCyberTile(TILE_CFG.alternatives,s.alternatives,0.30,'tile','alternatives'),
-    blended:     ()=>renderCyberTile(TILE_CFG.blended,     s.blended||0,  0.30,'tile','blended'),
+    equities:    ()=>renderCyberTile(TILE_CFG.equities,    s.equities,       0.80,'tile','equities'),
+    fixedIncome: ()=>renderCyberTile(TILE_CFG.fixedIncome, s.fixedIncome,    0.80,'tile','fixedIncome'),
+    cash:        ()=>renderCyberTile(TILE_CFG.cash,        s.cash,           0.30,'tile','cash'),
+    alternatives:()=>renderCyberTile(TILE_CFG.alternatives,s.alternatives,   0.30,'tile','alternatives'),
+    blended:     ()=>isSRI
+      ? renderCyberTile(TILE_CFG.specialty, s.specialty||0, 0.30,'tile','blended')
+      : renderCyberTile(TILE_CFG.blended,   s.blended||0,   0.30,'tile','blended'),
   };
   document.getElementById(pfx+'-metrics-top').innerHTML=
     CARD_ORDER.tile.map(k=>TILE_MAP[k]?TILE_MAP[k]():'').join('');
